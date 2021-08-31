@@ -105,21 +105,21 @@ def results_page():
 
 	special_result = False
 
+	query_with_handled_spaces = request.args.get("query").replace("--", "")
+
+	allowed_chars = [" ", '"', ":", "-", "/", "."]
+
+	cleaned_value = ''.join(e for e in query_with_handled_spaces if e.isalnum() or e in allowed_chars)
+
+	query_params, query_values_in_list, query_with_handled_spaces = handle_advanced_search(query_with_handled_spaces)
+
+	cleaned_value_for_query = ''.join(e for e in query_with_handled_spaces if e.isalnum() or e == " " or e == ".").replace(".", " ")
+
 	if request.form.get("type") == "image":
-		return redirect("/results?{}&type=image".format(request.args.get("query")))
+		return redirect("/results?{}&type=image".format(cleaned_value_for_query))
 
 	if request.args.get("query"):
 		connection = sqlite3.connect(ROOT_DIRECTORY + "/search.db")
-
-		query_with_handled_spaces = request.args.get("query").replace("--", "")
-
-		allowed_chars = [" ", '"', ":", "-", "/", "."]
-
-		cleaned_value = ''.join(e for e in query_with_handled_spaces if e.isalnum() or e in allowed_chars)
-
-		query_params, query_values_in_list, query_with_handled_spaces = handle_advanced_search(query_with_handled_spaces)
-
-		cleaned_value_for_query = ''.join(e for e in query_with_handled_spaces if e.isalnum() or e == " " or e == ".").replace(".", " ")
 		full_query_with_full_stops = ''.join(e for e in query_with_handled_spaces if e.isalnum() or e == " " or e == ".")
 		
 		if len(cleaned_value_for_query) > 0 or len(query_params) > 0:
