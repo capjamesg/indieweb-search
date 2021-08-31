@@ -30,13 +30,13 @@ To run the web application, execute these commands:
 
 The search engine will not be available until you have indexed some content.
 
-You can do this by adding a site URL to the crawl_queue.txt file and then running this command:
+You can do this by adding a site URL to the `crawl_queue.txt` file and then running this command:
 
     python3 build_index.py
 
-Your site URL will be removed from the crawl_queue.txt file after your site has been fully crawled.
+Your site URL will be removed from the `crawl_queue.txt` file after your site has been fully crawled.
 
-All crawls are limited to 1,000 URLs. To change this limit, search for "1000" in the crawler/url_handling.py file and change the value to the desired limit.
+All crawls are limited to 1,000 URLs. To change this limit, search for "1000" in the `crawler/url_handling.py` file and change the value to the desired limit.
 
 ## Direct Answer Search Results
 
@@ -44,8 +44,8 @@ Work is being done to support some "direct answer" search results. These are sea
 
 The main "direct answers" that are in development are:
 
-- Answering questions with an answer (triggered by "what is [your query]"). This type of direct answer currently relies on answers from the IndieWeb wiki.
-- Showing the h-card of a domain (triggered by "who is is [domain-name]").
+- Answering questions with an answer (triggered by `what is [your query]`). This type of direct answer currently relies on answers from the IndieWeb wiki.
+- Showing the h-card of a domain (triggered by `who is [domain-name]`).
 - Identifying names of people, places, and organizations (this is a long-term project and only source code from capjamesg's personal search engine is currently in the project).
 - Showing posts published "on this day". This feature has not yet been tested as part of indieweb-search.
 
@@ -62,6 +62,16 @@ This repository does not contain a list of any domains indexed in the live searc
 If you would like to request your site be indexed on indieweb-search.jamesg.blog, please create an issue on this project.
 
 Only contributors to the IndieWeb wiki will be considered at this stage due to the limited compute resources available for this project.
+
+## Contributing
+
+Feel free to contribute to this project no matter how much background you have in search.
+
+Some things that need worked on are:
+
+- Using MD5 hashes to remove duplicate documents.
+- Handling read timeouts.
+- Testing as many queries as possible on the live search engine to identify opportunities for improvements (note: the live search engine not yet ready to test for this purpose).
 
 ## License
 
