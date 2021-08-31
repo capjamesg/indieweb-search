@@ -88,8 +88,8 @@ nav {
     display: flex;
     margin: 10px 0;
     justify-content: space-between;
-    border-top: 5px #FFA500 dashed;
-    border-bottom: 5px #FFA500 dashed;
+    border-top: 5px hotpink dashed;
+    border-bottom: 5px hotpink dashed;
 }
 
 nav ul, .tab ul {

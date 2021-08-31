@@ -6,6 +6,7 @@ import logging
 from config import ROOT_DIRECTORY
 import json
 import csv
+import sys
 import os
 
 from shutil import copyfile
@@ -245,9 +246,20 @@ def build_index():
 
 			iterate_list_of_urls = list(final_urls.keys())
 
-			print(final_urls)
+			# if reindex argument passed to command
+			if len(sys.argv) > 1 and sys.argv[1] == "reindex":
+				indexed_already = cursor.execute("SELECT url FROM posts WHERE url LIKE ? or url LIKE ?", ("https://{}%".format(site), "http://{}%".format(site))).fetchall()
+				iterate_list_of_urls = [item for item in iterate_list_of_urls if item not in indexed_already]
 
-			pages_indexed, images_indexed, all_links, iterate_list_of_urls = url_handling.crawl_urls(final_urls, namespaces_to_ignore, cursor, pages_indexed, images_indexed, image_urls, links, external_links, discovered_urls, broken_urls, iterate_list_of_urls, site)
+				# Make sure home page is part of reindex
+				if site not in iterate_list_of_urls:
+					iterate_list_of_urls.append(site)
+
+				reindex = True
+			else:
+				reindex = False
+
+			pages_indexed, images_indexed, all_links, iterate_list_of_urls = url_handling.crawl_urls(final_urls, namespaces_to_ignore, cursor, pages_indexed, images_indexed, image_urls, links, external_links, discovered_urls, broken_urls, iterate_list_of_urls, site, reindex)
 
 			log_contents(cursor, pages_indexed, images_indexed)
 
