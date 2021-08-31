@@ -220,7 +220,7 @@ ubuntu-drivers-common==0.0.0
 ufw==0.36
 unattended-upgrades==0.1
 uritemplate==3.0.1
-urllib3==1.25.8
+urllib3==1.26.5
 vine==5.0.0
 virtualenv==20.0.17
 vulture==2.3
