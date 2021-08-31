@@ -25,7 +25,7 @@ click-plugins==1.1.1
 click-repl==0.2.0
 colorama==0.4.3
 command-not-found==0.3
-cryptography==2.8
+cryptography==3.3.2
 cssselect==1.1.0
 cupshelpers==1.0
 cycler==0.10.0
@@ -126,7 +126,7 @@ pathos==0.2.8
 pathy==0.6.0
 pdfkit==0.6.1
 pexpect==4.6.0
-Pillow==7.0.0
+Pillow==8.2.0
 pox==0.3.0
 ppft==1.6.6.4
 preshed==3.0.5
@@ -168,7 +168,7 @@ python-xlib==0.31
 pytz==2019.3
 PyWavelets==1.1.1
 pyxdg==0.26
-PyYAML==5.1
+PyYAML==5.4
 rdflib==6.0.0
 rdflib-jsonld==0.5.0
 recurring-ical-events==0.2.0b0
@@ -220,7 +220,7 @@ ubuntu-drivers-common==0.0.0
 ufw==0.36
 unattended-upgrades==0.1
 uritemplate==3.0.1
-urllib3==1.25.8
+urllib3==1.26.5
 vine==5.0.0
 virtualenv==20.0.17
 vulture==2.3
@@ -231,7 +231,7 @@ warcio==1.7.4
 wasabi==0.8.2
 wcwidth==0.2.5
 webencodings==0.5.1
-websockets==8.1
+websockets==9.1
 Werkzeug==2.0.1
 wordcloud==1.8.1
 wrapt==1.12.1
