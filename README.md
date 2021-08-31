@@ -4,7 +4,7 @@ This repository contains the source code for the indieweb-search crawler and web
 
 All files in the crawler/ directory relate to the web crawler. All files in the main directory relate to the web application.
 
-The search engine is available at [https://indieweb-search.jamesg.blog](indieweb-search.jamesg.blog).
+The search engine is available at [indieweb-search.jamesg.blog](https://indieweb-search.jamesg.blog).
 
 *Please note that this project is still in active development and there may be many bugs present. This project is a fork of my personal website search engine and is currently being tweaked to meet the needs of indexing other sites.*
 
