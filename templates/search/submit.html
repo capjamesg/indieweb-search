@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="search">
+  <img src="/static/indieweb.png" alt="IndieWeb logo" />
+  <h1>IndieWeb Search</h1>
+  <p>Use the form below to find a web page made by someone in the IndieWeb community.</p>
+  <form action="/results" method="GET" role="search">
+    <input type="text" id="query" name="query" placeholder="Enter your query" aria-label="Search">
+    <br>
+    <input type="submit" value="Search">
+  </form>
+  <p>View <a href="/advanced">advanced search options</a>.</p>
+</section>
+{% endblock %}

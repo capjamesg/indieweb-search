@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<section>
+  {% if server_error == True %}
+    <h1>500</h1>
+    <p>Your request could not be processed due to a server error.</p>
+  {% elif rate_limit_error == True %}
+    <h1>Too many requests</h1>
+    <p>You have made too many requests to the search engine. Please come back again later and try your query again.</p>
+  {% else %}
+    <h1>404</h1>
+    <p>This page cannot be found.</p>
+  {% endif %}
+  <a href="/">Click here to go to back to the James' Coffee Blog search engine.</a>
+</section>
+{% endblock %}

@@ -6,6 +6,8 @@ All files in the crawler/ directory relate to the web crawler. All files in the 
 
 The search engine is available at [https://indieweb-search.jamesg.blog](indieweb-search.jamesg.blog).
 
+*Please note that this project is still in active development and there may be many bugs present. This project is a fork of my personal website search engine and is currently being tweaked to meet the needs of indexing other sites.*
+
 ## Installation Instructions
 
 You can install the required dependencies to run this project by running the following command:

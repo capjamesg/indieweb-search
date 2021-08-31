@@ -1,0 +1,26 @@
+{% if special_result and special_result.type == "aeropress_recipe" and results_type != "image" %}
+<section>
+    <hr>
+    <h2>Random Aeropress Recipe</h2>
+    <p>Here's a random Aeropress recipe for you:</p>
+    <ol>
+    <li>Weigh and grind {{ special_result.dose }}{% if special_result.dose_is_point_five %}.5{% endif %} grams of coffee. Your coffee should be ground at {{ special_result.grind_size }} on a Comandante ({% if special_result.grind_size < 15 %}medium-fine{% elif special_result.grind_size < 23 %}medium{% elif special_result.grind_size < 26 %}medium-coarse{% else %}coarse{% endif %}).</li>
+    <li>Prewet {{ special_result.filters }} filter paper{% if special_result.filters > 1 %}s{% endif %}.</li>
+    {% if special_result.inverted == True %}<li>Invert your Aeropress.</li>{% endif %}
+    <li>Start your timer and pour {{ special_result.water }} grams of water into your Aeropress.</li>
+    {% if special_result.stirring == "before putting the cap on" or special_result.stirring == "both before putting the cap on and before plunging" %}<li>Stir the Aeropress {{ special_result.stir_times }} time{% if special_result.stir_times > 1 %}s{% endif %}.</li>{% endif %}
+    {% if special_result.inverted == True %}<li>Put the cap on the Aeropress and flip it.</li>{% endif %}
+    <li>Wait until {{ special_result.time }} and then plunge the Aeropress.</li>
+    {% if special_result.stirring == "both before putting the cap on and before plunging" %}<li>Stir the Aeropress {{ special_result.stir_times }} time{% if special_result.stir_times > 1 %}s{% endif%}.</li>{% endif %}
+    <li>Enjoy your delicious coffee.</li>
+    </ol>
+    <hr>
+</section>
+{% endif %}
+{% if special_result and special_result.type == "direct_answer" and results_type != "image" %}
+<div style="border: 3px dotted royalblue; padding: 10px;">
+{% if do_i_use %}<p>{{ do_i_use | safe }}</p>{% endif %}
+<p><a href="{{ special_result.breadcrumb }}">{{ special_result.title }}</a></p>
+{% if special_result.breadcrumb %}<p class="breadcrumbs"><a href="{{ special_result.breadcrumb }}" style="border-bottom: none;">{% for item in special_result.breadcrumb.replace("https://", "").rstrip("/").split("/") %} {{ item }} {% if not loop.last %}>{% endif %}{% endfor %}</a></p>{% endif %}
+</div>
+{% endif %}

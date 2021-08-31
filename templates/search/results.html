@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="p-name p-summary">Your Search Results</h1>
+  <ul class="tab">
+    <li><a href="/results?query={{ query }}" {% if results_type != "image" %}class="active_tab"{% endif %}>Posts</a></li>
+    <li><a href="{{ base_results_query }}&type=image" {% if results_type == "image" %}class="active_tab"{% endif %}>Images</a></li>
+  </ul>
+  <form action="/results" method="GET" role="search">
+    <input type="text" id="query" name="query" placeholder="Enter your query" aria-label="Search James' Coffee Blog" value="{{ query }}">
+    {% if results_type == "image" %}<input type="hidden" id="type" name="type" value="image">{% endif %}
+    <input class="search_button" type="submit" value="Search">
+  </form>
+  <p>Returned {{ '{0:,}'.format(number_of_results) }} search results for your "{{ query }}" query.</p>
+  <p>
+    {% if ordered_by == "date_asc" %}
+    Ordered by date (ascending). You can also order by <a href="{{ base_results_query }}">relevance</a> or <a href="{{ base_results_query }}&order=date_desc">date (descending)</a>.
+    {% elif ordered_by == "date_desc" %}
+    Ordered by date (descending). You can also order by <a href="{{ base_results_query }}&order=date_asc">date (ascending)</a> or <a href="{{ base_results_query }}">relevance</a>.
+    {% else %}
+    Ordered by relevance. You can also order by <a href="{{ base_results_query }}&order=date_asc">date (ascending)</a> or <a href="{{ base_results_query }}&order=date_desc">date (descending)</a>.
+    {% endif %}
+  </p>
+  {% if special_result == False %}<hr>{% endif %}
+  {% if out_of_bounds_page == False %}
+    {% include "search/special_serp_items.html" %}
+    <ol class="serp">
+      {% if results_type == "image" %}
+        {% for r in results %}
+        <li>
+          <a class="image_link" href="{{ r[2] }}"><img src="https://search.jamesg.blog/images/{{ r[2].replace('https://jamesg.blog/assets/', '') }}" class="u-photo" alt="{{ r[1] }}" /></a>
+          <p class="p-name"><a href="{{ r[2] }}" class="u-url">{{ r[2] }}</a></p>
+          <p class="p-summary">{{ r[1] | safe }}</p>
+        </li>
+        <hr>
+        {% endfor %}
+      {% else %}
+        {% for r in results %}
+          {% if r[2] != special_result.breadcrumb %}
+          <li>
+            <p class="breadcrumbs"><a href="{{ r[2] }}" style="border-bottom: none;">{% for item in r[2].replace("https://", "").replace("http://", "").rstrip("/").split("/") %} {{ item }} {% if not loop.last %}>{% endif %}{% endfor %}</a></p>
+            <p class="p-name"><a href="{{ r[2] }}" class="u-url">{% if r[0]|length == 0 %}{{ r[2] }}{% else %}{{ r[0] }}{% endif %}</a></p>
+            <p class="p-summary">{{ r[1] | safe }}</p>
+          </li>
+          {% endif %}
+        <hr>
+        {% endfor %}
+      {% endif %}
+    </ol>
+  {% elif out_of_bounds_page == True and "on this day" not in query %}
+    <p>There are no results matching your query.</p>
+    {% if suggestion_made %}
+      <p>Did you mean <a href="/results?query={{ corrected_text.strip() }}{% if results_type == 'image' %}&type=image{% endif %}">{{ corrected_text.strip() }}</a>?</p>
+    {% else %}
+      <p>Please make sure your spelling is correct and if it is, try searching for another term.</p>
+    {% endif %}
+    {% elif out_of_bounds_page == True and "on this day" in query %}
+    <p>No posts were published on this day in the past.</p>
+  {% endif %}
+  {% if page_count > 1 %}
+    <ol class="tab">
+      {% if page != 1 %}
+      <li class="pages"><a href="{{ base_results_query }}&page={{ page -1 }}" rel="prev">Previous</a></li>
+      {% endif %}
+      {% for i in range(1, page_count+1) %}
+        {% if i < 3 or i in [page-1, page, page+1] or i in [page_count-1, page_count] %}
+          <li class="pages"><a href="{{ base_results_query }}&page={{ i }}" {% if i == page %}class="active_tab"{% endif %}>{{ i }}</a></li>
+        {% endif %}
+        {% if (i == page-2) or (i == page+2 and page+2 != page_count) %}
+          <li>...</li>
+        {% endif %}
+      {% endfor %}
+      {% if page < page_count %}
+      <li class="pages"><a href="{{ base_results_query }}&page={{ page + 1 }}" rel="next">Next</a></li>
+      {% endif %}
+    </ol>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    {% include "meta.html" %}
+    <style>
+      hr {
+        border-bottom: 5px orange dotted;
+        color: transparent;
+      }
+      h1 {
+        line-height: 1em !important;
+      }
+      nav {
+        padding-top: 20px;
+        padding-bottom: 20px;
+      }
+      input[type=submit] {
+        padding: 10px;
+        border: none;
+        background-color: royalblue;
+        color: white;
+        margin: 20px;
+        border-radius: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a href="#main" class="accessibility_label">Skip to main content</a>
+      <nav>
+        <a href="/">IndieWeb Search</a>
+      </nav>
+      <div id="main">
+        <section>
+          <h1>IndieWeb Search Advanced Filters</h1>
+          <p>There are {{ count }} pages indexed on the IndieWeb search engine.</p>
+          <p>The IndieWeb search engine supports the following advanced filters:</p>
+          <ul>
+              <li><b>before:"2021-01-01"</b> - Search for posts published before January 1st, 2021. *</li>
+              <li><b>after:"2021-02-01"</b> - Search for posts published after February 1st, 2021. *</li>
+              <li><b>coffee OR indieweb</b> - Search for posts that contain the words "coffee" or "indieweb".</li>
+              <li><b>coffee AND aeropress</b> - Search for posts that contain the words "coffee" and "aeropress".</li>
+              <li><b>inurl:"/article/"</b> - Search for posts whose URL contains "/article/".</li>
+              <li><b>site:"jamesg.blog"</b> - Search for posts on jamesg.blog.</li>
+          </ul>
+          <p>You can use any combination of the filters above.</p>
+          <p><em>* This feature is only supported on some pages.</em></p>
+          <a href="/">Click here to go to back to the IndieWeb search engine.</a>
+        </section>
+      </div>
+      <p class="accessibility_label"><a href="#main">Go Back to the Top</a></p>
+    </main>
+  </body>
+</html>

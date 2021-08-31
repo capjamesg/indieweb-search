@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    {% include "meta.html" %}
+    <style>
+      #main .search {
+        text-align: center;
+        padding-top: 10vh;
+        padding-bottom: 10vh;
+      }
+      h1 {
+        line-height: 1em !important;
+      }
+      input {
+        min-width: 50%;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a href="#main" class="accessibility_label">Skip to main content</a>
+      <nav>
+        <p><a href="/">IndieWeb Search</a></p>
+        <ul>
+          <li><a href="/about">About This Project</a></li>
+          {% if current_user.is_authenticated %}
+                  {% include "admin/admin_tab.html" %}
+          {% endif %}
+      </ul>
+      </nav>
+      <div id="main">
+          {% block content %}
+          {% endblock %}
+      </div>
+      <p class="accessibility_label"><a href="#main">Go Back to the Top</a></p>
+    </main>
+  </body>
+</html>
