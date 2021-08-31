@@ -126,7 +126,7 @@ pathos==0.2.8
 pathy==0.6.0
 pdfkit==0.6.1
 pexpect==4.6.0
-Pillow==7.0.0
+Pillow==8.2.0
 pox==0.3.0
 ppft==1.6.6.4
 preshed==3.0.5
