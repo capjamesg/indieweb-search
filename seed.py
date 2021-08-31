@@ -11,12 +11,11 @@ seed_db = Blueprint('seed', __name__)
 @seed_db.cli.command("create-user")
 @click.argument("username")
 def init_db(username):
-    new_user = User(username=username, api_key="searchengine555James", password=generate_password_hash("searchengine555Jamesxyz2", method='sha256'))
+    new_user = User(username=username, api_key="searchapi", password=generate_password_hash("searchapi", method='sha256'))
 
     # add the new user to the database
     db.session.add(new_user)
     db.session.commit()
-    print("created user {}".format(username))
 
 @seed_db.cli.command("build-tables")
 def create_tables():

@@ -45,6 +45,9 @@ def parse_advanced_search(advanced_filter_to_search, query_with_handled_spaces, 
 		# Find value that I'm looking for (date, category, etc.)
 		get_value = re.findall(r'{}([^"]*)"'.format(advanced_filter_to_search), query_with_handled_spaces)
 
+		if advanced_filter_to_search == "site:":
+			get_value[0] = get_value[0].replace("https://", "").replace("http://", "").split("/")[0]
+
 		# Write query param that will be used in final query, add to list of query params
 
 		if inverted == True:
@@ -192,7 +195,7 @@ def results_page():
 
 					if request.args.get("type") != "image" and len(rows) > 0 and "random aeropress" not in cleaned_value and "generate aeropress" not in cleaned_value:
 						if "what is" in preserved_value and wiki_direct_result:
-							url = [row[2] for row in wiki_direct_result if cleaned_value_for_query.lower().strip() in row[0].lower() and "indieweb.org" in row[2]][0]
+							url = [row[2] for row in wiki_direct_result if cleaned_value_for_query.lower().strip() in row[0].lower() and row[2].startswith("https://indieweb.org")][0]
 						elif len(rows) > 0:
 							url = rows[0][2]
 						else:
