@@ -36,11 +36,24 @@ You can do this by adding a site URL to the crawl_queue.txt file and then runnin
 
 Your site URL will be removed from the crawl_queue.txt file after your site has been fully crawled.
 
-All crawls are limited to 1000 URLs. To change this limit, search for "1000" in the crawler/url_handling.py file and change the value to the desired limit.
+All crawls are limited to 1,000 URLs. To change this limit, search for "1000" in the crawler/url_handling.py file and change the value to the desired limit.
 
-## License
+## Direct Answer Search Results
 
-This project is licensed under the [MIT license](LICENSE).
+Work is being done to support some "direct answer" search results. These are search results that aim to provide an immediate answer to your query before you click on a search result.
+
+The main "direct answers" that are in development are:
+
+- Answering questions with an answer (triggered by "what is [your query]"). This type of direct answer currently relies on answers from the IndieWeb wiki.
+- Showing the h-card of a domain (triggered by "who is is [domain-name]").
+- Identifying names of people, places, and organizations (this is a long-term project and only source code from capjamesg's personal search engine is currently in the project).
+- Showing posts published "on this day". This feature has not yet been tested as part of indieweb-search.
+
+## Image Search Results
+
+While image search results are supported in the codebase, they are not currently in development or in use on the IndieWeb search site.
+
+Storing and processing images in the way required to support image search results would take away resources from this project's text search capabilities.
 
 ## Adding Your Domain to the Index
 
@@ -49,6 +62,10 @@ This repository does not contain a list of any domains indexed in the live searc
 If you would like to request your site be indexed on indieweb-search.jamesg.blog, please create an issue on this project.
 
 Only contributors to the IndieWeb wiki will be considered at this stage due to the limited compute resources available for this project.
+
+## License
+
+This project is licensed under the [MIT license](LICENSE).
 
 ## Contributors
 

@@ -1,3 +1,6 @@
+# networkx experimentation and link graph plotting tests
+# not in active use for the search engine but left here for reference
+
 import matplotlib.pyplot as plt
 import networkx as nx
 import pandas as pd

@@ -103,7 +103,7 @@ def results_page():
 	special_result = False
 
 	if request.form.get("type") == "image":
-		return redirect("https://search.jamesg.blog/results?{}&type=image".format(request.args.get("query")))
+		return redirect("/results?{}&type=image".format(request.args.get("query")))
 
 	if request.args.get("query"):
 		connection = sqlite3.connect(ROOT_DIRECTORY + "/search.db")
