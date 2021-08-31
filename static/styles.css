@@ -1,0 +1,231 @@
+html, body, header, figure {
+    margin: 0;
+}
+
+a {
+    text-decoration: none;
+}
+
+html {
+    background-color: #FFEFD5;
+    font-family: "Helvetica Neue", Helvetica, sans-serif;
+}
+
+main {
+    max-width: 100vh;
+    width: 85%;
+    margin: auto;
+    margin-top: 10px;
+}
+
+th {
+  text-align: left;
+}
+
+nav ul li {
+  display: inline-block;
+  padding-left: 10px;
+}
+
+p, code, li {
+  font-size: 1.0625rem;
+}
+
+li p {
+  max-width: 35em;
+}
+
+input[type="submit"] {
+  padding: 10px;
+  border: none;
+  background-color: royalblue;
+  color: white;
+  border-radius: 10px;
+  min-width: 0 !important;
+  appearance: none;
+}
+
+.search input[type="submit"] {
+  margin: 20px;
+}
+
+input[type="text"], input[type="username"], input[type="password"] {
+  padding: 10px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  display: inline-block;
+  text-align: left;
+  min-width: 50%;
+  font-size: 1.0625rem;
+}
+
+button {
+  background-color: royalblue;
+  border-radius: 10px;
+  padding: 10px;
+  display: inline-block;
+}
+
+::placeholder {
+  color: black;
+  font-size: 1.0625rem;
+  opacity: 1; /* Firefox */
+}
+
+::placeholder, :-ms-input-placeholder, ::-ms-input-placeholder {
+  color: black;
+  font-size: 1.0625rem;
+}
+
+select {
+  background-color: white;
+  padding: 10px;
+  border: 1px solid gray;
+  border-radius: 10px;
+}
+
+nav {
+    display: flex;
+    margin: 10px 0;
+    justify-content: space-between;
+    border-top: 5px #FFA500 dashed;
+    border-bottom: 5px #FFA500 dashed;
+}
+
+nav ul, .tab ul {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+h1 {
+    font-size: 2rem;
+}
+
+h2, h1, h3 {
+    color: royalblue;
+}
+
+a {
+    color: #006BD6;
+    border-bottom: 2px dotted #006BD6;
+}
+
+p, li, h2, h3 {
+    line-height: 1.5em;
+}
+
+@media print {
+    html {
+        background-color: white;
+    }
+
+    body {
+        width: 100%;
+        margin-left: 10px;
+        margin-right: 10px;
+    }
+
+    nav, footer, .accessibility_label, .print_message, .announcement {
+        display: none;
+    }
+
+    h1, h2, h3 {
+        color: black !important;
+    }
+
+    a:after {
+        content: "(" attr(href) ")";
+        display: inline-block;
+        width: auto;
+        text-decoration: none;
+        margin-left: 0.3em;
+        font-style: italic;
+    }
+}
+
+input[type=submit] {
+  padding: 10px;
+  border: none;
+  background-color: royalblue;
+  color: white;
+  border-radius: 10px;
+  min-width: 0 !important;
+  appearance: none;
+  font-size: 1.1875rem;
+}
+
+input[type="submit"]:focus {
+  background-color: yellow;
+  color: black;
+  outline: 3px royalblue solid;
+}
+
+.serp, .tab, ol {
+  list-style-type: none;
+  padding: 0;
+}
+.tab li {
+  padding-right: 10px;
+  float: left;
+}
+.tab {
+  display: inline-block;
+}
+.active_tab {
+  font-weight: 800;
+}
+p {
+  word-wrap: break-word;
+}
+.pages {
+  float: left;
+}
+img {
+  width: auto !important;
+  border-radius: 10px;
+}
+.image_link {
+  border-bottom: none;
+}
+
+a:focus {
+  background-color: #006BD6;
+  color: white;
+  outline: lightblue 2px;
+  border-bottom: 2px dotted black;
+}
+
+input[type="text"]:focus, input[type="number"]:focus, textarea:focus, input[type="text"]:focus, input[type="username"]:focus, input[type="password"]:focus {
+  outline: 3px solid royalblue;
+}
+
+a:hover {
+  color: #0000CD;
+}
+
+.breadcrumbs a {
+  color: darkslategrey;
+}
+
+.breadcrumbs a:focus {
+  color: white;
+}
+
+@media only screen and (min-width: 768px) {
+  .search_button {
+    margin-left: 10px;
+  }
+}
+
+@media only screen and (max-width: 767px) {
+	article img, .blogList img {
+		width: 100% !important;
+	}
+	input, textarea {
+		width: 100%;
+		box-sizing: border-box;
+	}
+	input[type="submit"] {
+		text-align: center;
+	}
+}
