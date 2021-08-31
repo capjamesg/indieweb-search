@@ -31,62 +31,44 @@ def log_error(page_url, status_code, message, discovered_urls, broken_urls, disc
 	)
 
 def add_to_database(cursor, full_url, published_on, doc_title, meta_description, category, heading_info, page, important_phrases, pages_indexed, page_content, outgoing_links):
-	doc_title = doc_title.replace("| James' Coffee Blog", "")
-
 	check_if_indexed = cursor.execute("SELECT COUNT(url) FROM posts WHERE url = ?", (full_url,)).fetchone()[0]
 
 	# lemmatize page content so the index uses root words rather than exact words
 	#page_content = page_content
 
-	if page != "":
+	if page != "" and page.headers:
 		length = page.headers.get("content-length")
 	else:
 		length = len(page_content)
 
-	md5_hash = hashlib.md5(str(page_content).encode("utf-8")).hexdigest()
+	# md5_hash = hashlib.md5(str(page_content).encode("utf-8")).hexdigest()
+
+	if type(published_on) == dict and published_on.get("datetime") != None:
+		date_to_record = published_on["datetime"].split("T")[0]
+	else:
+		date_to_record = ""
 
 	if check_if_indexed == 0:
 		print("indexed new page {}".format(full_url))
-		if published_on != None:
-			cursor.execute("INSERT INTO posts VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (
-				doc_title,
-				meta_description,
-				full_url,
-				category,
-				published_on["datetime"].split('T')[0],
-				", ".join(important_phrases),
-				", ".join(heading_info["h1"]),
-				", ".join(heading_info["h2"]),
-				", ".join(heading_info["h3"]),
-				", ".join(heading_info["h4"]),
-				", ".join(heading_info["h5"]),
-				", ".join(heading_info["h6"]),
-				length,
-				str(page_content),
-				0,
-				outgoing_links,
-				0.0
-			))
-		else:
-			cursor.execute("INSERT INTO posts VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (
-				doc_title,
-				meta_description,
-				full_url,
-				category,
-				"",
-				", ".join(important_phrases),
-				", ".join(heading_info["h1"]),
-				", ".join(heading_info["h2"]),
-				", ".join(heading_info["h3"]),
-				", ".join(heading_info["h4"]),
-				", ".join(heading_info["h5"]),
-				", ".join(heading_info["h6"]),
-				length,
-				str(page_content),
-				0,
-				outgoing_links,
-				0.0
-			))
+		cursor.execute("INSERT INTO posts VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (
+			doc_title,
+			meta_description,
+			full_url,
+			category,
+			date_to_record,
+			", ".join(important_phrases),
+			", ".join(heading_info["h1"]),
+			", ".join(heading_info["h2"]),
+			", ".join(heading_info["h3"]),
+			", ".join(heading_info["h4"]),
+			", ".join(heading_info["h5"]),
+			", ".join(heading_info["h6"]),
+			length,
+			str(page_content),
+			0,
+			outgoing_links,
+			0.0
+		))
 	else:
 		print("updated page {}".format(full_url))
 		logging.debug("updating {} post as post already indexed".format(full_url))
@@ -99,7 +81,7 @@ def add_to_database(cursor, full_url, published_on, doc_title, meta_description,
 
 	return pages_indexed
 
-def crawl_urls(final_urls, namespaces_to_ignore, cursor, pages_indexed, images_indexed, image_urls, all_links, external_links, discovered_urls, broken_urls, iterate_list_of_urls, site_url):
+def crawl_urls(final_urls, namespaces_to_ignore, cursor, pages_indexed, images_indexed, image_urls, all_links, external_links, discovered_urls, broken_urls, iterate_list_of_urls, site_url, reindex=False):
 	"""
 		Crawls URLs in list, adds URLs to index, and returns updated list
 	"""
@@ -108,24 +90,19 @@ def crawl_urls(final_urls, namespaces_to_ignore, cursor, pages_indexed, images_i
 		if ".pdf" in full_url:
 			continue
 		
-		if count == 1:
+		if count == 1000:
 			break
 
 		print(count)
 
-		# check if url is in database
-		check_if_indexed = cursor.execute("SELECT COUNT(url) FROM posts WHERE url = ?", (full_url,)).fetchone()[0]
-
-		if check_if_indexed > 0:
-			print("{} already indexed, skipping".format(full_url))
-			continue
-
 		# Only get URLs that match namespace exactly
 		in_matching_namespace = [s for s in namespaces_to_ignore if s.startswith(full_url.replace("http://", "").replace("https://", "").replace(site_url, "")) == full_url]
 
+		count += 1
+
 		# The next line of code skips indexing namespaces excluded in robots.txt
 		if len(in_matching_namespace) < 2:
-			lastmod = final_urls[full_url]
+			# lastmod = final_urls[full_url]
 
 			# If URL is not relative internal link and does not start with http:// or https://
 			# Used to make sure link uses the right format
@@ -138,24 +115,24 @@ def crawl_urls(final_urls, namespaces_to_ignore, cursor, pages_indexed, images_i
 			if "/assets/" in full_url or ".pdf" in full_url:
 				continue
 
-			if lastmod and os.path.isfile("search.db") == True:
-				try:
-					last_mod = datetime.datetime.strptime(lastmod, '%Y-%m-%dT%H:%M:%S+00:00')
-					# get last index time from index_stats.json
-					with open("index_stats.json", "r") as f:
-						index_stats = json.load(f)
+			# if lastmod and os.path.isfile("search.db") == True:
+			# 	try:
+			# 		last_mod = datetime.datetime.strptime(lastmod, '%Y-%m-%dT%H:%M:%S+00:00')
+			# 		# get last index time from index_stats.json
+			# 		with open("index_stats.json", "r") as f:
+			# 			index_stats = json.load(f)
 
-					last_index_time = index_stats["last_index_time"]
+			# 		last_index_time = index_stats["last_index_time"]
 
-					# if last_mod < last_index_time:
-					# 	# Don't index sites that were part of yesterday's index (indexes happen daily)
-					# 	continue
+			# 		if last_mod < last_index_time:
+			# 			# Don't index sites that were part of yesterday's index (indexes happen daily)
+			# 			continue
 
-					# if last_mod < datetime.datetime.now() - datetime.timedelta(days=1):
-					# 	# Don't index sites that were part of yesterday's index (indexes happen daily)
-					# 	continue
-				except:
-					pass
+			# 		if last_mod < datetime.datetime.now() - datetime.timedelta(days=1):
+			# 			# Don't index sites that were part of yesterday's index (indexes happen daily)
+			# 			continue
+			# 	except:
+			# 		pass
 
 			session = requests.Session()
 			session.max_redirects = 3
@@ -173,19 +150,9 @@ def crawl_urls(final_urls, namespaces_to_ignore, cursor, pages_indexed, images_i
 				log_error(full_url, "Unknown", "Error retrieving URL.", discovered_urls, broken_urls)
 				continue
 
-			try:
-				last_modified = datetime.datetime.strptime(page_test.headers["last-modified"], '%a, %d %b %Y %H:%M:%S GMT')
-
-				# if "text/html" not in page_test.headers["content-type"]:
-				# 	continue
-				# elif last_modified < yesterday:
-				# 	continue
-			except:
-				pass
-
 			# if text is html
-			if page_test.headers and page_test.headers.get("content-type") and "text/html" not in page_test.headers["content-type"]:
-				continue
+			# if page_test.headers and page_test.headers.get("content-type") and "text/html" not in page_test.headers["content-type"] and "text/plain" in page_test.headers["content-type"]:
+			# 	continue
 
 			try:
 				page = session.get(full_url, timeout=4, headers=config.HEADERS, allow_redirects=False)
@@ -209,7 +176,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, cursor, pages_indexed, images_i
 
 				log_error(full_url, page.status_code, message, discovered_urls, broken_urls)
 				continue
-			elif page.status_code == 301 or page.status_code == 302:
+			elif page.status_code == 301 or page.status_code == 302 or page.status_code == 308:
 				# Handle temporary and permanent redirects
 
 				is_in_db = cursor.execute("SELECT * FROM posts WHERE url = ?", (full_url,)).fetchall()
@@ -281,7 +248,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, cursor, pages_indexed, images_i
 
 			# Discover new links that might be on a page to follow later
 
-			final_urls, iterate_list_of_urls, all_links, external_links = page_link_discovery(links, final_urls, iterate_list_of_urls, full_url, all_links, external_links, discovered_urls, site_url)
+			final_urls, iterate_list_of_urls, all_links, external_links = page_link_discovery(links, final_urls, iterate_list_of_urls, full_url, all_links, external_links, discovered_urls, site_url, count, reindex)
 
 			if "noindex" in check_if_no_index:
 				# Check if a page now marked as noindex is in the database
@@ -312,15 +279,13 @@ def crawl_urls(final_urls, namespaces_to_ignore, cursor, pages_indexed, images_i
 				logging.warning("error with {}".format(full_url))
 				logging.warning(e)
 
-			count += 1
-
 		continue
 
 	print('finished {}'.format(full_url))
 
 	return pages_indexed, images_indexed, all_links, iterate_list_of_urls
 
-def page_link_discovery(links, final_urls, iterate_list_of_urls, page_being_processed, all_links, external_links, discovered_urls, site_url):
+def page_link_discovery(links, final_urls, iterate_list_of_urls, page_being_processed, all_links, external_links, discovered_urls, site_url, count, reindex=False):
 	"""
 		Finds all the links on the page and adds them to the list of links to crawl.
 	"""
@@ -378,7 +343,9 @@ def page_link_discovery(links, final_urls, iterate_list_of_urls, page_being_proc
 			and ".pdf" not in full_link \
 			and not full_link.startswith("//") \
 			and not ".jpeg" in full_link and not ".png" in full_link and not ".jpg" in full_link and not ".gif" in full_link \
-			and not full_link.startswith("mailto:"):
+			and not full_link.startswith("mailto:") \
+			and len(final_urls) < 1000:
+			# and ((reindex == True and len(page_being_processed.replace("https://").strip("/").split("/")) == 0) or reindex == False):
 				all_links.append([page_being_processed, link.get("href"), datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "internal", link.text])
 				print("indexing queue now contains " + full_link)
 				final_urls[full_link] = ""

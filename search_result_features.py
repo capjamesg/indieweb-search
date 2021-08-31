@@ -17,8 +17,6 @@ def generate_featured_snippet(cleaned_value, cursor, special_result, nlp, url=No
     # Generate a featured snippet for the search result
     if url == None:
         return "", special_result
-
-    print(cleaned_value)
     
     if "who is" in cleaned_value or ("." in cleaned_value and len(cleaned_value.split(".")[0]) > 3 and len(cleaned_value.split(".")[0]) > 1):
         url = url.replace("https://", "").replace("http://", "").split("/")[0]
@@ -45,12 +43,19 @@ def generate_featured_snippet(cleaned_value, cursor, special_result, nlp, url=No
     all_locations = []
 
     # if "what is" in original_cleaned_value
-    if "what is" in original_cleaned_value:
+    if "what is" in original_cleaned_value or "what are" in original_cleaned_value:
         #  if "is a" in p.text.lower() or "are an" in p.text.lower() and original_cleaned_value.lower() in p.text.lower() 
-        p_tags = [p for p in soup.find_all(["p", "span"]) if "p-summary" in p.attrs.get("class", [])]
+        p_tags = [p.text for p in soup.find_all(["p", "span"]) if "p-summary" in p.attrs.get("class", []) and p.text != None or "{} is".format(original_cleaned_value) in p.text.lower() or "{} are".format(original_cleaned_value) in p.text.lower()]
+
+        if soup.find("h1"):
+            title = soup.find("h1").text
+        elif soup.find("title"):
+            title = soup.find("title").text
+        else:
+            title = "IndieWeb"
 
         if len(p_tags) > 0:
-            return "<p>{}</p>".format(p_tags[0]), {"type": "direct_answer", "breadcrumb": url, "title": soup.find("h1").text}
+            return "<p>{}</p>".format(p_tags[0]), {"type": "direct_answer", "breadcrumb": url, "title": title}
 
     if "who is" in original_cleaned_value or ("." in original_cleaned_value and len(original_cleaned_value.split(".")[0]) > 3 and len(original_cleaned_value.split(".")[0]) > 1):
         cleaned_value = " ".join([item for item in original_cleaned_value.split(" ") if item != "who" and item != "is"])
@@ -66,27 +71,16 @@ def generate_featured_snippet(cleaned_value, cursor, special_result, nlp, url=No
 
         if h_card == "":
             for item in mf2s:
-                if item.get("type") and item.get("type")[0] == "h-entry":
+                if item.get("type") and item.get("type")[0] == "h-entry" and item.get("properties") and item.get("properties").get("author"):
                     h_card = item.get("properties").get("author")[0]
                     break
 
         if h_card == None:
             h_card = ""
 
-        # if mf2py.parse(doc=soup)["items"][0].get("type") and "h-entry" in mf2py.parse(doc=soup)["items"][0].get("type") \
-        #     and mf2py.parse(doc=soup)["items"][0]["properties"] and "author" in mf2py.parse(doc=soup)["items"][0]["properties"].get("author"):
-        #     h_card = mf2py.parse(doc=soup)["items"][0]["properties"]
-
-        # h_card = ""
-
-        # print(h_card)
-        # get bio from hcard
         to_show = ""
 
-        print(h_card)
-
         if len(h_card) > 0:
-            print('s')
             name = h_card["properties"].get("name")
 
             if name:
@@ -127,6 +121,7 @@ def generate_featured_snippet(cleaned_value, cursor, special_result, nlp, url=No
 
         if len(sentence_with_query) > 0:
             ents = [w for w in nlp(sentence_with_query[0]).ents if w.label_ == ent_type]
+            print(ents)
 
             if len(ents) > 0:
                 return "<b style='font-size: 22px'>{}</b><br>{}".format(ents[0].text, sentence_with_query[0].replace("\n", " ")), {"type": "direct_answer", "breadcrumb": url, "title": soup.find("h1").text}
@@ -195,6 +190,9 @@ def generate_featured_snippet(cleaned_value, cursor, special_result, nlp, url=No
                 do_i_use = str(location_of_tag.find_parent().find_previous()) + str(location_of_tag.find_parent())
             else:
                 do_i_use = ""
+
+            if len(BeautifulSoup(do_i_use, "lxml").get_text()) < 60:
+                return "", special_result
 
             special_result = {"type": "direct_answer", "breadcrumb": url, "title": soup.find("h1").text}
         except:

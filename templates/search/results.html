@@ -38,7 +38,7 @@
           {% if r[2] != special_result.breadcrumb %}
           <li>
             <p class="breadcrumbs"><a href="{{ r[2] }}" style="border-bottom: none;">{% for item in r[2].replace("https://", "").replace("http://", "").rstrip("/").split("/") %} {{ item }} {% if not loop.last %}>{% endif %}{% endfor %}</a></p>
-            <p class="p-name"><a href="{{ r[2] }}" class="u-url">{% if r[0]|length == 0 %}{{ r[2] }}{% else %}{{ r[0] }}{% endif %}</a></p>
+            <p class="p-name"><a href="{{ r[2] }}" class="u-url">{% if r[0]|length == 0 %}{{ " ".join(r[2].split(" ")[:20]) }}{% if r[2].split(" ")|length > 20 %}...{% endif %}{% else %}{{ " ".join(r[0].split(" ")[:20]) }}{% if r[0].split(" ")|length > 20 %}...{% endif %}{% endif %}</a></p>
             <p class="p-summary">{{ r[1] | safe }}</p>
           </li>
           {% endif %}

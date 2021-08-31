@@ -82,7 +82,7 @@ def handle_advanced_search(query_with_handled_spaces):
 	query_params, query_values_in_list, query_with_handled_spaces = parse_advanced_search('before:"', query_with_handled_spaces, query_params, query_values_in_list, "published <= date(?)")
 	query_params, query_values_in_list, query_with_handled_spaces = parse_advanced_search('after:"', query_with_handled_spaces, query_params, query_values_in_list, "published >= date(?)")
 
-	if 'inurl:"' in query_with_handled_spaces or 'site:"' in query_with_handled_spaces:
+	if 'inurl:"' in query_with_handled_spaces:
 		if request.args.get("type") == "image":
 			query_params += "AND Image.image_src {} LIKE ?".format(operand)
 		else:
@@ -91,6 +91,16 @@ def handle_advanced_search(query_with_handled_spaces):
 		value_to_add = "%" + re.findall(r'{}([^"]*)"'.format('inurl:"'), query_with_handled_spaces)[0] + "%"
 		query_values_in_list.append(value_to_add)
 		query_with_handled_spaces = query_with_handled_spaces.replace('{}{}"'.format('inurl:"', re.findall(r'{}([^"]*)"'.format('inurl:"'), query_with_handled_spaces)[0]), "")
+
+	if "site:" in query_with_handled_spaces:
+		if request.args.get("type") == "image":
+			query_params += "AND Image.image_src {} LIKE ?".format(operand)
+		else:
+			query_params += "AND url {} LIKE ?".format(operand)
+
+		value_to_add = "%" + re.findall(r'{}([^"]*)"'.format('site:"'), query_with_handled_spaces)[0] + "%"
+		query_values_in_list.append(value_to_add)
+		query_with_handled_spaces = query_with_handled_spaces.replace('{}{}"'.format('site:"', re.findall(r'{}([^"]*)"'.format('site:"'), query_with_handled_spaces)[0]), "")
 	
 	return query_params, query_values_in_list, query_with_handled_spaces
 
@@ -147,7 +157,7 @@ def results_page():
 				elif request.args.get("order") == "date_desc":
 					order = "published DESC"
 				else:
-					order = "score, published DESC"
+					order = "score, length, published DESC"
 
 				preserved_value = cleaned_value_for_query
 				cleaned_value_for_query = cleaned_value_for_query.replace("what is", "")
@@ -182,8 +192,8 @@ def results_page():
 
 				doc = nlp(preserved_value)
 
-				without_stopwords = [token for token in doc if not token.is_stop and token.text != "who" and token.text != "is"]
-				wiki_direct_result = cursor.execute("SELECT title, description, url, page_content from posts WHERE title LIKE ? AND url LIKE ? LIMIT 1", ("%" + cleaned_value_for_query.lower().strip() + "%", "%indieweb.org%", )).fetchall()
+				without_stopwords = " ".join([token.text for token in doc if not token.is_stop])
+				wiki_direct_result = cursor.execute("SELECT title, description, url, page_content from posts WHERE title LIKE ? AND url LIKE ? LIMIT 1", ("%" + without_stopwords.lower().strip() + "%", "%indieweb.org%", )).fetchall()
 				# remove_punctuation = [token.text for token in without_stopwords if not token.is_punct]
 
 				if "on this day" in cleaned_value_for_query:
@@ -195,7 +205,11 @@ def results_page():
 
 					if request.args.get("type") != "image" and len(rows) > 0 and "random aeropress" not in cleaned_value and "generate aeropress" not in cleaned_value:
 						if "what is" in preserved_value and wiki_direct_result:
-							url = [row[2] for row in wiki_direct_result if cleaned_value_for_query.lower().strip() in row[0].lower() and row[2].startswith("https://indieweb.org")][0]
+							url = [row[2] for row in wiki_direct_result if cleaned_value_for_query.lower().strip() in row[0].lower() and row[2].startswith("https://indieweb.org")]
+							if len(url) > 0:
+								url = url[0]
+							else:
+								url = rows[0][2]
 						elif len(rows) > 0:
 							url = rows[0][2]
 						else:
@@ -267,7 +281,7 @@ def send_static_images(path):
 
 @main.route("/advanced")
 def advanced_search():
-	connection = sqlite3.connect("search.db")
+	connection = sqlite3.connect(ROOT_DIRECTORY + "/search.db")
 
 	with connection:
 		cursor = connection.cursor()
