@@ -168,7 +168,7 @@ python-xlib==0.31
 pytz==2019.3
 PyWavelets==1.1.1
 pyxdg==0.26
-PyYAML==5.1
+PyYAML==5.4
 rdflib==6.0.0
 rdflib-jsonld==0.5.0
 recurring-ical-events==0.2.0b0
