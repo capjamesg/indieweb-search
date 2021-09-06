@@ -31,6 +31,12 @@ p, code, li {
   font-size: 1.0625rem;
 }
 
+.text-box {
+  max-width: 35em;
+  margin: auto;
+  margin-bottom: 50px;
+}
+
 li p {
   max-width: 35em;
 }
@@ -41,12 +47,12 @@ input[type="submit"] {
   background-color: royalblue;
   color: white;
   border-radius: 10px;
-  min-width: 0 !important;
+  min-width: 25%;
   appearance: none;
 }
 
 .search input[type="submit"] {
-  margin: 20px;
+  margin-top: 15px;
 }
 
 input[type="text"], input[type="username"], input[type="password"] {
@@ -64,6 +70,7 @@ button {
   border-radius: 10px;
   padding: 10px;
   display: inline-block;
+  -webkit-appearance: none;
 }
 
 ::placeholder {
@@ -99,6 +106,7 @@ nav ul, .tab ul {
 
 h1 {
     font-size: 2rem;
+    line-height: 1.5em !important;
 }
 
 h2, h1, h3 {
@@ -108,6 +116,13 @@ h2, h1, h3 {
 a {
     color: #006BD6;
     border-bottom: 2px dotted #006BD6;
+}
+
+.logo_image img {
+    width: 50% !important;
+    border-radius: 10px;
+    margin: auto;
+    display: block;
 }
 
 p, li, h2, h3 {
