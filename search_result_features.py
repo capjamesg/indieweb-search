@@ -13,30 +13,31 @@ def search_for_h2_memo(soup, new_cleaned_value_for_direct_answer):
 def search_for_strong_memo(soup, cleaned_value):
     return [f for f in soup.find_all(["strong"]) if any(x in f.text.lower() for x in cleaned_value.strip().split(" "))]
 
-def generate_featured_snippet(cleaned_value, cursor, special_result, nlp, url=None):
+def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post=None):
     # Generate a featured snippet for the search result
     if url == None:
         return "", special_result
     
-    if "who is" in cleaned_value or ("." in cleaned_value and len(cleaned_value.split(".")[0]) > 3 and len(cleaned_value.split(".")[0]) > 1):
+    if "who is" in cleaned_value:
         url = url.replace("https://", "").replace("http://", "").split("/")[0]
-        post = cursor.execute("SELECT title, page_content FROM posts WHERE url = ? OR url = ?;", ("https://" + url + "/", "http://" + url + "/",)).fetchone()
-    else:
-        post = cursor.execute("SELECT title, page_content FROM posts WHERE url = ?;", (url,)).fetchone()
 
-    new_cleaned_value_for_direct_answer = " ".join([w for w in cleaned_value.split(" ") if w not in nltk.corpus.stopwords.words("english") + ["do", "you", "use"]]).split(" ")[0].strip()
+    print(cleaned_value)
+
+    new_cleaned_value_for_direct_answer = " ".join([w for w in cleaned_value.split(" ") if w not in nltk.corpus.stopwords.words("english") or w in ["why", "how"]]).split(" ")[0].strip()
+
+    print(new_cleaned_value_for_direct_answer)
 
     # get post with home brew bar url
 
-    proper_nouns = [word.lower() for word, pos in nltk.tag.pos_tag(post[0].split()) if pos == 'NNP']
+    proper_nouns = [word.lower() for word, pos in nltk.tag.pos_tag(post["title"].split()) if pos == 'NNP']
 
     # remove all proper nouns from cleaned_value
 
     original_cleaned_value = cleaned_value
-    cleaned_value = " ".join([w for w in cleaned_value.split(" ") if "james" not in w.lower() and w.lower() not in proper_nouns and w.lower() not in post[0].replace("recipe", "").lower().split()])
+    cleaned_value = " ".join([w for w in cleaned_value.split(" ") if "james" not in w.lower() and w.lower() not in proper_nouns and w.lower() not in post["title"].lower().split() and w.lower() not in post["url"].lower().split("/")[-1]])
 
     # read post with bs4
-    soup = BeautifulSoup(post[1], "lxml")
+    soup = BeautifulSoup(post["page_content"], "lxml")
 
     # remove stop words from question
 
@@ -45,7 +46,9 @@ def generate_featured_snippet(cleaned_value, cursor, special_result, nlp, url=No
     # if "what is" in original_cleaned_value
     if "what is" in original_cleaned_value or "what are" in original_cleaned_value:
         #  if "is a" in p.text.lower() or "are an" in p.text.lower() and original_cleaned_value.lower() in p.text.lower() 
-        p_tags = [p.text for p in soup.find_all(["p", "span"]) if "p-summary" in p.attrs.get("class", []) and p.text != None or "{} is".format(original_cleaned_value) in p.text.lower() or "{} are".format(original_cleaned_value) in p.text.lower()]
+        original_cleaned_value = original_cleaned_value.replace("what is", "").replace("what are", "").strip().lower()
+
+        p_tags = [p.text for p in soup.find_all(["p", "span"]) if ("p-summary" in p.attrs.get("class", []) and p.text != None) or "{} is".format(original_cleaned_value) in p.text.lower() or "{} are".format(original_cleaned_value) in p.text.lower()]
 
         if soup.find("h1"):
             title = soup.find("h1").text
@@ -117,11 +120,10 @@ def generate_featured_snippet(cleaned_value, cursor, special_result, nlp, url=No
         ent_type = "NONE"
 
     if ent_type != "NONE":
-        sentence_with_query = [s for s in soup.get_text().replace("\n", ". ").split(". ") if all(x in s.lower() for x in original_cleaned_value.strip().split(" "))]
+        sentence_with_query = [s for s in soup.get_text().replace("\n", ". ").split(". ") if all(x in s.lower() for x in cleaned_value.strip().split(" "))]
 
         if len(sentence_with_query) > 0:
             ents = [w for w in nlp(sentence_with_query[0]).ents if w.label_ == ent_type]
-            print(ents)
 
             if len(ents) > 0:
                 return "<b style='font-size: 22px'>{}</b><br>{}".format(ents[0].text, sentence_with_query[0].replace("\n", " ")), {"type": "direct_answer", "breadcrumb": url, "title": soup.find("h1").text}
@@ -133,19 +135,29 @@ def generate_featured_snippet(cleaned_value, cursor, special_result, nlp, url=No
 
     c = nltk.text.Text(t.tokenize(soup.text))
 
-    if soup.find_all("dfn"):
-        special_result = {"type": "direct_answer", "breadcrumb": url, "title": soup.find("h1").text}
+    # if soup.find_all("dfn"):
+    #     special_result = {"type": "direct_answer", "breadcrumb": url, "title": soup.find("h1").text}
 
-        return soup.find_all("dfn")[0].text, special_result
+    #     return soup.find_all("dfn")[0].text, special_result
+
+    print(new_cleaned_value_for_direct_answer)
 
     if len(cleaned_value) != 0 and len(cleaned_value.split(" ")) > 0:
         try:
             do_i_use = c.concordance_list(new_cleaned_value_for_direct_answer, width=50)
 
+            print('xd')
+
             all_locs = [f for f in soup.find_all(["li"]) if new_cleaned_value_for_direct_answer in f.text.lower()]
 
-            if len(all_locs) < 3:
-                return "", special_result
+            # if len(all_locs) < 3:
+            #     return "", special_result
+
+            # check if in h2
+            print(new_cleaned_value_for_direct_answer)
+            in_h2 = [f for f in soup.find_all(["h2"]) if new_cleaned_value_for_direct_answer in f.text.lower()]
+
+            print(in_h2)
 
             if all_locs:
                 location_of_tag = all_locs[0]
@@ -160,6 +172,15 @@ def generate_featured_snippet(cleaned_value, cursor, special_result, nlp, url=No
             else:
                 all_locs = [f for f in soup.find_all(["p"]) if cleaned_value in f.text.lower()]
                 location_of_tag = all_locs[0]
+            print(len(in_h2))
+            if len(in_h2) == 1:
+                print('x')
+                # get p after in_h2
+                location_of_tag = in_h2[0]
+
+                location_of_tag = "<br>".join([f.text for f in location_of_tag.find_next_siblings()][:3])
+
+                return "<b>{}</b><br>{}".format(in_h2[0].text, location_of_tag), {"type": "direct_answer", "breadcrumb": url, "title": soup.find("h1").text}
 
             if location_of_tag.find_parent().name != "article" and location_of_tag.name == "li":
                 # Show previous element for context and content addressing visitor query
