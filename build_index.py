@@ -8,12 +8,9 @@ import json
 import csv
 import sys
 import os
-
 from shutil import copyfile
-
 import config
-
-from crawler import url_handling, test_queries, create_charts
+import crawler.url_handling as url_handling
 
 start_time = datetime.datetime.now()
 
@@ -62,7 +59,11 @@ def find_robots_directives(site_url):
 	"""
 		Finds the robots.txt file on a website, reads the contents, then follows directives.
 	"""
-	read_robots = requests.get("https://{}/robots.txt".format(site_url), headers=config.HEADERS)
+	try:
+		read_robots = requests.get("https://{}/robots.txt".format(site_url), headers=config.HEADERS)
+	except:
+		print("Error: Could not find robots.txt file on {}".format(site_url))
+		return [], []
 
 	if read_robots.status_code == 404:
 		logging.warning("Robots.txt not found on {}".format(site_url))
@@ -134,7 +135,7 @@ def log_contents(cursor, pages_indexed, images_indexed):
 
 	# Save all broken urls to db table
 
-	now = datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
+	# now = datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
 
 	# with open(ROOT_DIRECTORY + "/static/index_status.json", "w+") as index_status_main:
 	# 	json.dump(broken_urls, index_status_main, ensure_ascii=False, indent=4)
@@ -159,18 +160,34 @@ def log_contents(cursor, pages_indexed, images_indexed):
 	if len(broken_urls) > 0:
 		message = "{} errors found in crawl.".format(len(broken_urls))
 		
-		r = requests.post("https://maker.ifttt.com/trigger/crawl_issue/with/key/b4G5wb1JQabRPiRET9sq5l", data={"value1": message})
+		# requests.post("https://maker.ifttt.com/trigger/crawl_issue/with/key/S", data={"value1": message})
 
 	print("Indexing complete.")
 	logging.debug("Indexing complete.")
 
 def build_index():
 	# read crawl_queue.txt
-	while True:
+	crawl = True
+	while crawl == True:
 		# read crawl_queue.txt
 		with open("crawl_queue.txt", "r") as file:
 			file = file.readlines()
-			site = file[0].strip()
+			next_site = file[0].strip().split(", ")
+			site = next_site[0]
+			if len(next_site) > 1:
+				# let user specify crawl budget for each site
+				if next_site[1].isnumeric():
+					crawl_budget = int(next_site[1])
+				elif next_site[1] == "RECRAWL":
+					crawl_budget = 50
+				else:
+					crawl_budget = 1000
+			else:
+				crawl_budget = 1000
+			print("Crawl budget: {}".format(str(crawl_budget)))
+
+		if site == "STOP":
+			crawl = False
 		
 		if os.path.isfile("search.db") == True:
 			copyfile("search.db", "new_search.db")
@@ -255,11 +272,7 @@ def build_index():
 				if site not in iterate_list_of_urls:
 					iterate_list_of_urls.append(site)
 
-				reindex = True
-			else:
-				reindex = False
-
-			pages_indexed, images_indexed, all_links, iterate_list_of_urls = url_handling.crawl_urls(final_urls, namespaces_to_ignore, cursor, pages_indexed, images_indexed, image_urls, links, external_links, discovered_urls, broken_urls, iterate_list_of_urls, site, reindex)
+			pages_indexed, images_indexed, iterate_list_of_urls = url_handling.crawl_urls(final_urls, namespaces_to_ignore, cursor, pages_indexed, images_indexed, image_urls, links, external_links, discovered_urls, broken_urls, iterate_list_of_urls, site, crawl_budget)
 
 			log_contents(cursor, pages_indexed, images_indexed)
 
@@ -267,13 +280,27 @@ def build_index():
 				rows = f.readlines()[1:]
 
 			with open("crawl_queue.txt", "w+") as f:
-				for r in rows:
-					f.write(r)
+				if len(rows) != 0:
+					for r in rows:
+						f.write(r)
+				else:
+					with open("domains.txt", "r") as domains:
+						all_domains = domains.readlines()
+						for d in all_domains:
+							f.write(d)
+							f.write("STOP")
 
-			with open(ROOT_DIRECTORY + "/data/all_links.csv","w") as f:
-				wr = csv.writer(f)
-				wr.writerow(["page_linking", "link_to", "datetime", "link_type", "anchor_text"])
-				wr.writerows(all_links)
+
+			# get date
+			date = datetime.datetime.now().strftime("%Y-%m-%d")
+
+			with open("crawled.txt", "a") as f:
+				f.write("{}, {}".format(site, date))
+
+			# with open(ROOT_DIRECTORY + "/data/all_links.csv","w") as f:
+			# 	wr = csv.writer(f)
+			# 	wr.writerow(["page_linking", "link_to", "datetime", "link_type", "anchor_text"])
+			# 	wr.writerows(all_links)
 
 		#broken_links.check_for_invalid_links()
 
