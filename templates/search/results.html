@@ -1,12 +1,8 @@
 {% extends "base.html" %}
 {% block content %}
 <h1 class="p-name p-summary">Your Search Results</h1>
-  <ul class="tab">
-    <li><a href="/results?query={{ query }}" {% if results_type != "image" %}class="active_tab"{% endif %}>Posts</a></li>
-    <li><a href="{{ base_results_query }}&type=image" {% if results_type == "image" %}class="active_tab"{% endif %}>Images</a></li>
-  </ul>
   <form action="/results" method="GET" role="search">
-    <input type="text" id="query" name="query" placeholder="Enter your query" aria-label="Search James' Coffee Blog" value="{{ query }}">
+    <input type="text" id="query" name="query" placeholder="Enter your query" aria-label="Search the IndieWeb" value="{{ query }}">
     {% if results_type == "image" %}<input type="hidden" id="type" name="type" value="image">{% endif %}
     <input class="search_button" type="submit" value="Search">
   </form>
@@ -35,14 +31,14 @@
         {% endfor %}
       {% else %}
         {% for r in results %}
-          {% if r[2] != special_result.breadcrumb %}
+        {% if r['_source']['url'] != special_result.breadcrumb %}
           <li>
-            <p class="breadcrumbs"><a href="{{ r[2] }}" style="border-bottom: none;">{% for item in r[2].replace("https://", "").replace("http://", "").rstrip("/").split("/") %} {{ item }} {% if not loop.last %}>{% endif %}{% endfor %}</a></p>
-            <p class="p-name"><a href="{{ r[2] }}" class="u-url">{% if r[0]|length == 0 %}{{ " ".join(r[2].split(" ")[:20]) }}{% if r[2].split(" ")|length > 20 %}...{% endif %}{% else %}{{ " ".join(r[0].split(" ")[:20]) }}{% if r[0].split(" ")|length > 20 %}...{% endif %}{% endif %}</a></p>
-            <p class="p-summary">{{ r[1] | safe }}</p>
+            <p class="breadcrumbs"><a href="{{ r['_source']['url'] }}" style="border-bottom: none;">{% for item in r['_source']['url'] .replace("https://", "").replace("http://", "").rstrip("/").split("/") %} {{ item }} {% if not loop.last %}>{% endif %}{% endfor %}</a></p>
+            <p class="p-name"><a href="{{ r['_source']['url']  }}" class="u-url">{% if r['_source']['title']|length == 0 %}{{ " ".join(r['_source']['url'].split(" ")[:20]) }}{% if r['_source']['url'].split(" ")|length > 20 %}...{% endif %}{% else %}{{ " ".join(r['_source']['title'].split(" ")[:20]) }}{% if r['_source']['title'].split(" ")|length > 20 %}...{% endif %}{% endif %}</a></p>
+            <p class="p-summary">{% if r['_source']['description']|length > 0 %}{{ r['_source']['description'] }}{% else %}{{ r['_source']['h1'].split(",")[0] }}{% endif %}</p>
           </li>
-          {% endif %}
         <hr>
+        {% endif %}
         {% endfor %}
       {% endif %}
     </ol>
