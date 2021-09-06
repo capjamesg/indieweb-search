@@ -20,6 +20,10 @@ Please read these errors individually and install the packages according to the 
 
 Documentation on exactly what to install will follow in the future.
 
+## Site Search Support
+
+IndieWeb Search supports searching sites by URL. Read the [Advanced Settings documentation](https://indieweb-search.jamesg.blog/advanced) for information on how to search for a page on a specific website.
+
 ## Running the Web Application
 
 To run the web application, execute these commands:
@@ -37,6 +41,29 @@ You can do this by adding a site URL to the `crawl_queue.txt` file and then runn
 Your site URL will be removed from the `crawl_queue.txt` file after your site has been fully crawled.
 
 All crawls are limited to 1,000 URLs. To change this limit, search for "1000" in the `crawler/url_handling.py` file and change the value to the desired limit.
+
+### Configuration
+
+Please create a `config.py` file in the root directory of this project before running the application for the first time.
+
+The config.py file should contain the following variables:
+
+    import os
+
+    HEADERS = {
+        "User-agent": "YOUR_USER_AGENT",
+        "Accept": "text/html"
+    }
+
+    ROOT_DIRECTORY = os.path.dirname(os.path.abspath("__init__.py"))
+
+    SECRET_KEY = os.urandom(24)
+
+    ELASTICSEARCH_PASSWORD = "YOUR_ELASTICSEARCH_PASSWORD"
+
+    ELASTICSEARCH_API_TOKEN = "YOUR_ELASTICSEARCH_API_TOKEN"
+
+The official indieweb-search engine uses indieweb-search as the user agent. Please choose another user agent if you use this crawler.
 
 ## Direct Answer Search Results
 
@@ -71,7 +98,21 @@ Some things that need worked on are:
 
 - Using MD5 hashes to remove duplicate documents.
 - Handling read timeouts.
-- Testing as many queries as possible on the live search engine to identify opportunities for improvements (note: the live search engine not yet ready to test for this purpose).
+- Testing as many queries as possible on the live search engine to identify opportunities for improvements.
+
+## Technology Stack
+
+This project makes use of the following technologies:
+
+- Python
+- Flask
+- Elasticsearch
+- mf2py
+- BeautifulSoup
+- Spacy
+- Textblob
+- pytextrank
+- pyspellchecker
 
 ## License
 
