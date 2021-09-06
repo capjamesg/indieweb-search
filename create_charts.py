@@ -12,20 +12,17 @@ total_docs_today = int(es.count(index='pages')['count'])
 today = datetime.datetime.now().strftime("%Y-%m-%d")
 
 # read domains.txt
-with open(ROOT_DIRECTORY + "/static/domains.txt", "r") as domains_file:
+with open(ROOT_DIRECTORY + "/domains.txt", "r") as domains_file:
     domains = domains_file.readlines()
 
-    domain_count = len(domains)
+domain_count = len(domains)
 
 with open("stats.csv", "a") as stats_file:
     writer = csv.writer(stats_file)
     writer.writerow([total_docs_today, today, domain_count])
 
 def calculate_index_size():
-    with open("stats.csv", "r") as stats_file:
-        contents = csv.reader(stats_file)
-
-    df = pd.DataFrame(contents)
+    df = pd.read_csv(ROOT_DIRECTORY + "/stats.csv")
 
     plt.figure(num=1)
 
@@ -48,12 +45,9 @@ def calculate_index_size():
     plt.savefig(ROOT_DIRECTORY + "/static/index_size.png")
 
 def calculate_domains_indexed():
-    with open("stats.csv", "r") as stats_file:
-        contents = csv.reader(stats_file)
+    df = pd.read_csv(ROOT_DIRECTORY + "/stats.csv")
 
-    df = pd.DataFrame(contents)
-
-    plt.figure(num=1)
+    plt.figure(num=2)
 
     plt.title("Number of domains from which content is indexed")
 
@@ -67,7 +61,7 @@ def calculate_domains_indexed():
 
     plt.legend()
 
-    plt.savefig(ROOT_DIRECTORY + "/static/index_size.png")
+    plt.savefig(ROOT_DIRECTORY + "/static/domain_index_size.png")
 
 calculate_index_size()
 
