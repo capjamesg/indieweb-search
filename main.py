@@ -290,17 +290,17 @@ def advanced_search():
 
 	domains = count_request["domains"]
 
-	return render_template("search/advanced_search.html", count=count, domains=domains, title="Advanced Search Options | IndieWeb Search")
+	return render_template("search/advanced_search.html", count=count, domains=domains, title="IndieWeb Search Advanced Search Options")
 
 @main.route("/stats")
-def advanced_search():
+def stats():
 	count_request = requests.get("https://es-indieweb-search.jamesg.blog/count").json()
 
 	count = count_request["es_count"]["count"]
 
 	domains = count_request["domains"]
 
-	return render_template("search/stats.html", count=count, domains=domains, title="Advanced Search Options | IndieWeb Search")
+	return render_template("search/stats.html", count=count, domains=domains, title="IndieWeb Search Index Stats")
 
 @main.route("/about")
 def about():
