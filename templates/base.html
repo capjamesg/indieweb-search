@@ -8,9 +8,6 @@
         padding-top: 10vh;
         padding-bottom: 10vh;
       }
-      h1 {
-        line-height: 1em !important;
-      }
       input {
         min-width: 50%;
       }
@@ -22,7 +19,8 @@
       <nav>
         <p><a href="/">IndieWeb Search</a></p>
         <ul>
-          <li><a href="/about">About This Project</a></li>
+          <li><a href="/about">About</a></li>
+          <li><a href="/stats">Statistics</a></li>
           {% if current_user.is_authenticated %}
                   {% include "admin/admin_tab.html" %}
           {% endif %}

@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="text-box">
+  <h1>IndieWeb Search Stats</h1>
+  <p>There are {{ '{0:,}'.format(count) }} pages indexed across  {{ '{0:,}'.format(domains) }} domains on the IndieWeb search engine.</p>
+  <h2>Index Size Graph</h2>
+  <p>The graph below shows the growth of the IndieWeb Search Index.</p>
+  <img src="https://es-indieweb-search.jamesg.blog/assets/index_size.png" alt="Index Size Graph" />
+  <p><a href="/">Click here to go to back to the IndieWeb search engine.</a></p>
+</section>
+{% endblock %}
