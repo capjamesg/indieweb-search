@@ -1,7 +1,7 @@
 from flask import Flask, request, abort, jsonify, send_from_directory
 from elasticsearch import Elasticsearch
 import random
-from . import config
+import config
 
 es = Elasticsearch(['http://localhost:9200'])
 
@@ -48,12 +48,12 @@ def home():
                 "query": {
                     "query_string": {
                         "query": query,
-                        "fields": ["title^5", "description^3", "url^3", "category^0", "published^0", "keywords^0", "text^3", "h1^5", "h2^1.5", "h3^1.2", "h4^0.5", "h5^0.75", "h6^0.25"],
-                        "minimum_should_match": "3<90%"
+                        "fields": ["title^5", "description^3", "url^1.5", "category^0", "published^0", "keywords^0", "text^3", "h1^2", "h2^1.5", "h3^1.2", "h4^0.5", "h5^0.75", "h6^0.25"],
+                        "minimum_should_match": "3<75%"
                     },
                 },
                 "script": {
-                    "source": "_score" 
+                    "source": "_score + (Math.log(doc['incoming_links'].value + 1) * 2)"
                 }
         }
     }}
@@ -89,8 +89,11 @@ def create():
 
         data = request.get_json()
 
-        es.index(index="pages", doc_type="page", body=data)
+        total_docs_today = int(es.count(index='pages')['count'])
 
+        print(data)
+
+        es.index(index="pages", body=data, id=total_docs_today + 1)
         return jsonify({"status": "ok"})
     else:
         return abort(401)
@@ -115,7 +118,7 @@ def update():
 
         response = es.search(index="pages", body=search_param)
 
-        es.update(index="pages", id=response[0]["_id"], body=data)
+        es.update(index="pages", id=response["hits"]["hits"][0]["_id"], body={"doc":data})
 
         return jsonify({"status": "ok"})
     else:
@@ -130,19 +133,28 @@ def check():
 
         hash = request.args.get("hash")
 
-        # get document with same hash as hash arg
-        search_param = {
-            "query": {
-                "match": {
-                    "md5hash": hash
+        if hash:
+            # get document with same hash as hash arg
+            search_param = {
+                "query": {
+                    "match": {
+                        "md5hash": hash
+                    }
                 }
             }
-        }
+        else:
+            search_param = {
+                "query": {
+                    "term": {
+                        "url": request.args.get("url")
+                    }
+                }
+            }
 
         response = es.search(index="pages", body=search_param)
 
         if response:
-            return response
+            return jsonify(response["hits"]["hits"])
         else:
             return jsonify({"status": "not found"})
     else:
@@ -174,4 +186,4 @@ def random_page():
 
 @app.route("/assets/<path:path>")
 def send_assets(path):
-    return send_from_directory("assets", path)
+    return send_from_directory("static", path)

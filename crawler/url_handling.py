@@ -1,9 +1,8 @@
+from elasticsearch_server import check
 from bs4 import BeautifulSoup
 import requests
 import datetime
 import logging
-import os
-import json
 import config
 import crawler.page_info
 import crawler.image_handling
@@ -12,6 +11,7 @@ import hashlib
 yesterday = datetime.datetime.today() - datetime.timedelta(days=1)
 
 def log_error(page_url, status_code, message, discovered_urls, broken_urls, discovered=None):
+	return
 	# This logic is necessary as I do pass a discovered value for image errors
 	if discovered == None:
 		if discovered_urls.get(page_url):
@@ -31,7 +31,7 @@ def log_error(page_url, status_code, message, discovered_urls, broken_urls, disc
 	)
 
 def add_to_database(cursor, full_url, published_on, doc_title, meta_description, category, heading_info, page, important_phrases, pages_indexed, page_content, outgoing_links):
-	check_if_indexed = cursor.execute("SELECT COUNT(url) FROM posts WHERE url = ?", (full_url,)).fetchone()[0]
+	# check_if_indexed = cursor.execute("SELECT COUNT(url) FROM posts WHERE url = ?", (full_url,)).fetchone()[0]
 
 	# lemmatize page content so the index uses root words rather than exact words
 	#page_content = page_content
@@ -41,56 +41,79 @@ def add_to_database(cursor, full_url, published_on, doc_title, meta_description,
 	else:
 		length = len(page_content)
 
-	# md5_hash = hashlib.md5(str(page_content).encode("utf-8")).hexdigest()
+	md5_hash = hashlib.md5(str(page_content).encode("utf-8")).hexdigest()
+
+	# check if md5 hash in posts
+
+	print('d')
+
+	r = requests.post("https://es-indieweb-search.jamesg.blog/check?hash={}".format(md5_hash), headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)})
+
+	if r.status_code == 200:
+		if r.json() and len(r.json()) > 0 and r.json()["url"] != full_url:
+			print("content duplicate of existing record, skipping")
+			return pages_indexed
 
 	if type(published_on) == dict and published_on.get("datetime") != None:
 		date_to_record = published_on["datetime"].split("T")[0]
 	else:
 		date_to_record = ""
 
-	if check_if_indexed == 0:
+	record = {
+		"title": doc_title,
+		"meta_description": meta_description,
+		"url": full_url,
+		"published_on": date_to_record,
+		"category": category,
+		"h1": ", ".join(heading_info["h1"]),
+		"h2": ", ".join(heading_info["h2"]),
+		"h3": ", ".join(heading_info["h3"]),
+		"h4": ", ".join(heading_info["h4"]),
+		"h5": ", ".join(heading_info["h5"]),
+		"h6": ", ".join(heading_info["h6"]),
+		"length": length,
+		"important_phrases": "",
+		"page_content": str(page_content),
+		"page_text": page_content.get_text(),
+		"incoming_links": 0,
+		"outgoing_links": outgoing_links,
+		"page_rank": 0,
+		"domain": full_url.split("/")[2],
+		"word_count": len(page_content.get_text().split(" ")),
+		"md5_hash": md5_hash,
+	}
+
+	check_if_indexed = requests.post("https://es-indieweb-search.jamesg.blog/check?url={}".format(full_url), headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}).json()
+
+	print(len(check_if_indexed))
+
+	if len(check_if_indexed) == 0:
+		r = requests.post("https://es-indieweb-search.jamesg.blog/create", headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}, json=record)
 		print("indexed new page {}".format(full_url))
-		cursor.execute("INSERT INTO posts VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (
-			doc_title,
-			meta_description,
-			full_url,
-			category,
-			date_to_record,
-			", ".join(important_phrases),
-			", ".join(heading_info["h1"]),
-			", ".join(heading_info["h2"]),
-			", ".join(heading_info["h3"]),
-			", ".join(heading_info["h4"]),
-			", ".join(heading_info["h5"]),
-			", ".join(heading_info["h6"]),
-			length,
-			str(page_content),
-			0,
-			outgoing_links,
-			0.0
-		))
 	else:
+		r = requests.post("https://es-indieweb-search.jamesg.blog/update", headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}, json=record)
 		print("updated page {}".format(full_url))
 		logging.debug("updating {} post as post already indexed".format(full_url))
-		if published_on != None:
-			cursor.execute("UPDATE posts SET title = ?, description = ?, url = ?, category = ?, published = ?, keywords = ? WHERE url = ?", (doc_title, meta_description, full_url, category, published_on["datetime"].split('T')[0], ", ".join(important_phrases), full_url))
-		else:
-			cursor.execute("UPDATE posts SET title = ?, description = ?, url = ?, category = ?, published = ?, keywords = ? WHERE url = ?", (doc_title, meta_description, full_url, category, "", ", ".join(important_phrases), full_url))
-		
+
+	print(r.status_code)
+
 	pages_indexed += 1
 
 	return pages_indexed
 
-def crawl_urls(final_urls, namespaces_to_ignore, cursor, pages_indexed, images_indexed, image_urls, all_links, external_links, discovered_urls, broken_urls, iterate_list_of_urls, site_url, reindex=False):
+def crawl_urls(final_urls, namespaces_to_ignore, cursor, pages_indexed, images_indexed, image_urls, all_links, external_links, discovered_urls, broken_urls, iterate_list_of_urls, site_url, crawl_budget):
 	"""
 		Crawls URLs in list, adds URLs to index, and returns updated list
 	"""
 	count = 0
 	for full_url in iterate_list_of_urls:
+		# if full_url[-1] != "/":
+		# 	full_url = full_url + "/"
+		full_url = full_url.replace("http://", "https://")
 		if ".pdf" in full_url:
 			continue
 		
-		if count == 1000:
+		if count == crawl_budget:
 			break
 
 		print(count)
@@ -142,6 +165,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, cursor, pages_indexed, images_i
 				page_test = session.head(full_url, headers=config.HEADERS)
 			except requests.exceptions.Timeout:
 				log_error(full_url, "Unknown", "URL timed out.", discovered_urls, broken_urls)
+				print('c')
 				continue
 			except requests.exceptions.TooManyRedirects:
 				log_error(full_url, "Unknown", "URL redirected too many times.", discovered_urls, broken_urls)
@@ -155,7 +179,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, cursor, pages_indexed, images_i
 			# 	continue
 
 			try:
-				page = session.get(full_url, timeout=4, headers=config.HEADERS, allow_redirects=False)
+				page = session.get(full_url, timeout=10, headers=config.HEADERS, allow_redirects=False)
 			except requests.exceptions.Timeout:
 				log_error(full_url, "Unknown", "URL timed out.", discovered_urls, broken_urls)
 				continue
@@ -167,21 +191,17 @@ def crawl_urls(final_urls, namespaces_to_ignore, cursor, pages_indexed, images_i
 				continue
 
 			if page.status_code == 404:
-				is_in_db = cursor.execute("SELECT * FROM posts WHERE url = ?", (full_url,)).fetchall()
-				if len(is_in_db) > 0:
-					cursor.execute("DELETE FROM posts WHERE url = ?;", (full_url,))
-					message = "Page not found, removed from index."
-				else:
-					message = "Page not found, but not in database."
+				# is_in_db = cursor.execute("SELECT * FROM posts WHERE url = ?", (full_url,)).fetchall()
+				message = "Page not found"
 
 				log_error(full_url, page.status_code, message, discovered_urls, broken_urls)
 				continue
 			elif page.status_code == 301 or page.status_code == 302 or page.status_code == 308:
 				# Handle temporary and permanent redirects
 
-				is_in_db = cursor.execute("SELECT * FROM posts WHERE url = ?", (full_url,)).fetchall()
-				if len(is_in_db) > 0:
-					cursor.execute("DELETE FROM posts WHERE url = ?;", (full_url,))
+				# is_in_db = cursor.execute("SELECT * FROM posts WHERE url = ?", (full_url,)).fetchall()
+				# if len(is_in_db) > 0:
+				# 	cursor.execute("DELETE FROM posts WHERE url = ?;", (full_url,))
 
 				redirected_to = page.headers["Location"]
 				
@@ -199,12 +219,12 @@ def crawl_urls(final_urls, namespaces_to_ignore, cursor, pages_indexed, images_i
 				log_error(full_url, page.status_code, message, discovered_urls, broken_urls)
 				continue
 
-			page_desc_soup = BeautifulSoup(page.content, "lxml")
+			page_desc_soup = BeautifulSoup(page.content, "html5lib")
 
-			if page_desc_soup.find("article", {"class": "e-content"}):
-				page_text = page_desc_soup.find("article", {"class": "e-content"})
-			elif page_desc_soup.find("article", {"class": "h-entry"}):
-				page_text = page_desc_soup.find("article", {"class": "h-entry"})
+			if page_desc_soup.select("e-content"):
+				page_text = page_desc_soup.select("e-content")[0]
+			elif page_desc_soup.select("h-entry"):
+				page_text = page_desc_soup.select("h-entry")
 			elif page_desc_soup.find("main"):
 				page_text = page_desc_soup.find("main")
 			elif page_desc_soup.find("div", {"id": "main"}):
@@ -248,7 +268,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, cursor, pages_indexed, images_i
 
 			# Discover new links that might be on a page to follow later
 
-			final_urls, iterate_list_of_urls, all_links, external_links = page_link_discovery(links, final_urls, iterate_list_of_urls, full_url, all_links, external_links, discovered_urls, site_url, count, reindex)
+			final_urls, iterate_list_of_urls, all_links, external_links = page_link_discovery(links, final_urls, iterate_list_of_urls, full_url, all_links, external_links, discovered_urls, site_url, count)
 
 			if "noindex" in check_if_no_index:
 				# Check if a page now marked as noindex is in the database
@@ -283,9 +303,9 @@ def crawl_urls(final_urls, namespaces_to_ignore, cursor, pages_indexed, images_i
 
 	print('finished {}'.format(full_url))
 
-	return pages_indexed, images_indexed, all_links, iterate_list_of_urls
+	return pages_indexed, images_indexed, iterate_list_of_urls
 
-def page_link_discovery(links, final_urls, iterate_list_of_urls, page_being_processed, all_links, external_links, discovered_urls, site_url, count, reindex=False):
+def page_link_discovery(links, final_urls, iterate_list_of_urls, page_being_processed, all_links, external_links, discovered_urls, site_url, count):
 	"""
 		Finds all the links on the page and adds them to the list of links to crawl.
 	"""

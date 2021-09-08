@@ -13,19 +13,17 @@ def search_for_h2_memo(soup, new_cleaned_value_for_direct_answer):
 def search_for_strong_memo(soup, cleaned_value):
     return [f for f in soup.find_all(["strong"]) if any(x in f.text.lower() for x in cleaned_value.strip().split(" "))]
 
-def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post=None):
+def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post=None, direct=False):
     # Generate a featured snippet for the search result
     if url == None:
         return "", special_result
+
+    original_url = url
     
     if "who is" in cleaned_value:
         url = url.replace("https://", "").replace("http://", "").split("/")[0]
 
-    print(cleaned_value)
-
     new_cleaned_value_for_direct_answer = " ".join([w for w in cleaned_value.split(" ") if w not in nltk.corpus.stopwords.words("english") or w in ["why", "how"]]).split(" ")[0].strip()
-
-    print(new_cleaned_value_for_direct_answer)
 
     # get post with home brew bar url
 
@@ -33,7 +31,7 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
 
     # remove all proper nouns from cleaned_value
 
-    original_cleaned_value = cleaned_value
+    original_cleaned_value = cleaned_value.lower()
     cleaned_value = " ".join([w for w in cleaned_value.split(" ") if "james" not in w.lower() and w.lower() not in proper_nouns and w.lower() not in post["title"].lower().split() and w.lower() not in post["url"].lower().split("/")[-1]])
 
     # read post with bs4
@@ -44,7 +42,7 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
     all_locations = []
 
     # if "what is" in original_cleaned_value
-    if "what is" in original_cleaned_value or "what are" in original_cleaned_value:
+    if "what is" in original_cleaned_value or "what are" in original_cleaned_value or direct == True or "microformats" in original_cleaned_value:
         #  if "is a" in p.text.lower() or "are an" in p.text.lower() and original_cleaned_value.lower() in p.text.lower() 
         original_cleaned_value = original_cleaned_value.replace("what is", "").replace("what are", "").strip().lower()
 
@@ -60,7 +58,7 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
         if len(p_tags) > 0:
             return "<p>{}</p>".format(p_tags[0]), {"type": "direct_answer", "breadcrumb": url, "title": title}
 
-    if "who is" in original_cleaned_value or ("." in original_cleaned_value and len(original_cleaned_value.split(".")[0]) > 3 and len(original_cleaned_value.split(".")[0]) > 1):
+    if "who is" in original_cleaned_value or (("." in original_cleaned_value and len(original_cleaned_value.split(".")[0]) > 3 and len(original_cleaned_value.split(".")[0]) > 1 and len(original_cleaned_value.split(" ")) == 1)):
         cleaned_value = " ".join([item for item in original_cleaned_value.split(" ") if item != "who" and item != "is"])
 
         mf2s = mf2py.parse(doc=soup)["items"]
@@ -93,8 +91,14 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
 
             photo = h_card["properties"].get("photo")
             
-            if photo:
-                photo = h_card["properties"].get("photo")[0]
+            if photo and photo[0].startswith("/"):
+                photo = "https://" + url + h_card["properties"].get("photo")[0]
+            elif photo and photo[0].startswith("http"):
+                photo = photo[0]
+            elif photo and photo[0].startswith("//"):
+                photo = "https:" + photo[0]
+            elif photo:
+                photo = photo
             else:
                 photo = ""
 
@@ -105,7 +109,7 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
                 title = soup.find("h1").text
             else:
                 title = url
-            return "<img src='{}'><p>{}</p>".format(photo, to_show), {"type": "direct_answer", "breadcrumb": url, "title": title}
+            return "<img src='{}'><p>{}</p>".format(photo, to_show), {"type": "direct_answer", "breadcrumb": original_url, "title": title}
     
     if "founder" in cleaned_value or "owner" in cleaned_value:
         ent_type = "PERSON"
@@ -140,13 +144,9 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
 
     #     return soup.find_all("dfn")[0].text, special_result
 
-    print(new_cleaned_value_for_direct_answer)
-
     if len(cleaned_value) != 0 and len(cleaned_value.split(" ")) > 0:
         try:
             do_i_use = c.concordance_list(new_cleaned_value_for_direct_answer, width=50)
-
-            print('xd')
 
             all_locs = [f for f in soup.find_all(["li"]) if new_cleaned_value_for_direct_answer in f.text.lower()]
 
@@ -154,10 +154,7 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
             #     return "", special_result
 
             # check if in h2
-            print(new_cleaned_value_for_direct_answer)
             in_h2 = [f for f in soup.find_all(["h2"]) if new_cleaned_value_for_direct_answer in f.text.lower()]
-
-            print(in_h2)
 
             if all_locs:
                 location_of_tag = all_locs[0]

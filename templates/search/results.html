@@ -36,6 +36,7 @@
             <p class="breadcrumbs"><a href="{{ r['_source']['url'] }}" style="border-bottom: none;">{% for item in r['_source']['url'] .replace("https://", "").replace("http://", "").rstrip("/").split("/") %} {{ item }} {% if not loop.last %}>{% endif %}{% endfor %}</a></p>
             <p class="p-name"><a href="{{ r['_source']['url']  }}" class="u-url">{% if r['_source']['title']|length == 0 %}{{ " ".join(r['_source']['url'].split(" ")[:20]) }}{% if r['_source']['url'].split(" ")|length > 20 %}...{% endif %}{% else %}{{ " ".join(r['_source']['title'].split(" ")[:20]) }}{% if r['_source']['title'].split(" ")|length > 20 %}...{% endif %}{% endif %}</a></p>
             <p class="p-summary">{% if r['_source']['description']|length > 0 %}{{ r['_source']['description'] }}{% else %}{{ r['_source']['h1'].split(",")[0] }}{% endif %}</p>
+            {% if "https://indieweb.org" in r['_source']['url'] %}<p>{% for header in r['_source']['h2'].split(", ")[:3] %}<a href="{{ r['_source']['url'] }}#{{ header }}">{{ header }}</a> {% endfor %}</p>{% endif %}
           </li>
         <hr>
         {% endif %}

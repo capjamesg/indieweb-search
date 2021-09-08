@@ -61,9 +61,14 @@ def find_robots_directives(site_url):
 	"""
 	try:
 		read_robots = requests.get("https://{}/robots.txt".format(site_url), headers=config.HEADERS)
+	except requests.exceptions.RequestException as e:
+		logging.error("Error with site: {}".format(e))
+		with open("broken_domains", "a") as file:
+			file.write("{}".format(site_url))
+		return "broken", []
 	except:
 		print("Error: Could not find robots.txt file on {}".format(site_url))
-		return [], []
+		return "broken", []
 
 	if read_robots.status_code == 404:
 		logging.warning("Robots.txt not found on {}".format(site_url))
@@ -172,7 +177,7 @@ def build_index():
 		# read crawl_queue.txt
 		with open("crawl_queue.txt", "r") as file:
 			file = file.readlines()
-			next_site = file[0].strip().split(", ")
+			next_site = file[0].strip().replace(", ", ",").split(",")
 			site = next_site[0]
 			if len(next_site) > 1:
 				# let user specify crawl budget for each site
@@ -216,6 +221,9 @@ def build_index():
 			# cursor.execute("DELETE FROM sitemaps;")
 			
 			namespaces_to_ignore, sitemap_urls = find_robots_directives(site)
+
+			if namespaces_to_ignore == "broken":
+				continue
 
 			# Parse sitemap indexes
 			for u in sitemap_urls:
