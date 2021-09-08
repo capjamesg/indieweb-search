@@ -95,13 +95,25 @@ nav {
     display: flex;
     margin: 10px 0;
     justify-content: space-between;
-    border-top: 5px hotpink dashed;
-    border-bottom: 5px hotpink dashed;
+    border-top: 5px #FFA500 dashed;
+    border-bottom: 5px #FFA500 dashed;
 }
 
 nav ul, .tab ul {
     list-style-type: none;
     padding-left: 0;
+}
+
+#main .search {
+  text-align: center;
+  padding-bottom: 10vh;
+}
+input {
+  min-width: 50%;
+}
+
+.advanced-p {
+  padding-top: 10px;
 }
 
 h1 {
@@ -164,7 +176,6 @@ input[type=submit] {
   background-color: royalblue;
   color: white;
   border-radius: 10px;
-  min-width: 0 !important;
   appearance: none;
   font-size: 1.1875rem;
 }
@@ -196,8 +207,13 @@ p {
   float: left;
 }
 img {
-  width: auto !important;
+  margin: auto;
+  display: block;
   border-radius: 10px;
+  max-width: 100%;
+}
+.serp img {
+  margin: 0;
 }
 .image_link {
   border-bottom: none;

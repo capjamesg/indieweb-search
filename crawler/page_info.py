@@ -52,42 +52,44 @@ def get_page_info(page_text, page_desc_soup, page_url, discovered_urls, broken_u
 	
 	check_url_for_errors(page_url, discovered_urls, broken_urls)
 
-	if page_text:
-		doc = nlp(page_text.text)
+	# if page_text:
+	# 	doc = nlp(page_text.text)
 
-		# mistakes = spell.unknown(page_text.text)
+	# 	# mistakes = spell.unknown(page_text.text)
 
-		# mistakes = [w for w in mistakes]
+	# 	# mistakes = [w for w in mistakes]
 
-		# if len(mistakes) > 0:
-		# 	crawler.url_handling.log_error(page_url, 200, "Page contains spelling mistakes: {}".format(mistakes), discovered_urls, broken_urls)
+	# 	# if len(mistakes) > 0:
+	# 	# 	crawler.url_handling.log_error(page_url, 200, "Page contains spelling mistakes: {}".format(mistakes), discovered_urls, broken_urls)
 
-		# Exclude my name from keywords
+	# 	# Exclude my name from keywords
 
-		important_phrases = [p.text.replace("\n", "").lower() for p in doc._.phrases if float(p.count) > 2 and p.rank > 0.03 and full_stopwords_list.get(p.text.split(" ")[0].lower()) == None and not any(map(str.isdigit, p.text))][:7]
-	else:
-		important_phrases = []
+	# 	important_phrases = [p.text.replace("\n", "").lower() for p in doc._.phrases if float(p.count) > 2 and p.rank > 0.03 and full_stopwords_list.get(p.text.split(" ")[0].lower()) == None and not any(map(str.isdigit, p.text))][:7]
+	# else:
+	# 	important_phrases = []
 
-	important_phrases = WordList(important_phrases).lemmatize()
+	# important_phrases = WordList(important_phrases).lemmatize()
 
-	# Exclude stopwords from keywords
-	final_phrases = [p.replace("\t", "").replace("\n", "") for p in important_phrases if p not in stopwords and p.replace("\t", "").replace("\n", "").isalnum()]
+	# # Exclude stopwords from keywords
+	# final_phrases = [p.replace("\t", "").replace("\n", "") for p in important_phrases if p not in stopwords and p.replace("\t", "").replace("\n", "").isalnum()]
 
-	# if TextBlob(i).tags != []:
-	# 	if TextBlob(i).tags[0][1] == "NNP":
-	# 		final_phrases.append("what is {}".format(i))
-	# elif "recipe" in i:
-	# 	final_phrases.append("how to {}", "make")
+	# # if TextBlob(i).tags != []:
+	# # 	if TextBlob(i).tags[0][1] == "NNP":
+	# # 		final_phrases.append("what is {}".format(i))
+	# # elif "recipe" in i:
+	# # 	final_phrases.append("how to {}", "make")
 
-	# Remove duplicates from important phrases
-	important_phrases = list(set(final_phrases))
+	# # Remove duplicates from important phrases
+	# important_phrases = list(set(final_phrases))
 
-	if "javascript" in important_phrases:
-		important_phrases.remove("javascript")
+	# if "javascript" in important_phrases:
+	# 	important_phrases.remove("javascript")
 
-	print(important_phrases)
+	# print(important_phrases)
 
-	logging.debug("Important phrases: " + ", ".join(important_phrases))
+	# logging.debug("Important phrases: " + ", ".join(important_phrases))
+
+	important_phrases = ""
 
 	# check_if_support_mf2_as_hentry = page_desc_soup.find(class_="h-entry")
 
@@ -107,17 +109,16 @@ def get_page_info(page_text, page_desc_soup, page_url, discovered_urls, broken_u
 
 	if page_desc_soup.find("meta", {"name":"description"}) != None and page_desc_soup.find("meta", {"name":"description"})["content"] != "":
 		meta_description = page_desc_soup.find("meta", {"name":"description"})["content"]
-
-		if len(meta_description) < 50:
-			crawler.url_handling.log_error(page_url, 200, "Length of meta description is {} (too short).".format(len(meta_description)), discovered_urls, broken_urls)
-		elif len(meta_description) > 200:
-			crawler.url_handling.log_error(page_url, 200, "Length of meta description is {} (too long).".format(len(meta_description)), discovered_urls, broken_urls)
-
 	elif page_desc_soup.find("meta", {"name":"og:description"}) != None and page_desc_soup.find("meta", {"name":"description"})["content"] != "":
-		# Use Open Graph description if available and if a meta description is not found
 		meta_description = page_desc_soup.find("meta", {"name":"og:description"})["content"]
 
-	if page_desc_soup.find("meta", {"name":"description"}) == None or page_desc_soup.find("meta", {"name":"description"})["content"] == "":
+	if meta_description == "":
+		summary = page_desc_soup.select("p-summary")
+
+		if summary:
+			meta_description = summary[0].text
+
+	if meta_description == "":
 		crawler.url_handling.log_error(page_url, 200, "Page is missing a meta description.", discovered_urls, broken_urls)
 		# Use first paragraph as meta description if one can be found
 		paragraphs = page_text.find_all("p")
@@ -128,12 +129,6 @@ def get_page_info(page_text, page_desc_soup, page_url, discovered_urls, broken_u
 				break
 			else:
 				meta_description = ""
-
-	if meta_description == "" or len(meta_description) < 20:
-		summary = page_desc_soup.select("p-summary")
-
-		if summary:
-			meta_description = summary[0].text
 
 	# Only get first 180 characters of meta description (and don't chop a word)
 

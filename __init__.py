@@ -54,15 +54,15 @@ def create_app():
 
     @app.errorhandler(404)
     def page_not_found(e):
-        return render_template("error.html"), 404
+        return render_template("error.html", title="Page Not Found Error"), 404
 
     @app.errorhandler(500)
     def server_error(e):
-        return render_template("error.html", server_error=True), 500
+        return render_template("error.html", server_error=True, title="Server Error"), 500
 
     @app.errorhandler(429)
     def rate_limit():
-        return render_template("error.html", rate_limit_error=True), 429
+        return render_template("error.html", rate_limit_error=True, title="Rate Limit Error"), 429
 
     # from werkzeug.middleware.profiler import ProfilerMiddleware
     # app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=[5], profile_dir='./profile')

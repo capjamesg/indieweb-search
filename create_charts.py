@@ -24,6 +24,12 @@ with open("stats.csv", "a") as stats_file:
 def calculate_index_size():
     df = pd.read_csv(ROOT_DIRECTORY + "/stats.csv")
 
+    fig, ax = plt.subplots()
+
+    ax.ticklabel_format(useOffset=False)
+
+    plt.subplots_adjust(bottom=0.2)
+
     plt.figure(num=1)
 
     plt.title("Number of web pages indexed")
@@ -33,6 +39,9 @@ def calculate_index_size():
     plt.xticks(rotation=45)
 
     plt.ylabel("Total resources indexed")
+
+    # get last 30 records
+    df = df.tail(30)
 
     # df["end_time"] = pd.to_datetime(df["end_time"]).dt.date
 
@@ -47,6 +56,12 @@ def calculate_index_size():
 def calculate_domains_indexed():
     df = pd.read_csv(ROOT_DIRECTORY + "/stats.csv")
 
+    fig, ax = plt.subplots()
+
+    ax.ticklabel_format(useOffset=False)
+
+    plt.subplots_adjust(bottom=0.2)
+
     plt.figure(num=2)
 
     plt.title("Number of domains from which content is indexed")
@@ -56,6 +71,9 @@ def calculate_domains_indexed():
     plt.xticks(rotation=45)
 
     plt.ylabel("Total resources indexed")
+
+    # get last 30 records
+    df = df.tail(30)
 
     plt.plot(df["date"], df["total_domains_indexed"], label="Total Posts Indexed")
 
