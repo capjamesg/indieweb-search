@@ -188,9 +188,9 @@ def results_page():
 			num_of_results = rows["hits"]["total"]["value"]
 			rows = rows["hits"]["hits"]
 
-			if request.args.get("type") != "image" and len(rows) > 0 and "what is" in cleaned_value or "what are" in cleaned_value or "why" in cleaned_value or "how" in cleaned_value or "microformats" in cleaned_value:
+			if request.args.get("type") != "image" and len(rows) > 0 and "what is" in cleaned_value or "what are" in cleaned_value  or "what were" in cleaned_value or "why" in cleaned_value or "how" in cleaned_value or "microformats" in cleaned_value:
 				# remove stopwords from query
-				cleaned_value_for_query = cleaned_value_for_query.replace("what is", "").replace("what are", "").replace("why", "").replace("how", "")
+				cleaned_value_for_query = cleaned_value_for_query.replace("what is", "").replace("what are", "").replace("why", "").replace("how", "").replace("what were", "")
 
 				wiki_direct_result = [item for item in rows if "https://indieweb.org" in item["_source"]["url"] and "/" not in item["_source"]["title"] and cleaned_value_for_query.lower().strip() in item["_source"]["title"].lower()]
 				microformats_wiki_direct_result = [item for item in rows if "https://microformats.org/wiki/" in item["_source"]["url"] and "/" not in item["_source"]["title"] and cleaned_value_for_query.lower() in item["_source"]["title"].lower()]
