@@ -45,8 +45,6 @@ def add_to_database(cursor, full_url, published_on, doc_title, meta_description,
 
 	# check if md5 hash in posts
 
-	print('d')
-
 	r = requests.post("https://es-indieweb-search.jamesg.blog/check?hash={}".format(md5_hash), headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)})
 
 	if r.status_code == 200:
@@ -84,9 +82,7 @@ def add_to_database(cursor, full_url, published_on, doc_title, meta_description,
 	}
 
 	check_if_indexed = requests.post("https://es-indieweb-search.jamesg.blog/check?url={}".format(full_url), headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}).json()
-
-	print(len(check_if_indexed))
-
+	
 	if len(check_if_indexed) == 0:
 		r = requests.post("https://es-indieweb-search.jamesg.blog/create", headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}, json=record)
 		print("indexed new page {}".format(full_url))
@@ -94,8 +90,6 @@ def add_to_database(cursor, full_url, published_on, doc_title, meta_description,
 		r = requests.post("https://es-indieweb-search.jamesg.blog/update", headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}, json=record)
 		print("updated page {}".format(full_url))
 		logging.debug("updating {} post as post already indexed".format(full_url))
-
-	print(r.status_code)
 
 	pages_indexed += 1
 
@@ -165,7 +159,6 @@ def crawl_urls(final_urls, namespaces_to_ignore, cursor, pages_indexed, images_i
 				page_test = session.head(full_url, headers=config.HEADERS)
 			except requests.exceptions.Timeout:
 				log_error(full_url, "Unknown", "URL timed out.", discovered_urls, broken_urls)
-				print('c')
 				continue
 			except requests.exceptions.TooManyRedirects:
 				log_error(full_url, "Unknown", "URL redirected too many times.", discovered_urls, broken_urls)
@@ -179,7 +172,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, cursor, pages_indexed, images_i
 			# 	continue
 
 			try:
-				page = session.get(full_url, timeout=10, headers=config.HEADERS, allow_redirects=False)
+				page = session.get(full_url, timeout=10, headers=config.HEADERS, allow_redirects=True)
 			except requests.exceptions.Timeout:
 				log_error(full_url, "Unknown", "URL timed out.", discovered_urls, broken_urls)
 				continue
@@ -279,7 +272,10 @@ def crawl_urls(final_urls, namespaces_to_ignore, cursor, pages_indexed, images_i
 					cursor.execute("DELETE FROM posts WHERE url = ?;", (full_url,))
 					continue
 
-			page_text, page_desc_soup, published_on, meta_description, doc_title, category, important_phrases, remove_doc_title_from_h1_list = crawler.page_info.get_page_info(page_text, page_desc_soup, full_url, discovered_urls, broken_urls, cursor)
+			page_text, page_desc_soup, published_on, meta_description, doc_title, category, important_phrases, remove_doc_title_from_h1_list, noindex = crawler.page_info.get_page_info(page_text, page_desc_soup, full_url, discovered_urls, broken_urls, cursor)
+
+			if noindex == True:
+				continue
 
 			# images = page_desc_soup.find_all("img")
 

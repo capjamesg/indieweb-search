@@ -5,6 +5,7 @@ import logging
 import spacy
 import pytextrank
 from spellchecker import SpellChecker
+import datetime
 
 spell = SpellChecker()
 
@@ -103,13 +104,32 @@ def get_page_info(page_text, page_desc_soup, page_url, discovered_urls, broken_u
 	# 	if check_e_content and len(check_e_content) == 0:
 	# 		crawler.url_handling.log_error(page_url, 200, "Page marked up as h-entry but is missing e-content.", discovered_urls, broken_urls)
 
+	contains_hfeed = page_desc_soup.find(class_="h-feed")
+
+	if contains_hfeed:
+		# get all h-entry elements
+		h_entries = contains_hfeed.find_all(class_="h-entry")
+
+		if len(h_entries) > 5 and page_url.count("/") > 4:
+			crawler.url_handling.log_error(page_url, 200, "Page contains more than 5 h-entries and is not a single post.", discovered_urls, broken_urls)
+			return page_text, page_desc_soup, [], [], [], [], [], [], True
+
+		# get date of first hentry
+		first_hentry_date = h_entries[0].find(class_="dt-published")
+
+		if first_hentry_date and first_hentry_date.get("datetime"):
+			# if published before 3 weeks ago
+			if first_hentry_date.get("datetime") < (datetime.datetime.now() - datetime.timedelta(weeks=3)).isoformat() and page_url.count("/") > 4:
+				return page_text, page_desc_soup, first_hentry_date.get("datetime"), [], [], [], [], [], True
+
 	published_on = page_desc_soup.find("time", attrs={"class":"dt-published"})
 
 	meta_description = ""
 
 	if page_desc_soup.find("meta", {"name":"description"}) != None and page_desc_soup.find("meta", {"name":"description"})["content"] != "":
 		meta_description = page_desc_soup.find("meta", {"name":"description"})["content"]
-	elif page_desc_soup.find("meta", {"name":"og:description"}) != None and page_desc_soup.find("meta", {"name":"description"})["content"] != "":
+
+	elif page_desc_soup.find("meta", {"name":"og:description"}) != None and page_desc_soup.find("meta", {"name":"of:description"})["content"] != "":
 		meta_description = page_desc_soup.find("meta", {"name":"og:description"})["content"]
 
 	if meta_description == "":
@@ -195,4 +215,4 @@ def get_page_info(page_text, page_desc_soup, page_url, discovered_urls, broken_u
 	# for a in page_text.find_all("a"):
 	# 	a.replaceWith("")
 
-	return page_text, page_desc_soup, published_on, meta_description, doc_title, category, important_phrases, remove_doc_title_from_h1_list
+	return page_text, page_desc_soup, published_on, meta_description, doc_title, category, important_phrases, remove_doc_title_from_h1_list, False
