@@ -146,7 +146,9 @@ def check():
             search_param = {
                 "query": {
                     "term": {
-                        "url": request.args.get("url")
+                        "url.keyword": {
+                            "value": request.args.get("url")
+                        }
                     }
                 }
             }
