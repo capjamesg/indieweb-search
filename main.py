@@ -114,7 +114,10 @@ def results_page():
 	is_json = request.args.get("json")
 	site = request.args.get("site")
 
-	if site:
+	if site and site == "jamesg.blog":
+		# used for special jamesg.blog search redirect, not for open use
+		site = [x for x in site if x.isalpha() or x == "."]
+
 		return redirect('/results?query=site:"{}"%20{}'.format(site, request.args.get("query")))
 
 	special_result = False
@@ -153,7 +156,7 @@ def results_page():
 
 				try:
 					if int(page) > 1:
-						pagination = (int(page) - 1) * 10
+						pagination = (int(page) - 1)
 				except:
 					return redirect("/")
 			else:
@@ -181,7 +184,7 @@ def results_page():
 				query_params = "".join(query_params.split("AND")[1:])
 			
 			if "site:" in request.args.get("query"):
-				rows = requests.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&sort={}&from={}&to={}&site={}".format(config.ELASTICSEARCH_PASSWORD, cleaned_value_for_query.replace("=", " "), order, str(pagination), str(int(pagination)+10), query_values_in_list[-1].replace("%", ""), )).json()
+				rows = requests.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&sort={}&from={}&to={}&site={}".format(config.ELASTICSEARCH_PASSWORD, cleaned_value_for_query.replace("=", " "), order, str(pagination), str(int(pagination)), query_values_in_list[-1].replace("%", ""), )).json()
 			else:
 				rows = requests.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&sort={}&from={}&to={}".format(config.ELASTICSEARCH_PASSWORD, cleaned_value_for_query, order, str(pagination), str(int(pagination)+10))).json()
 
@@ -192,8 +195,8 @@ def results_page():
 				# remove stopwords from query
 				cleaned_value_for_query = cleaned_value_for_query.replace("what is", "").replace("what are", "").replace("why", "").replace("how", "").replace("what were", "")
 
-				wiki_direct_result = [item for item in rows if "https://indieweb.org" in item["_source"]["url"] and "/" not in item["_source"]["title"] and cleaned_value_for_query.lower().strip() in item["_source"]["title"].lower()]
-				microformats_wiki_direct_result = [item for item in rows if "https://microformats.org/wiki/" in item["_source"]["url"] and "/" not in item["_source"]["title"] and cleaned_value_for_query.lower() in item["_source"]["title"].lower()]
+				wiki_direct_result = [item for item in rows if item["_source"]["url"].startswith("https://indieweb.org") and "/" not in item["_source"]["title"] and cleaned_value_for_query.lower().strip() in item["_source"]["title"].lower()]
+				microformats_wiki_direct_result = [item for item in rows if item["_source"]["url"].startswith("https://microformats.org/wiki/") and "/" not in item["_source"]["title"] and cleaned_value_for_query.lower() in item["_source"]["title"].lower()]
 				
 				if wiki_direct_result and page == 1:
 					url = wiki_direct_result[0]["_source"]["url"]
@@ -209,13 +212,13 @@ def results_page():
 					source = None
 					
 				do_i_use, special_result = search_result_features.generate_featured_snippet(full_query_with_full_stops, special_result, nlp, url, source)
-			elif request.args.get("type") != "image" and len(rows) > 0 and "jamesg.blog" in rows[0]["_source"]["url"]:
+			elif request.args.get("type") != "image" and len(rows) > 0 and rows[0]["_source"]["url"].startswith("https://jamessg.blog"):
 				url = rows[0]["_source"]["url"]
 				source = rows[0]["_source"]
 
 				do_i_use, special_result = search_result_features.generate_featured_snippet(full_query_with_full_stops, special_result, nlp, url, source)
-			elif len(rows) > 0 and "indieweb.org" in rows[0]["_source"]["url"] or "indieweb.org" in rows[1]["_source"]["url"]:
-				if "indieweb.org" in rows[0]["_source"]["url"]:
+			elif len(rows) > 0 and rows[0]["_source"]["url"].startswith("https://indieweb.org") or rows[1]["_source"]["url"].startswith("https://indieweb.org"):
+				if rows[0]["_source"]["url"].startswith("https://indieweb.org"):
 					url = rows[0]["_source"]["url"]
 					source = rows[0]["_source"]
 				else:
