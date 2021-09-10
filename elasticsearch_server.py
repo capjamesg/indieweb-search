@@ -15,9 +15,6 @@ def home():
     from_num = request.args.get("from")
     if not from_num:
         from_num = 1
-    to_num = request.args.get("to")
-    if not to_num:
-        to_num = 10
 
     if request.args.get("pw") != pw:
         return abort(401)
@@ -42,7 +39,7 @@ def home():
 
     search_param = {
         "from": int(from_num),
-            "size": int(from_num) + 10,
+        "size": 10,
         "query": {
             "script_score": {
                 "query": {
