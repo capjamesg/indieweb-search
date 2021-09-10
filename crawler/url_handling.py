@@ -30,7 +30,7 @@ def log_error(page_url, status_code, message, discovered_urls, broken_urls, disc
 		}
 	)
 
-def add_to_database(full_url, published_on, doc_title, meta_description, category, heading_info, page, important_phrases, pages_indexed, page_content, outgoing_links):
+def add_to_database(full_url, published_on, doc_title, meta_description, category, heading_info, page, important_phrases, pages_indexed, page_content, outgoing_links, crawl_budget):
 	# check_if_indexed = cursor.execute("SELECT COUNT(url) FROM posts WHERE url = ?", (full_url,)).fetchone()[0]
 
 	# lemmatize page content so the index uses root words rather than exact words
@@ -85,10 +85,10 @@ def add_to_database(full_url, published_on, doc_title, meta_description, categor
 	
 	if len(check_if_indexed) == 0:
 		r = requests.post("https://es-indieweb-search.jamesg.blog/create", headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}, json=record)
-		print("indexed new page {}".format(full_url))
+		print("indexed new page {} ({}/{})".format(full_url, pages_indexed, crawl_budget))
 	else:
 		r = requests.post("https://es-indieweb-search.jamesg.blog/update", headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}, json=record)
-		print("updated page {}".format(full_url))
+		print("updated page {} ({}/{})".format(full_url, pages_indexed, crawl_budget))
 		logging.debug("updating {} post as post already indexed".format(full_url))
 
 	pages_indexed += 1
@@ -110,7 +110,9 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, images_indexed, 
 		if count == crawl_budget:
 			break
 
-		print(count)
+		if "/tags/" in full_url or "/tag/" in full_url:
+			print("{} marked as follow, noindex because it is a tag".format(full_url))
+			continue
 
 		# Only get URLs that match namespace exactly
 		in_matching_namespace = [s for s in namespaces_to_ignore if s.startswith(full_url.replace("http://", "").replace("https://", "").replace(site_url, "")) == full_url]
@@ -287,7 +289,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, images_indexed, 
 			count += 1
 				
 			try:
-				pages_indexed = add_to_database(full_url, published_on, doc_title, meta_description, category, heading_info, page, important_phrases, pages_indexed, page_text, len(links))
+				pages_indexed = add_to_database(full_url, published_on, doc_title, meta_description, category, heading_info, page, important_phrases, pages_indexed, page_text, len(links), crawl_budget)
 			except Exception as e:
 				log_error(full_url, page.status_code, e, discovered_urls, broken_urls)
 				print("error with {}".format(full_url))
@@ -308,6 +310,10 @@ def page_link_discovery(links, final_urls, iterate_list_of_urls, page_being_proc
 
 	for link in links:
 		if link.get("href"):
+			if ":" in link.get("href") and link.get("href").split(":")[0] != "https" and link.get("href").split(":")[0] != "http":
+				# url is wrong protocol, continue
+				continue
+
 			link["href"] = link["href"].split("?")[0]
 			# // are external links so they should not be processed
 			if link["href"].startswith("geo:") or link["href"].startswith("xmpp:") or link["href"].startswith("mailto:") or link["href"].startswith("javascript:") or link["href"].startswith("tel:") or link["href"].startswith("data:") or link["href"].startswith("ftp:") or link["href"].startswith("sms:"):

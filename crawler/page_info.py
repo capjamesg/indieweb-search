@@ -1,3 +1,4 @@
+from typing import final
 from textblob import WordList
 from nltk.corpus import stopwords
 import crawler.url_handling
@@ -124,10 +125,6 @@ def get_page_info(page_text, page_desc_soup, page_url, discovered_urls, broken_u
 					print("{} marked as follow, noindex as it is a feed".format(page_url))
 					return page_text, page_desc_soup, first_hentry_date.get("datetime"), [], [], [], [], [], True
 
-	if "/tags/" in page_url:
-		print("{} marked as follow, noindex because it is a tag".format(page_url))
-		return page_text, page_desc_soup, "", [], [], [], [], [], True
-
 	published_on = page_desc_soup.find("time", attrs={"class":"dt-published"})
 
 	meta_description = ""
@@ -135,8 +132,11 @@ def get_page_info(page_text, page_desc_soup, page_url, discovered_urls, broken_u
 	if page_desc_soup.find("meta", {"name":"description"}) != None and page_desc_soup.find("meta", {"name":"description"})["content"] != "":
 		meta_description = page_desc_soup.find("meta", {"name":"description"})["content"]
 
-	elif page_desc_soup.find("meta", {"name":"og:description"}) != None and page_desc_soup.find("meta", {"name":"of:description"})["content"] != "":
+	elif page_desc_soup.find("meta", {"name":"og:description"}) != None and page_desc_soup.find("meta", {"name":"og:description"})["content"] != "":
 		meta_description = page_desc_soup.find("meta", {"name":"og:description"})["content"]
+
+	elif page_desc_soup.find("meta", {"property":"og:description"}) != None and page_desc_soup.find("meta", {"property":"og:description"})["content"] != "":
+		meta_description = page_desc_soup.find("meta", {"property":"og:description"})["content"]
 
 	if meta_description == "":
 		summary = page_desc_soup.select("p-summary")
@@ -148,15 +148,35 @@ def get_page_info(page_text, page_desc_soup, page_url, discovered_urls, broken_u
 		crawler.url_handling.log_error(page_url, 200, "Page is missing a meta description.", discovered_urls, broken_urls)
 		# Use first paragraph as meta description if one can be found
 		# get paragraph after h1
+
+		e_content = page_desc_soup.find(class_="e-content")
+
+		if e_content:
+			meta_description = e_content.find_all("p")[0].text
+			if len(meta_description) < 50:
+				meta_description = ""
+
+	if meta_description == "" or meta_description == None:
 		h1 = page_desc_soup.find("h1")
-		paragraph_to_use_for_meta_desc = h1.find_next_sibling("p")
+		
+		if h1:
+			paragraph_to_use_for_meta_desc = h1.find_next("p")
 
-		if not paragraph_to_use_for_meta_desc:
-			h2 = page_desc_soup.find_all("h2")[0]
-			paragraph_to_use_for_meta_desc = h2.find_next_sibling("p")
+			if paragraph_to_use_for_meta_desc and len(paragraph_to_use_for_meta_desc.text) < 50:
+				paragraph_to_use_for_meta_desc = h1.find_next("p").find_next("p").text
+			elif paragraph_to_use_for_meta_desc:
+				meta_description = paragraph_to_use_for_meta_desc.text
 
-		if paragraph_to_use_for_meta_desc:
-			meta_description = paragraph_to_use_for_meta_desc
+	if meta_description == "" or meta_description == None:
+		h2 = page_desc_soup.find_all("h2")
+
+		if h2 and len(h2) > 0:
+			paragraph_to_use_for_meta_desc = h2[0].find_next("p")
+			if paragraph_to_use_for_meta_desc != None:
+				meta_description = paragraph_to_use_for_meta_desc.text
+
+	if meta_description == None:
+		meta_description = ""
 	
 	# Only get first 180 characters of meta description (and don't chop a word)
 
