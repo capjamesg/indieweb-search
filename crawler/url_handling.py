@@ -115,8 +115,6 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, images_indexed, 
 		# Only get URLs that match namespace exactly
 		in_matching_namespace = [s for s in namespaces_to_ignore if s.startswith(full_url.replace("http://", "").replace("https://", "").replace(site_url, "")) == full_url]
 
-		count += 1
-
 		# The next line of code skips indexing namespaces excluded in robots.txt
 		if len(in_matching_namespace) < 2:
 			# lastmod = final_urls[full_url]
@@ -167,9 +165,9 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, images_indexed, 
 				log_error(full_url, "Unknown", "Error retrieving URL.", discovered_urls, broken_urls)
 				continue
 
-			# if text is html
-			# if page_test.headers and page_test.headers.get("content-type") and "text/html" not in page_test.headers["content-type"] and "text/plain" in page_test.headers["content-type"]:
-			# 	continue
+			if page_test.headers and page_test.headers.get("content-type") and "text/html" not in page_test.headers["content-type"] and "text/plain" in page_test.headers["content-type"]:
+				print("{} is not a html resource, skipping".format(full_url))
+				continue
 
 			try:
 				page = session.get(full_url, timeout=10, headers=config.HEADERS, allow_redirects=True)
@@ -285,6 +283,8 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, images_indexed, 
 
 			if remove_doc_title_from_h1_list == True:
 				heading_info["h1"] = heading_info["h1"].remove(doc_title)
+				
+			count += 1
 				
 			try:
 				pages_indexed = add_to_database(full_url, published_on, doc_title, meta_description, category, heading_info, page, important_phrases, pages_indexed, page_text, len(links))
