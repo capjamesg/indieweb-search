@@ -105,7 +105,7 @@ def find_robots_directives(site_url):
 
 	return namespaces_to_ignore, sitemap_urls
 
-def log_contents(cursor, pages_indexed, images_indexed):
+def log_contents(pages_indexed, images_indexed):
 	get_total_posts_indexed = cursor.execute("SELECT COUNT(url) FROM posts;").fetchone()[0]
 	get_total_images_indexed = cursor.execute("SELECT COUNT(post_url) FROM images;").fetchone()[0]
 
@@ -197,118 +197,113 @@ def build_index():
 		if os.path.isfile("search.db") == True:
 			copyfile("search.db", "new_search.db")
 
-		connection = sqlite3.connect("new_search.db", check_same_thread=False)
+		final_urls = {}
 
-		with connection:
-			cursor = connection.cursor()
+		# Create new tables if index does not already exist
 
-			final_urls = {}
+		# if not os.path.isfile("search.db"):
+		# 	print("please run 'flask seed build-tables' before attempting to build the index.")
+		# else:
+		# 	# Add URLs already discovered to the indexing queue
+		# 	already_discovered_urls = cursor.execute("SELECT url FROM posts WHERE URL LIKE ? OR url LIKE ?", ("https://{}%".format(config.SITE_URL),"http://{}%".format(config.SITE_URL),)).fetchall()
 
-			# Create new tables if index does not already exist
+		# 	if already_discovered_urls:
+		# 		for u in already_discovered_urls:
+		# 			final_urls[u[0]] = ""
 
-			# if not os.path.isfile("search.db"):
-			# 	print("please run 'flask seed build-tables' before attempting to build the index.")
-			# else:
-			# 	# Add URLs already discovered to the indexing queue
-			# 	already_discovered_urls = cursor.execute("SELECT url FROM posts WHERE URL LIKE ? OR url LIKE ?", ("https://{}%".format(config.SITE_URL),"http://{}%".format(config.SITE_URL),)).fetchall()
+		# Delete all old sitemaps and start from scratch
+		# This is key because sometimes sitemaps change and I don't want to retrieve old ones
+		# cursor.execute("DELETE FROM sitemaps;")
+		
+		namespaces_to_ignore, sitemap_urls = find_robots_directives(site)
 
-			# 	if already_discovered_urls:
-			# 		for u in already_discovered_urls:
-			# 			final_urls[u[0]] = ""
+		if namespaces_to_ignore == "broken":
+			continue
 
-			# Delete all old sitemaps and start from scratch
-			# This is key because sometimes sitemaps change and I don't want to retrieve old ones
-			# cursor.execute("DELETE FROM sitemaps;")
-			
-			namespaces_to_ignore, sitemap_urls = find_robots_directives(site)
-
-			if namespaces_to_ignore == "broken":
-				continue
-
-			# Parse sitemap indexes
-			for u in sitemap_urls:
-				r = requests.get(u)
-				if r.status_code == 200:
-					# parse with bs4
-					soup = BeautifulSoup(r.text, "html.parser")
-					if soup.find("sitemapindex"):
-						# find all the urls
-						all_sitemaps = soup.find_all("loc")
-						for sitemap in all_sitemaps:
-							sitemap_urls.append(sitemap.text)
-							cursor.execute("INSERT INTO sitemaps VALUES (?)", (sitemap.text, ))
-							print("will crawl URLs in {} sitemap".format(sitemap.text))
-					else:
-						cursor.execute("INSERT INTO sitemaps VALUES (?)", (u, ))
-						print("will crawl URLs in {} sitemap, added sitemap to database".format(u))
-				elif r.status_code == 404:
-					url_handling.log_error(u, r.status_code, "{} sitemap returns a 404 error.".format(u), discovered_urls, broken_urls)
-
-			sitemap_urls = list(set(sitemap_urls))
-
-			for s in sitemap_urls:
-				# Only URLs not already discovered will be added by this code
-				# Lastmod dates will be added to the final_url value related to the URL if a lastmod date is available
-				feed = requests.get(s, headers=config.HEADERS)
-
-				soup = BeautifulSoup(feed.content, "lxml")
-
-				urls = list(soup.find_all("url"))
-
-				for u in urls:
-					if u.find("lastmod"):
-						final_urls[u.find("loc").text] = u.find("lastmod").text
-					else:
-						final_urls[u.find("loc").text] = ""
-
-			image_urls = []
-
-			if len(final_urls) == 0:
-				final_urls["https://{}".format(site)] = ""
-
-			pages_indexed = 0
-			images_indexed = 0
-
-			iterate_list_of_urls = list(final_urls.keys())
-
-			# if reindex argument passed to command
-			if len(sys.argv) > 1 and sys.argv[1] == "reindex":
-				indexed_already = cursor.execute("SELECT url FROM posts WHERE url LIKE ? or url LIKE ?", ("https://{}%".format(site), "http://{}%".format(site))).fetchall()
-				iterate_list_of_urls = [item for item in iterate_list_of_urls if item not in indexed_already]
-
-				# Make sure home page is part of reindex
-				if site not in iterate_list_of_urls:
-					iterate_list_of_urls.append(site)
-
-			pages_indexed, images_indexed, iterate_list_of_urls = url_handling.crawl_urls(final_urls, namespaces_to_ignore, cursor, pages_indexed, images_indexed, image_urls, links, external_links, discovered_urls, broken_urls, iterate_list_of_urls, site, crawl_budget)
-
-			log_contents(cursor, pages_indexed, images_indexed)
-
-			with open("crawl_queue.txt", "r") as f:
-				rows = f.readlines()[1:]
-
-			with open("crawl_queue.txt", "w+") as f:
-				if len(rows) != 0:
-					for r in rows:
-						f.write(r)
+		# Parse sitemap indexes
+		for u in sitemap_urls:
+			r = requests.get(u)
+			if r.status_code == 200:
+				# parse with bs4
+				soup = BeautifulSoup(r.text, "html.parser")
+				if soup.find("sitemapindex"):
+					# find all the urls
+					all_sitemaps = soup.find_all("loc")
+					for sitemap in all_sitemaps:
+						sitemap_urls.append(sitemap.text)
+						# cursor.execute("INSERT INTO sitemaps VALUES (?)", (sitemap.text, ))
+						print("will crawl URLs in {} sitemap".format(sitemap.text))
 				else:
-					with open("domains.txt", "r") as domains:
-						all_domains = domains.readlines()
-						for d in all_domains:
-							f.write(d)
-							f.write("STOP")
+					# cursor.execute("INSERT INTO sitemaps VALUES (?)", (u, ))
+					print("will crawl URLs in {} sitemap, added sitemap to database".format(u))
+			elif r.status_code == 404:
+				url_handling.log_error(u, r.status_code, "{} sitemap returns a 404 error.".format(u), discovered_urls, broken_urls)
+
+		sitemap_urls = list(set(sitemap_urls))
+
+		for s in sitemap_urls:
+			# Only URLs not already discovered will be added by this code
+			# Lastmod dates will be added to the final_url value related to the URL if a lastmod date is available
+			feed = requests.get(s, headers=config.HEADERS)
+
+			soup = BeautifulSoup(feed.content, "lxml")
+
+			urls = list(soup.find_all("url"))
+
+			for u in urls:
+				if u.find("lastmod"):
+					final_urls[u.find("loc").text] = u.find("lastmod").text
+				else:
+					final_urls[u.find("loc").text] = ""
+
+		image_urls = []
+
+		if len(final_urls) == 0:
+			final_urls["https://{}".format(site)] = ""
+
+		pages_indexed = 0
+		images_indexed = 0
+
+		iterate_list_of_urls = list(final_urls.keys())
+
+		# if reindex argument passed to command
+		# if len(sys.argv) > 1 and sys.argv[1] == "reindex":
+		# 	indexed_already = cursor.execute("SELECT url FROM posts WHERE url LIKE ? or url LIKE ?", ("https://{}%".format(site), "http://{}%".format(site))).fetchall()
+		# 	iterate_list_of_urls = [item for item in iterate_list_of_urls if item not in indexed_already]
+
+		# 	# Make sure home page is part of reindex
+		# 	if site not in iterate_list_of_urls:
+		# 		iterate_list_of_urls.append(site)
+
+		pages_indexed, images_indexed, iterate_list_of_urls = url_handling.crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, images_indexed, image_urls, links, external_links, discovered_urls, broken_urls, iterate_list_of_urls, site, crawl_budget)
+
+		# log_contents(pages_indexed, images_indexed)
+
+		with open("crawl_queue.txt", "r") as f:
+			rows = f.readlines()[1:]
+
+		with open("crawl_queue.txt", "w+") as f:
+			if len(rows) != 0:
+				for r in rows:
+					f.write(r)
+			else:
+				with open("domains.txt", "r") as domains:
+					all_domains = domains.readlines()
+					for d in all_domains:
+						f.write(d)
+						f.write("STOP")
 
 
-			# get date
-			date = datetime.datetime.now().strftime("%Y-%m-%d")
+		# get date
+		date = datetime.datetime.now().strftime("%Y-%m-%d")
 
-			with open("crawled.txt", "a") as f:
-				f.write("{}, {}".format(site, date))
+		with open("crawled.txt", "a") as f:
+			f.write("{}, {}".format(site, date))
 
-			# with open(ROOT_DIRECTORY + "/data/all_links.csv","w") as f:
-			# 	wr = csv.writer(f)
-			# 	wr.writerow(["page_linking", "link_to", "datetime", "link_type", "anchor_text"])
-			# 	wr.writerows(all_links)
+		# with open(ROOT_DIRECTORY + "/data/all_links.csv","w") as f:
+		# 	wr = csv.writer(f)
+		# 	wr.writerow(["page_linking", "link_to", "datetime", "link_type", "anchor_text"])
+		# 	wr.writerows(all_links)
 
 		#broken_links.check_for_invalid_links()
 
