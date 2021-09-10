@@ -30,7 +30,7 @@ def log_error(page_url, status_code, message, discovered_urls, broken_urls, disc
 		}
 	)
 
-def add_to_database(cursor, full_url, published_on, doc_title, meta_description, category, heading_info, page, important_phrases, pages_indexed, page_content, outgoing_links):
+def add_to_database(full_url, published_on, doc_title, meta_description, category, heading_info, page, important_phrases, pages_indexed, page_content, outgoing_links):
 	# check_if_indexed = cursor.execute("SELECT COUNT(url) FROM posts WHERE url = ?", (full_url,)).fetchone()[0]
 
 	# lemmatize page content so the index uses root words rather than exact words
@@ -95,7 +95,7 @@ def add_to_database(cursor, full_url, published_on, doc_title, meta_description,
 
 	return pages_indexed
 
-def crawl_urls(final_urls, namespaces_to_ignore, cursor, pages_indexed, images_indexed, image_urls, all_links, external_links, discovered_urls, broken_urls, iterate_list_of_urls, site_url, crawl_budget):
+def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, images_indexed, image_urls, all_links, external_links, discovered_urls, broken_urls, iterate_list_of_urls, site_url, crawl_budget):
 	"""
 		Crawls URLs in list, adds URLs to index, and returns updated list
 	"""
@@ -263,16 +263,16 @@ def crawl_urls(final_urls, namespaces_to_ignore, cursor, pages_indexed, images_i
 
 			final_urls, iterate_list_of_urls, all_links, external_links = page_link_discovery(links, final_urls, iterate_list_of_urls, full_url, all_links, external_links, discovered_urls, site_url, count)
 
-			if "noindex" in check_if_no_index:
-				# Check if a page now marked as noindex is in the database
-				# If a page is marked as noindex and is in the database, we delete it from the database
+			# if "noindex" in check_if_no_index:
+			# 	# Check if a page now marked as noindex is in the database
+			# 	# If a page is marked as noindex and is in the database, we delete it from the database
 				
-				is_in_db = cursor.execute("SELECT * FROM posts WHERE url = ?", (full_url,)).fetchall()
-				if len(is_in_db) > 0:
-					cursor.execute("DELETE FROM posts WHERE url = ?;", (full_url,))
-					continue
+			# 	is_in_db = cursor.execute("SELECT * FROM posts WHERE url = ?", (full_url,)).fetchall()
+			# 	if len(is_in_db) > 0:
+			# 		cursor.execute("DELETE FROM posts WHERE url = ?;", (full_url,))
+			# 		continue
 
-			page_text, page_desc_soup, published_on, meta_description, doc_title, category, important_phrases, remove_doc_title_from_h1_list, noindex = crawler.page_info.get_page_info(page_text, page_desc_soup, full_url, discovered_urls, broken_urls, cursor)
+			page_text, page_desc_soup, published_on, meta_description, doc_title, category, important_phrases, remove_doc_title_from_h1_list, noindex = crawler.page_info.get_page_info(page_text, page_desc_soup, full_url, discovered_urls, broken_urls)
 
 			if noindex == True:
 				continue
@@ -287,7 +287,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, cursor, pages_indexed, images_i
 				heading_info["h1"] = heading_info["h1"].remove(doc_title)
 				
 			try:
-				pages_indexed = add_to_database(cursor, full_url, published_on, doc_title, meta_description, category, heading_info, page, important_phrases, pages_indexed, page_text, len(links))
+				pages_indexed = add_to_database(full_url, published_on, doc_title, meta_description, category, heading_info, page, important_phrases, pages_indexed, page_text, len(links))
 			except Exception as e:
 				log_error(full_url, page.status_code, e, discovered_urls, broken_urls)
 				print("error with {}".format(full_url))

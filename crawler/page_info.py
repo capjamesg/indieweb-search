@@ -46,7 +46,7 @@ def check_url_for_errors(page_url, discovered_urls, broken_urls):
 	if len(page_url) > 100:
 		crawler.url_handling.log_error(page_url, 200, "URL is {} characters long (too long).".format(len(page_url)), discovered_urls, broken_urls)
 
-def get_page_info(page_text, page_desc_soup, page_url, discovered_urls, broken_urls, cursor):
+def get_page_info(page_text, page_desc_soup, page_url, discovered_urls, broken_urls):
 	"""
 		Scrapes page information for index and returns it to be added to the database later.
 	"""
@@ -196,20 +196,20 @@ def get_page_info(page_text, page_desc_soup, page_url, discovered_urls, broken_u
 	if page_desc_soup.find("title") and page_desc_soup.find("h1") and page_desc_soup.find("title").text == page_desc_soup.find("h1").text:
 		crawler.url_handling.log_error(page_url, 200, "Page title is same as h1.", discovered_urls, broken_urls)
 
-	if page_desc_soup.find("title"):
-		if len(page_desc_soup.find("title").text) > 75:
-			crawler.url_handling.log_error(page_url, 200, "Page title is too long ({} characters).".format(len(page_desc_soup.find("title").text)), discovered_urls, broken_urls)
+	# if page_desc_soup.find("title"):
+	# 	if len(page_desc_soup.find("title").text) > 75:
+	# 		crawler.url_handling.log_error(page_url, 200, "Page title is too long ({} characters).".format(len(page_desc_soup.find("title").text)), discovered_urls, broken_urls)
 
-		# check if title in db
-		title_in_db = cursor.execute("SELECT * FROM posts WHERE title = ? AND NOT url = ? LIMIT 1;", (page_desc_soup.find("title").text, page_url, )).fetchall()
-		if len(title_in_db) > 0 and page_desc_soup.find("title") != "":
-			crawler.url_handling.log_error(page_url, 200, 'Page title ("{}") is already used on another page.'.format(page_desc_soup.find("title").text), discovered_urls, broken_urls)
+	# 	# check if title in db
+	# 	title_in_db = cursor.execute("SELECT * FROM posts WHERE title = ? AND NOT url = ? LIMIT 1;", (page_desc_soup.find("title").text, page_url, )).fetchall()
+	# 	if len(title_in_db) > 0 and page_desc_soup.find("title") != "":
+	# 		crawler.url_handling.log_error(page_url, 200, 'Page title ("{}") is already used on another page.'.format(page_desc_soup.find("title").text), discovered_urls, broken_urls)
 
-	if len(meta_description) > 0:
-		# check if meta description in db
-		meta_description_in_db = cursor.execute("SELECT * FROM posts WHERE title = ? AND NOT url = ? LIMIT 1;", (meta_description, page_url,)).fetchall()
-		if len(meta_description_in_db) > 0 and meta_description != "":
-			crawler.url_handling.log_error(page_url, 200, 'Meta description ("{}") is already used on another page.'.format(meta_description), discovered_urls, broken_urls)
+	# if len(meta_description) > 0:
+	# 	# check if meta description in db
+	# 	meta_description_in_db = cursor.execute("SELECT * FROM posts WHERE title = ? AND NOT url = ? LIMIT 1;", (meta_description, page_url,)).fetchall()
+	# 	if len(meta_description_in_db) > 0 and meta_description != "":
+	# 		crawler.url_handling.log_error(page_url, 200, 'Meta description ("{}") is already used on another page.'.format(meta_description), discovered_urls, broken_urls)
 
 	# Remove links from page text because they might cause searches to be less accurate
 	# for a in page_text.find_all("a"):
