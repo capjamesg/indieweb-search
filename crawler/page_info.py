@@ -115,12 +115,18 @@ def get_page_info(page_text, page_desc_soup, page_url, discovered_urls, broken_u
 			return page_text, page_desc_soup, [], [], [], [], [], [], True
 
 		# get date of first hentry
-		first_hentry_date = h_entries[0].find(class_="dt-published")
+		if len(h_entries) > 0:
+			first_hentry_date = h_entries[0].find(class_="dt-published")
 
-		if first_hentry_date and first_hentry_date.get("datetime"):
-			# if published before 3 weeks ago
-			if first_hentry_date.get("datetime") < (datetime.datetime.now() - datetime.timedelta(weeks=3)).isoformat() and page_url.count("/") > 4:
-				return page_text, page_desc_soup, first_hentry_date.get("datetime"), [], [], [], [], [], True
+			if first_hentry_date and first_hentry_date.get("datetime"):
+				# if published before 3 weeks ago
+				if first_hentry_date.get("datetime") < (datetime.datetime.now() - datetime.timedelta(weeks=3)).isoformat() and page_url.count("/") > 3:
+					print("{} marked as follow, noindex as it is a feed".format(page_url))
+					return page_text, page_desc_soup, first_hentry_date.get("datetime"), [], [], [], [], [], True
+
+	if "/tags/" in page_url:
+		print("{} marked as follow, noindex because it is a tag".format(page_url))
+		return page_text, page_desc_soup, "", [], [], [], [], [], True
 
 	published_on = page_desc_soup.find("time", attrs={"class":"dt-published"})
 
@@ -141,15 +147,17 @@ def get_page_info(page_text, page_desc_soup, page_url, discovered_urls, broken_u
 	if meta_description == "":
 		crawler.url_handling.log_error(page_url, 200, "Page is missing a meta description.", discovered_urls, broken_urls)
 		# Use first paragraph as meta description if one can be found
-		paragraphs = page_text.find_all("p")
-		for para in paragraphs:
-			# Find first paragraph with 50 or more words
-			if len(para.text) > 50:
-				meta_description = para.text
-				break
-			else:
-				meta_description = ""
+		# get paragraph after h1
+		h1 = page_desc_soup.find("h1")
+		paragraph_to_use_for_meta_desc = h1.find_next_sibling("p")
 
+		if not paragraph_to_use_for_meta_desc:
+			h2 = page_desc_soup.find_all("h2")[0]
+			paragraph_to_use_for_meta_desc = h2.find_next_sibling("p")
+
+		if paragraph_to_use_for_meta_desc:
+			meta_description = paragraph_to_use_for_meta_desc
+	
 	# Only get first 180 characters of meta description (and don't chop a word)
 
 	final_meta_description = ""
@@ -162,8 +170,6 @@ def get_page_info(page_text, page_desc_soup, page_url, discovered_urls, broken_u
 		if char_count > 180:
 			final_meta_description += "..."
 			break
-
-	meta_description = final_meta_description
 
 	remove_doc_title_from_h1_list = False
 
@@ -215,4 +221,4 @@ def get_page_info(page_text, page_desc_soup, page_url, discovered_urls, broken_u
 	# for a in page_text.find_all("a"):
 	# 	a.replaceWith("")
 
-	return page_text, page_desc_soup, published_on, meta_description, doc_title, category, important_phrases, remove_doc_title_from_h1_list, False
+	return page_text, page_desc_soup, published_on, final_meta_description, doc_title, category, important_phrases, remove_doc_title_from_h1_list, False
