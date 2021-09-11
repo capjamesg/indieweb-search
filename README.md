@@ -8,6 +8,10 @@ The search engine is available at [indieweb-search.jamesg.blog](https://indieweb
 
 *Please note that this project is still in active development and there may be many bugs present. This project is a fork of my personal website search engine and is currently being tweaked to meet the needs of indexing other sites.*
 
+## Screenshot
+
+![IndieWeb search engine home page](screenshot.png)
+
 ## Installation Instructions
 
 You can install the required dependencies to run this project by running the following command:
