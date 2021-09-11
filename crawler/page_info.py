@@ -151,10 +151,12 @@ def get_page_info(page_text, page_desc_soup, page_url, discovered_urls, broken_u
 
 		e_content = page_desc_soup.find(class_="e-content")
 
-		if e_content:
-			meta_description = e_content.find_all("p")[0].text
-			if len(meta_description) < 50:
-				meta_description = ""
+		if e_content and len(e_content) > 0:
+			potential_meta_description = e_content.find_all("p")
+			if potential_meta_description and len(potential_meta_description) > 0:
+				meta_description = potential_meta_description[0].text
+				if len(meta_description) < 50:
+					meta_description = ""
 
 	if meta_description == "" or meta_description == None:
 		h1 = page_desc_soup.find("h1")
@@ -163,7 +165,9 @@ def get_page_info(page_text, page_desc_soup, page_url, discovered_urls, broken_u
 			paragraph_to_use_for_meta_desc = h1.find_next("p")
 
 			if paragraph_to_use_for_meta_desc and len(paragraph_to_use_for_meta_desc.text) < 50:
-				paragraph_to_use_for_meta_desc = h1.find_next("p").find_next("p").text
+				paragraph_to_use_for_meta_desc = h1.find_next("p").find_next("p")
+				if paragraph_to_use_for_meta_desc:
+					meta_description = paragraph_to_use_for_meta_desc.text
 			elif paragraph_to_use_for_meta_desc:
 				meta_description = paragraph_to_use_for_meta_desc.text
 
