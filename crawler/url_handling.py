@@ -113,6 +113,9 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, images_indexed, 
 		if "/tags/" in full_url or "/tag/" in full_url:
 			print("{} marked as follow, noindex because it is a tag".format(full_url))
 			continue
+		elif "/page/" in full_url and full_url.split("/")[-1].isdigit():
+			print("{} marked as follow, noindex because it is a page archive".format(full_url))
+			continue
 
 		# Only get URLs that match namespace exactly
 		in_matching_namespace = [s for s in namespaces_to_ignore if s.startswith(full_url.replace("http://", "").replace("https://", "").replace(site_url, "")) == full_url]
@@ -301,7 +304,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, images_indexed, 
 
 	print('finished {}'.format(full_url))
 
-	return pages_indexed, images_indexed, iterate_list_of_urls
+	return pages_indexed, images_indexed, iterate_list_of_urls, all_links
 
 def page_link_discovery(links, final_urls, iterate_list_of_urls, page_being_processed, all_links, external_links, discovered_urls, site_url, count):
 	"""
@@ -322,6 +325,7 @@ def page_link_discovery(links, final_urls, iterate_list_of_urls, page_being_proc
 				all_links.append([page_being_processed, link.get("href"), datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "external"])
 				external_links["https://" + link["href"]] = page_being_processed
 				continue
+
 			# Add start of URL to end of any links that don't have it
 			elif link["href"].startswith("/"):
 				full_link = "https://{}".format(site_url) + link["href"]

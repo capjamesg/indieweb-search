@@ -129,13 +129,13 @@ def get_page_info(page_text, page_desc_soup, page_url, discovered_urls, broken_u
 
 	meta_description = ""
 
-	if page_desc_soup.find("meta", {"name":"description"}) != None and page_desc_soup.find("meta", {"name":"description"})["content"] != "":
+	if page_desc_soup.find("meta", {"name":"description"}) != None and page_desc_soup.find("meta", {"name":"description"}).get("content") and page_desc_soup.find("meta", {"name":"description"})["content"] != "":
 		meta_description = page_desc_soup.find("meta", {"name":"description"})["content"]
 
-	elif page_desc_soup.find("meta", {"name":"og:description"}) != None and page_desc_soup.find("meta", {"name":"og:description"})["content"] != "":
+	elif page_desc_soup.find("meta", {"name":"og:description"}) != None and page_desc_soup.find("meta", {"name":"og:description"}).get("content") and page_desc_soup.find("meta", {"name":"og:description"})["content"] != "":
 		meta_description = page_desc_soup.find("meta", {"name":"og:description"})["content"]
 
-	elif page_desc_soup.find("meta", {"property":"og:description"}) != None and page_desc_soup.find("meta", {"property":"og:description"})["content"] != "":
+	elif page_desc_soup.find("meta", {"property":"og:description"}) != None and page_desc_soup.find("meta", {"property":"og:description"}).get("content") and page_desc_soup.find("meta", {"property":"og:description"})["content"] != "":
 		meta_description = page_desc_soup.find("meta", {"property":"og:description"})["content"]
 
 	if meta_description == "":
