@@ -25,6 +25,14 @@ def home():
 
     query = query.strip().replace(" ", " AND ")
 
+    final_query = ""
+
+    for w in range(0, len(query.split(" "))):
+        if w == 0:
+            final_query += query.split(" ")[w] + "^3"
+        else:
+            final_query += query.split(" ")[w]
+
     if site and len(site) > 0:
         query = query + " AND (url:{})".format(site)
     elif site and len(site) == 0:
@@ -41,19 +49,34 @@ def home():
         "from": int(from_num),
         "size": 10,
         "query": {
-            "script_score": {
+            "function_score": {
                 "query": {
                     "query_string": {
                         "query": query,
-                        "fields": ["title^5", "description^3", "url^1.5", "category^0", "published^0", "keywords^0", "text^3", "h1^2", "h2^1.5", "h3^1.2", "h4^0.5", "h5^0.75", "h6^0.25"],
+                        "fields": ["title^2", "description^1", "url^1.5", "category^0", "published^0", "keywords^0", "text^3", "h1^2", "h2^1.5", "h3^1.2", "h4^0.5", "h5^0.75", "h6^0.25"],
                         "minimum_should_match": "3<75%"
                     },
                 },
-                "script": {
-                    "source": "_score + (Math.log(doc['incoming_links'].value + 1) * 2)"
-                }
+                # weigh by recency
+                # "boost": 5,
+                # "functions": [
+                #     {
+                #         "gauss": {
+                #             "published": {
+                #                 "scale": "10w",
+                #                 "offset": "1w",
+                #                 "decay": 0.5
+                #             }
+                #         }
+                #     }
+                # ],
+                # "max_boost": 42,
+                # "score_mode": "max",
+                # "boost_mode": "multiply",
+                # "min_score": 42
+            }
         }
-    }}
+    }
     
     # + (doc['incoming_links'].value / 100)
 
@@ -87,8 +110,6 @@ def create():
         data = request.get_json()
 
         total_docs_today = int(es.count(index='pages')['count'])
-
-        print(data)
 
         es.index(index="pages", body=data, id=total_docs_today + 1)
         return jsonify({"status": "ok"})
