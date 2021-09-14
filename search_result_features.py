@@ -23,7 +23,9 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
     if "who is" in cleaned_value:
         url = url.replace("https://", "").replace("http://", "").split("/")[0]
 
-    new_cleaned_value_for_direct_answer = " ".join([w for w in cleaned_value.split(" ") if w not in nltk.corpus.stopwords.words("english") or w in ["why", "how"]]).split(" ")[0].strip()
+    original_cleaned_value = cleaned_value.lower()
+
+    new_cleaned_value_for_direct_answer = " ".join([w for w in cleaned_value.split(" ") if w not in nltk.corpus.stopwords.words("english") or w in ["why", "how"]]).strip()
 
     # get post with home brew bar url
 
@@ -31,7 +33,6 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
 
     # remove all proper nouns from cleaned_value
 
-    original_cleaned_value = cleaned_value.lower()
     cleaned_value = " ".join([w for w in cleaned_value.split(" ") if "james" not in w.lower() and w.lower() not in proper_nouns and w.lower() not in post["title"].lower().split() and w.lower() not in post["url"].lower().split("/")[-1]])
 
     # read post with bs4
@@ -110,19 +111,48 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
             else:
                 title = url
             return "<img src='{}'><p>{}</p>".format(photo, to_show), {"type": "direct_answer", "breadcrumb": original_url, "title": title}
-    
-    if "founder" in cleaned_value or "owner" in cleaned_value:
-        ent_type = "PERSON"
-    elif "cafes" in cleaned_value or "location" in cleaned_value:
-        ent_type = "GPE"
-        all_locations = [w for w in nlp(" ".join(soup.get_text().replace("\n", ". ").split(". "))).ents if w.label_ == "GPE" and "in" in w.text]
-        if len(all_locations) > 0:
-            all_locations = all_locations[0]
-    elif "opened" in cleaned_value or "established" in cleaned_value or "founded" in cleaned_value or "started" in cleaned_value:
-        ent_type = "DATE"
-    else:
-        ent_type = "NONE"
 
+    # check if cleaned value refers to an ent type
+    ent_types = {
+        "founder": "PERSON", 
+        "owner": "PERSON",
+        "editor": "PERSON",
+        "author": "PERSON",
+        "producer": "PERSON",
+        "writer": "PERSON",
+        "cafes": "GPE",
+        "location": "GPE",
+        "city": "GPE",
+        "country": "GPE",
+        "state": "GPE",
+        "county": "GPE",
+        "opened": "DATE",
+        "established": "DATE",
+        "founded": "DATE",
+        "started": "DATE",
+        "closed": "DATE",
+        "when": "DATE",
+        "where": "GPE",
+        "cost": "MONEY",
+        "price": "MONEY",
+        "money": "MONEY",
+        "price range": "MONEY",
+        "area": "GPE",
+        "time": "TIME",
+        "starting": "TIME",
+    }
+    
+    ent_type = "NONE"
+
+    for word in cleaned_value.split(" "):
+        if ent_types.get(word.lower()):
+            ent_type = ent_types.get(word.lower())
+            if ent_type == "GPE":
+                all_locations = [w for w in nlp(" ".join(soup.get_text().replace("\n", ". ").split(". "))).ents if w.label_ == "GPE" and "in" in w.text]
+                if len(all_locations) > 0:
+                    all_locations = all_locations[0]
+            break
+        
     if ent_type != "NONE":
         sentence_with_query = [s for s in soup.get_text().replace("\n", ". ").split(". ") if all(x in s.lower() for x in cleaned_value.strip().split(" "))]
 
@@ -130,7 +160,7 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
             ents = [w for w in nlp(sentence_with_query[0]).ents if w.label_ == ent_type]
 
             if len(ents) > 0:
-                return "<b style='font-size: 22px'>{}</b><br>{}".format(ents[0].text, sentence_with_query[0].replace("\n", " ")), {"type": "direct_answer", "breadcrumb": url, "title": soup.find("h1").text}
+                return "<b style='font-size: 22px'>{}</b><br>{}".format(", ".join([e.text for e in ents]), sentence_with_query[0].replace("\n", " ")), {"type": "direct_answer", "breadcrumb": url, "title": soup.find("h1").text}
             elif len(all_locations) > 0:
                 return "<b style='font-size: 22px'>{}</b><br>{}".format(all_locations[0].text, sentence_with_query[0]), {"type": "direct_answer", "breadcrumb": url, "title": soup.find("h1").text}
     
@@ -139,22 +169,32 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
 
     c = nltk.text.Text(t.tokenize(soup.text))
 
-    # if soup.find_all("dfn"):
-    #     special_result = {"type": "direct_answer", "breadcrumb": url, "title": soup.find("h1").text}
-
-    #     return soup.find_all("dfn")[0].text, special_result
-
-    if len(cleaned_value) != 0 and len(cleaned_value.split(" ")) > 0:
+    if len(original_cleaned_value) != 0 and len(original_cleaned_value.split(" ")) > 0:
         try:
-            do_i_use = c.concordance_list(new_cleaned_value_for_direct_answer, width=50)
+            do_i_use = c.concordance_list(cleaned_value, width=50)
 
-            all_locs = [f for f in soup.find_all(["li"]) if new_cleaned_value_for_direct_answer in f.text.lower()]
+            # check if in h2
+            in_h2 = [f for f in soup.find_all(["h2"]) if cleaned_value in f.text.lower()]
+
+            if len(in_h2) == 1:
+                # get p after in_h2
+                location_of_tag = in_h2[0]
+
+                location_of_tag_final = ""
+
+                for f in location_of_tag.find_next_siblings()[:3]:
+                    if f.name != "h1" and f.name != "h2" and f.name != "h3" and f.name != "h4" and f.name != "h5" and f.name != "h6":
+                        if f.name == "p" or f.name == "li" or f.name == "ul" or f.name == "ol" or f.name == "pre" or f.name == "a":
+                            location_of_tag_final += str(f)
+                    else:
+                        break
+
+                return "<b>{}</b><br>{}".format(in_h2[0].text, location_of_tag_final), {"type": "direct_answer", "breadcrumb": url, "title": soup.find("h1").text}
+
+            all_locs = [f for f in soup.find_all(["li"]) if original_cleaned_value in f.text.lower()]
 
             # if len(all_locs) < 3:
             #     return "", special_result
-
-            # check if in h2
-            in_h2 = [f for f in soup.find_all(["h2"]) if new_cleaned_value_for_direct_answer in f.text.lower()]
 
             if all_locs:
                 location_of_tag = all_locs[0]
@@ -169,15 +209,6 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
             else:
                 all_locs = [f for f in soup.find_all(["p"]) if cleaned_value in f.text.lower()]
                 location_of_tag = all_locs[0]
-            print(len(in_h2))
-            if len(in_h2) == 1:
-                print('x')
-                # get p after in_h2
-                location_of_tag = in_h2[0]
-
-                location_of_tag = "<br>".join([f.text for f in location_of_tag.find_next_siblings()][:3])
-
-                return "<b>{}</b><br>{}".format(in_h2[0].text, location_of_tag), {"type": "direct_answer", "breadcrumb": url, "title": soup.find("h1").text}
 
             if location_of_tag.find_parent().name != "article" and location_of_tag.name == "li":
                 # Show previous element for context and content addressing visitor query
@@ -217,6 +248,11 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
             do_i_use = ""
     else:
         do_i_use = ""
+
+    if soup.find_all("dfn"):
+        for dfn in soup.find_all("dfn"):
+            if dfn.text.lower() == cleaned_value.lower():
+                return "<b style='font-size: 22px'>{}</b><br>{}".format(dfn.text, dfn.find_next_sibling("p").text), {"type": "direct_answer", "breadcrumb": url, "title": soup.find("h1").text}
 
     # Protect against direct answers that are too long
     if len(do_i_use) > 400:

@@ -12,7 +12,7 @@ main = Blueprint("main", __name__, static_folder="static", static_url_path="")
 
 spell = SpellChecker()
 
-nlp = spacy.load('en_core_web_sm')
+nlp = spacy.load('en_core_web_md')
 
 # def initialize_spell_checker():
 # 	connection = sqlite3.connect(ROOT_DIRECTORY + "/search.db")
@@ -191,50 +191,59 @@ def results_page():
 			num_of_results = rows["hits"]["total"]["value"]
 			rows = rows["hits"]["hits"]
 
-			if request.args.get("type") != "image" and len(rows) > 0 and "what is" in cleaned_value or "what are" in cleaned_value  or "what were" in cleaned_value or "why" in cleaned_value or "how" in cleaned_value or "microformats" in cleaned_value:
-				# remove stopwords from query
-				cleaned_value_for_query = cleaned_value_for_query.replace("what is", "").replace("what are", "").replace("why", "").replace("how", "").replace("what were", "")
+			if page == 1:
+				if request.args.get("type") != "image" and len(rows) > 0 and "what is" in cleaned_value or "what are" in cleaned_value  or "what were" in cleaned_value or "why" in cleaned_value or "how" in cleaned_value or "microformats" in cleaned_value:
+					# remove stopwords from query
+					original = cleaned_value_for_query
+					cleaned_value_for_query = cleaned_value.replace("what is", "").replace("what are", "").replace("why", "").replace("how", "").replace("what were", "").replace("to use", "").strip()
 
-				wiki_direct_result = [item for item in rows if item["_source"]["url"].startswith("https://indieweb.org") and "/" not in item["_source"]["title"] and cleaned_value_for_query.lower().strip() in item["_source"]["title"].lower()]
-				microformats_wiki_direct_result = [item for item in rows if item["_source"]["url"].startswith("https://microformats.org/wiki/") and "/" not in item["_source"]["title"] and cleaned_value_for_query.lower() in item["_source"]["title"].lower()]
-				
-				if wiki_direct_result and page == 1:
-					url = wiki_direct_result[0]["_source"]["url"]
-					source = wiki_direct_result[0]["_source"]
-				elif microformats_wiki_direct_result and page == 1:
-					url = microformats_wiki_direct_result[0]["_source"]["url"]
-					source = microformats_wiki_direct_result[0]["_source"]
-				elif len(rows) > 0 and page == 1:
+					wiki_direct_result = [item for item in rows if item["_source"]["url"].startswith("https://indieweb.org") and "/" not in item["_source"]["title"] and cleaned_value_for_query.lower().strip() in item["_source"]["title"].lower()]
+					microformats_wiki_direct_result = [item for item in rows if item["_source"]["url"].startswith("https://microformats.org/wiki/") and "/" not in item["_source"]["title"] and cleaned_value_for_query.lower() in item["_source"]["title"].lower()]
+
+					if wiki_direct_result:
+						url = wiki_direct_result[0]["_source"]["url"]
+						source = wiki_direct_result[0]["_source"]
+					elif microformats_wiki_direct_result:
+						url = microformats_wiki_direct_result[0]["_source"]["url"]
+						source = microformats_wiki_direct_result[0]["_source"]
+					elif len(rows) > 0:
+						url = rows[0]["_source"]["url"]
+						source = rows[0]["_source"]
+					else:
+						url = None
+						source = None
+
+					do_i_use, special_result = search_result_features.generate_featured_snippet(original, special_result, nlp, url, source)
+				elif request.args.get("type") != "image" and len(rows) > 0 and rows[0]["_source"]["url"].startswith("https://jamesg.blog"):
 					url = rows[0]["_source"]["url"]
 					source = rows[0]["_source"]
-				else:
-					url = None
-					source = None
-					
-				do_i_use, special_result = search_result_features.generate_featured_snippet(full_query_with_full_stops, special_result, nlp, url, source)
-			elif request.args.get("type") != "image" and len(rows) > 0 and rows[0]["_source"]["url"].startswith("https://jamessg.blog"):
-				url = rows[0]["_source"]["url"]
-				source = rows[0]["_source"]
-
-				do_i_use, special_result = search_result_features.generate_featured_snippet(full_query_with_full_stops, special_result, nlp, url, source)
-			elif len(rows) > 0 and rows[0]["_source"]["url"].startswith("https://indieweb.org") or rows[1]["_source"]["url"].startswith("https://indieweb.org"):
-				if rows[0]["_source"]["url"].startswith("https://indieweb.org"):
-					url = rows[0]["_source"]["url"]
-					source = rows[0]["_source"]
-				else:
-					url = rows[1]["_source"]["url"]
-					source = rows[1]["_source"]
-
-				do_i_use, special_result = search_result_features.generate_featured_snippet(full_query_with_full_stops, special_result, nlp, url, source, direct=True)
-
-			if "who is" in cleaned_value:
-				get_homepage = requests.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&domain=true".format(config.ELASTICSEARCH_PASSWORD, cleaned_value_for_query.replace("who is", ""))).json()
-
-				if len(get_homepage.get("hits").get("hits")) > 0:
-					url = get_homepage["hits"]["hits"][0]["_source"]["url"]
-					source = get_homepage["hits"]["hits"][0]["_source"]
 
 					do_i_use, special_result = search_result_features.generate_featured_snippet(full_query_with_full_stops, special_result, nlp, url, source)
+				elif request.args.get("type") != "image" and len(rows) > 0 and rows[0]["_source"]["url"].startswith("https://microformats.org/wiki/"):
+					url = rows[0]["_source"]["url"]
+					source = rows[0]["_source"]
+
+					do_i_use, special_result = search_result_features.generate_featured_snippet(full_query_with_full_stops, special_result, nlp, url, source)
+				elif len(rows) > 0 and rows[0]["_source"]["url"].startswith("https://indieweb.org") or rows[1]["_source"]["url"].startswith("https://indieweb.org"):
+					if rows[0]["_source"]["url"].startswith("https://indieweb.org"):
+						url = rows[0]["_source"]["url"]
+						source = rows[0]["_source"]
+					else:
+						url = rows[1]["_source"]["url"]
+						source = rows[1]["_source"]
+
+					do_i_use, special_result = search_result_features.generate_featured_snippet(full_query_with_full_stops, special_result, nlp, url, source, direct=True)
+
+				if "who is" in cleaned_value:
+					get_homepage = requests.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&domain=true".format(config.ELASTICSEARCH_PASSWORD, cleaned_value_for_query.replace("who is", ""))).json()
+
+					if len(get_homepage.get("hits").get("hits")) > 0:
+						url = get_homepage["hits"]["hits"][0]["_source"]["url"]
+						source = get_homepage["hits"]["hits"][0]["_source"]
+
+						do_i_use, special_result = search_result_features.generate_featured_snippet(full_query_with_full_stops, special_result, nlp, url, source)
+
+				do_i_use, special_result = search_result_features.generate_featured_snippet(cleaned_value, special_result, nlp, url, source, direct=False)
 
 			if len(rows) == 0:
 				out_of_bounds_page = True
