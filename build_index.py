@@ -275,7 +275,7 @@ def build_index():
 		# 	if site not in iterate_list_of_urls:
 		# 		iterate_list_of_urls.append(site)
 
-		pages_indexed, images_indexed, iterate_list_of_urls = url_handling.crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, images_indexed, image_urls, links, external_links, discovered_urls, broken_urls, iterate_list_of_urls, site, crawl_budget)
+		pages_indexed, images_indexed, iterate_list_of_urls, all_links = url_handling.crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, images_indexed, image_urls, links, external_links, discovered_urls, broken_urls, iterate_list_of_urls, site, crawl_budget)
 
 		# log_contents(pages_indexed, images_indexed)
 
@@ -300,10 +300,12 @@ def build_index():
 		with open("crawled.txt", "a") as f:
 			f.write("{}, {}".format(site, date))
 
-		# with open(ROOT_DIRECTORY + "/data/all_links.csv","w") as f:
-		# 	wr = csv.writer(f)
-		# 	wr.writerow(["page_linking", "link_to", "datetime", "link_type", "anchor_text"])
-		# 	wr.writerows(all_links)
+		with open(ROOT_DIRECTORY + "/data/all_links.csv","w") as f:
+			wr = csv.writer(f)
+			wr.writerow(["page_linking", "link_to", "datetime", "link_type", "anchor_text"])
+			wr.writerows(all_links)
+
+		del all_links
 
 		#broken_links.check_for_invalid_links()
 
