@@ -1,5 +1,5 @@
 from flask import Flask, request, abort, jsonify, send_from_directory
-from elasticsearch import Elasticsearch
+from elasticsearch import Elasticsearch, helpers
 import random
 import config
 
@@ -49,33 +49,12 @@ def home():
         "from": int(from_num),
         "size": 10,
         "query": {
-            "function_score": {
-                "query": {
-                    "query_string": {
-                        "query": query,
-                        "fields": ["title^2", "description^1", "url^1.5", "category^0", "published^0", "keywords^0", "text^3", "h1^2", "h2^1.5", "h3^1.2", "h4^0.5", "h5^0.75", "h6^0.25"],
-                        "minimum_should_match": "3<75%"
-                    },
-                },
-                # weigh by recency
-                # "boost": 5,
-                # "functions": [
-                #     {
-                #         "gauss": {
-                #             "published": {
-                #                 "scale": "10w",
-                #                 "offset": "1w",
-                #                 "decay": 0.5
-                #             }
-                #         }
-                #     }
-                # ],
-                # "max_boost": 42,
-                # "score_mode": "max",
-                # "boost_mode": "multiply",
-                # "min_score": 42
-            }
-        }
+            "query_string": {
+                "query": query,
+                "fields": ["title^2", "description^1", "url^1.5", "category^0", "published^0", "keywords^0", "text^3", "h1^2", "h2^1.5", "h3^1.2", "h4^0.5", "h5^0.75", "h6^0.25"],
+                "minimum_should_match": "3<75%"
+            },
+        },
     }
     
     # + (doc['incoming_links'].value / 100)
@@ -100,6 +79,24 @@ def home():
 
     return response
 
+@app.route("/create-bulk", methods=["POST"])
+def create_bulk():
+    if request.method == "POST":
+        # check auth header
+        if request.headers.get("Authorization") != "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN):
+            return abort(401)
+
+        data = request.get_json()
+
+        res = helpers.bulk(es, data)
+
+        print(res)
+
+        return jsonify({"status": "ok"})
+    else:
+        return abort(401)
+
+
 @app.route("/create", methods=["POST"])
 def create():
     if request.method == "POST":
@@ -111,7 +108,10 @@ def create():
 
         total_docs_today = int(es.count(index='pages')['count'])
 
-        es.index(index="pages", body=data, id=total_docs_today + 1)
+        i = es.index(index="pages", body=data, id=total_docs_today + 1)
+
+        print(i)
+
         return jsonify({"status": "ok"})
     else:
         return abort(401)
