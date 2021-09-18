@@ -169,11 +169,20 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
 
     c = nltk.text.Text(t.tokenize(soup.text))
 
+    # get definition if on page and same as query
+    if soup.find_all("dfn"):
+        for dfn in soup.find_all("dfn"):
+            if dfn.text.lower().replace(" ", "").replace("-", "") == new_cleaned_value_for_direct_answer.lower().replace(" ", "").replace("-", "") or "define" in new_cleaned_value_for_direct_answer.lower():
+                return "<b style='font-size: 22px'>{}</b><br>{}".format(dfn.text, dfn.find_parent("p").text), {"type": "direct_answer", "breadcrumb": url, "title": post["title"]}
+
     if len(original_cleaned_value) != 0 and len(original_cleaned_value.split(" ")) > 0:
         try:
             do_i_use = c.concordance_list(cleaned_value, width=50)
 
+            print('sds')
+
             # check if in h2
+            
             in_h2 = [f for f in soup.find_all(["h2"]) if cleaned_value in f.text.lower()]
 
             if len(in_h2) == 1:
@@ -191,10 +200,20 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
 
                 return "<b>{}</b><br>{}".format(in_h2[0].text, location_of_tag_final), {"type": "direct_answer", "breadcrumb": url, "title": soup.find("h1").text}
 
+            all_locs = [f for f in soup.find_all(["p"]) if original_cleaned_value.lower() in f.text.lower() and (soup.next_sibling.name != "ul" or soup.next_sibling.name != "ol")]
+
+            location_of_tag = all_locs[0]
+
+            if len(all_locs) > 0:
+                do_i_use = "<b>" + str(all_locs[0].text) + "</b>"
+                return do_i_use, {"type": "direct_answer", "breadcrumb": url, "title": soup.find("h1").text}
+
             all_locs = [f for f in soup.find_all(["li"]) if original_cleaned_value in f.text.lower()]
 
             # if len(all_locs) < 3:
             #     return "", special_result
+
+            print('s')
 
             if all_locs:
                 location_of_tag = all_locs[0]
@@ -205,9 +224,6 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
                 location_of_tag = all_locs[0]
             elif len(search_for_strong_memo(soup, cleaned_value)) > 0:
                 all_locs = search_for_strong_memo(soup, cleaned_value)
-                location_of_tag = all_locs[0]
-            else:
-                all_locs = [f for f in soup.find_all(["p"]) if cleaned_value in f.text.lower()]
                 location_of_tag = all_locs[0]
 
             if location_of_tag.find_parent().name != "article" and location_of_tag.name == "li":
@@ -248,11 +264,6 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
             do_i_use = ""
     else:
         do_i_use = ""
-
-    if soup.find_all("dfn"):
-        for dfn in soup.find_all("dfn"):
-            if dfn.text.lower() == cleaned_value.lower():
-                return "<b style='font-size: 22px'>{}</b><br>{}".format(dfn.text, dfn.find_next_sibling("p").text), {"type": "direct_answer", "breadcrumb": url, "title": soup.find("h1").text}
 
     # Protect against direct answers that are too long
     if len(do_i_use) > 400:
