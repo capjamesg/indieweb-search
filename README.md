@@ -28,23 +28,23 @@ Documentation on exactly what to install will follow in the future.
 
 IndieWeb Search supports searching sites by URL. Read the [Advanced Settings documentation](https://indieweb-search.jamesg.blog/advanced) for information on how to search for a page on a specific website.
 
-## Running the Web Application
-
-To run the web application, execute these commands:
-
-    export FLASK_APP=.
-    flask seed build-tables
-    flask run
-
-The search engine will not be available until you have indexed some content.
+## Indexing Content
 
 You can do this by adding a site URL to the `crawl_queue.txt` file and then running this command:
 
     python3 build_index.py
 
+All content will be saved to `results.json`. This means you can index without having your own Elasticsearch server running.
+
 Your site URL will be removed from the `crawl_queue.txt` file after your site has been fully crawled.
 
 All crawls are limited to 1,000 URLs. To change this limit, search for "1000" in the `crawler/url_handling.py` file and change the value to the desired limit.
+
+You can run the crawler in the background using this command:
+
+    nohup python3 build_index.py &
+
+Running the crawler in the background is only recommended once you have crawled at least one site and made sure you have not encountered any errors.
 
 ### Configuration
 
@@ -68,6 +68,16 @@ The config.py file should contain the following variables:
     ELASTICSEARCH_API_TOKEN = "YOUR_ELASTICSEARCH_API_TOKEN"
 
 The official indieweb-search engine uses indieweb-search as the user agent. Please choose another user agent if you use this crawler.
+
+## Running the Web Application
+
+To run the web application, execute these commands:
+
+    export FLASK_APP=.
+    flask seed build-tables
+    flask run
+
+You will not be able to run the web application without having a server running the `elasticsearch_server.py` that has some indexed files.
 
 ## Direct Answer Search Results
 
@@ -100,9 +110,11 @@ Feel free to contribute to this project no matter how much background you have i
 
 Some things that need worked on are:
 
-- Using MD5 hashes to remove duplicate documents.
-- Handling read timeouts.
 - Testing as many queries as possible on the live search engine to identify opportunities for improvements.
+- Automating the process of calculating incoming links (maybe just cron jobs?) and updating the index.
+- Improving the answer to "who is [domain-name]" to make sure all images appear correctly.
+
+If you think something is missing from IndieWeb Search that would help you and potentially others, feel free to try your hand at implementing your idea.
 
 ## Technology Stack
 
