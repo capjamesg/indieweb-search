@@ -11,15 +11,13 @@
         <ul>
           <li><a href="/about">About</a></li>
           <li><a href="/stats">Statistics</a></li>
-          {% if current_user.is_authenticated %}
-                  {% include "admin/admin_tab.html" %}
-          {% endif %}
       </ul>
       </nav>
       <div id="main">
           {% block content %}
           {% endblock %}
       </div>
+      <p>Have some feedback? <a href="https://github.com/capjamesg/indieweb-search">File an issue on the project GitHub page.</a></p>
       <p class="accessibility_label"><a href="#main">Go Back to the Top</a></p>
     </main>
   </body>
