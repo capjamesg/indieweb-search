@@ -10,26 +10,6 @@ import json
 
 yesterday = datetime.datetime.today() - datetime.timedelta(days=1)
 
-# def log_error(page_url, status_code, message, discovered_urls, broken_urls, discovered=None):
-# 	return
-# 	# This logic is necessary as I do pass a discovered value for image errors
-# 	if discovered == None:
-# 		if discovered_urls.get(page_url):
-# 			# Some links will be discovered through other links instead of the sitemap
-# 			discovered = discovered_urls[page_url]
-# 		else:
-# 			discovered = "Sitemap"
-
-# 	# Page is already validated by this point so I use 200 for the status code
-# 	broken_urls.append(
-# 		{
-# 			"url": page_url,
-# 			"status_code": status_code,
-# 			"message": message,
-# 			"discovered": discovered
-# 		}
-# 	)
-
 def add_to_database(full_url, published_on, doc_title, meta_description, category, heading_info, page, important_phrases, pages_indexed, page_content, outgoing_links, crawl_budget):
 	if page != "" and page.headers:
 		length = page.headers.get("content-length")
@@ -82,19 +62,34 @@ def add_to_database(full_url, published_on, doc_title, meta_description, categor
 		f.write(json.dumps(record))
 		f.write("\n")
 
+	# results currently being saved to a file, so no need to run this code
+
 	# check_if_indexed = requests.post("https://es-indieweb-search.jamesg.blog/check?url={}".format(full_url), headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}).json()
-	
+
 	# if len(check_if_indexed) == 0:
 	# 	r = requests.post("https://es-indieweb-search.jamesg.blog/create", headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}, json=record)
-	print("indexed new page {} ({}/{})".format(full_url, pages_indexed, crawl_budget))
-	logging.info("indexed new page {} ({}/{})".format(full_url, pages_indexed, crawl_budget))
 	# else:
 	# 	r = requests.post("https://es-indieweb-search.jamesg.blog/update", headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}, json=record)
 	# 	print("updated page {} ({}/{})".format(full_url, pages_indexed, crawl_budget))
 
+	print("indexed new page {} ({}/{})".format(full_url, pages_indexed, crawl_budget))
+	logging.info("indexed new page {} ({}/{})".format(full_url, pages_indexed, crawl_budget))
+
 	pages_indexed += 1
 
 	return pages_indexed
+
+def check_remove_url(full_url):
+	check_if_indexed = requests.post("https://es-indieweb-search.jamesg.blog/check?url={}".format(full_url), headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}).json()
+
+	if len(check_if_indexed) > 0:
+		# remove url from index if it no longer works
+		data = {
+			"id": check_if_indexed["_id"],
+		}
+		r = requests.post("https://es-indieweb-search.jamesg.blog/remove-from-index", headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}, json=data)
+		print("removed {} from index as it is no longer valid".format(full_url))
+		logging.info("removed {} from index as it is no longer valid".format(full_url))
 
 def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, images_indexed, image_urls, all_links, external_links, discovered_urls, broken_urls, iterate_list_of_urls, site_url, crawl_budget, url):
 	"""
@@ -105,19 +100,24 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, images_indexed, 
 	full_url = url.replace("http://", "https://")
 
 	if "/tags/" in full_url or "/tag/" in full_url or "/label/" in full_url or "/search/" in full_url:
-		print("{} marked as follow, noindex because it is a tag, label, or search resoucre".format(full_url))
+		print("{} marked as follow, noindex because it is a tag, label, or search resource".format(full_url))
 		logging.info("{} marked as follow, noindex because it is a tag, label, or search resource".format(full_url))
-		return url, {}, False
+		return url, {}, False, []
+
+	elif "javascript:" in full_url:
+		print("{} marked as follow, noindex because it is a javascript resource".format(full_url))
+		logging.info("{} marked as follow, noindex because it is a javascript resource".format(full_url))
+		return url, {}, False, []
 
 	elif "/page/" in full_url and full_url.split("/")[-1].isdigit():
 		print("{} marked as follow, noindex because it is a page archive".format(full_url))
 		logging.info("{} marked as follow, noindex because it is a page archive".format(full_url))
-		return url, {}, False
+		return url, {}, False, []
 
 	if len(full_url) > 125:
-		print("{} url too long, skipping")
+		print("{} url too long, skipping".format(full_url))
 		logging.info("{} url too long, skipping".format(full_url))
-		return url, {}, False
+		return url, {}, False, []
 
 	# Only get URLs that match namespace exactly
 	in_matching_namespace = [s for s in namespaces_to_ignore if s.startswith(full_url.replace("http://", "").replace("https://", "").replace(site_url, "")) == full_url]
@@ -137,9 +137,11 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, images_indexed, 
 			page_test = session.head(full_url, headers=config.HEADERS)
 		except requests.exceptions.Timeout:
 			logging.error("{} timed out, skipping".format(full_url))
+			check_remove_url(full_url)
 			return url, {}, False, []
 		except requests.exceptions.TooManyRedirects:
 			logging.error("{} too many redirects, skipping".format(full_url))
+			check_remove_url(full_url)
 			return url, {}, False, []
 		except:
 			logging.error("{} failed to connect, skipping".format(full_url))
@@ -147,6 +149,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, images_indexed, 
 
 		if page_test.headers and page_test.headers.get("content-type") and "text/html" not in page_test.headers["content-type"] and "text/plain" not in page_test.headers["content-type"]:
 			print("{} is not a html resource, skipping".format(full_url))
+			check_remove_url(full_url)
 			logging.info("{} is not a html resource, skipping".format(full_url))
 			return url, {}, False, []
 
@@ -160,6 +163,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, images_indexed, 
 			return url, {}, False, []
 		except requests.exceptions.TooManyRedirects:
 			logging.error("{} too many redirects, skipping".format(full_url))
+			check_remove_url(full_url)
 			return url, {}, False, []
 		except:
 			logging.error("{} failed to connect, skipping".format(full_url))
@@ -182,6 +186,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, images_indexed, 
 				
 		elif page.status_code != 200:
 			print("{} page failed to load.".format(full_url))
+			check_remove_url(full_url)
 			logging.error("{} page failed to load.".format(full_url))
 			return url, {}, False, []
 
@@ -197,7 +202,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, images_indexed, 
 		if check_if_no_index and check_if_no_index.get("content") and "noindex" in check_if_no_index.get("content"):
 			print("{} marked as noindex, skipping".format(full_url))
 			logging.info("{} marked as noindex, skipping".format(full_url))
-			return url, {}, False, links
+			return url, {}, False, []
 
 		final_urls, iterate_list_of_urls, all_links, external_links, discovered_urls = page_link_discovery(links, final_urls, iterate_list_of_urls, full_url, all_links, external_links, discovered_urls, site_url, count)
 
@@ -221,7 +226,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, images_indexed, 
 			page_text = page_desc_soup.find("body")
 
 		if page_text == None:
-			return url, discovered_urls
+			return url, discovered_urls, False, all_links
 
 		heading_info = {
 			"h1": [],
@@ -243,7 +248,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, images_indexed, 
 		page_text, page_desc_soup, published_on, meta_description, doc_title, category, important_phrases, remove_doc_title_from_h1_list, noindex = crawler.page_info.get_page_info(page_text, page_desc_soup, full_url)
 
 		if noindex == True:
-			return url, discovered_urls, False, links
+			return url, discovered_urls, False, all_links
 
 		if remove_doc_title_from_h1_list == True:
 			heading_info["h1"] = heading_info["h1"].remove(doc_title)
@@ -265,7 +270,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, images_indexed, 
 
 	print('finished {}'.format(full_url))
 
-	return url, discovered_urls, True, links
+	return url, discovered_urls, True, all_links
 
 def page_link_discovery(links, final_urls, iterate_list_of_urls, page_being_processed, all_links, external_links, discovered_urls, site_url, count):
 	"""
