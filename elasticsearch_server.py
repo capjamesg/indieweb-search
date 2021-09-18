@@ -27,32 +27,61 @@ def home():
 
     final_query = ""
 
-    for w in range(0, len(query.split(" "))):
-        if w == 0:
-            final_query += query.split(" ")[w] + "^3"
-        else:
-            final_query += query.split(" ")[w]
+    if len(query) > 0:
+        for w in range(0, len(query.split(" "))):
+            if w == 0:
+                final_query += query.split(" ")[w] + "^3"
+            else:
+                final_query += query.split(" ")[w]
 
-    if site and len(site) > 0:
-        query = query + " AND (url:{})".format(site)
-    elif site and len(site) == 0:
-        query = "(url:{})".format(site)
+        if site and len(site) > 0:
+            query = query + " AND (url:{})".format(site)
+        elif site and len(site) == 0:
+            query = "(url:{})".format(site)
 
-    inurl = request.args.get("inurl")
+        inurl = request.args.get("inurl")
 
-    if inurl and len(inurl) > 0:
-        query = query + " AND (url:{})".format(inurl)
-    elif inurl and len(inurl) == 0:
-        query = "(url:{})".format(inurl)
+        if inurl and len(inurl) > 0:
+            query = query + " AND (url:{})".format(inurl)
+        elif inurl and len(inurl) == 0:
+            query = "(url:{})".format(inurl)
+    else:
+        if site and len(site) > 0:
+            query = query + "(url:{})".format(site)
+        elif site and len(site) == 0:
+            query = "(url:{})".format(site)
+
+        inurl = request.args.get("inurl")
+
+        if inurl and len(inurl) > 0:
+            query = query + "(url:{})".format(inurl)
+        elif inurl and len(inurl) == 0:
+            query = "(url:{})".format(inurl)
 
     search_param = {
         "from": int(from_num),
         "size": 10,
+        # use script to calculate score
         "query": {
-            "query_string": {
-                "query": query,
-                "fields": ["title^2", "description^1", "url^1.5", "category^0", "published^0", "keywords^0", "text^3", "h1^2", "h2^1.5", "h3^1.2", "h4^0.5", "h5^0.75", "h6^0.25"],
-                "minimum_should_match": "3<75%"
+            "script_score": {
+                "query": {
+                    "query_string": {
+                        "query": query,
+                        "fields": ["title^2", "description^1", "url^1.5", "category^0", "published^0", "keywords^0", "text^3", "h1^2", "h2^1.5", "h3^1.2", "h4^0.5", "h5^0.75", "h6^0.25"],
+                        "minimum_should_match": "3<75%",
+                    },
+                },
+                "script": {
+                    "source": """return _score + Math.log((1 + (doc['word_count'].value))) + Math.sqrt((1 + (doc['incoming_links'].value)) * 5);
+                    """
+                },
+            },
+        },
+        "highlight": {
+            "pre_tags": ["<b>"],
+            "post_tags": ["</b>"],
+            "fields": {
+                "description": {},
             },
         },
     }
@@ -96,6 +125,21 @@ def create_bulk():
     else:
         return abort(401)
 
+@app.route("/remove-from-index", methods=["POST"])
+def remove_from_index():
+    if request.method == "POST":
+        # check auth header
+        if request.headers.get("Authorization") != "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN):
+            return abort(401)
+
+        data = request.get_json()
+
+        # remove from elasticsearch
+        res = es.delete(index="pages", doc_type="page", id=data["id"])
+
+        return jsonify({"status": "ok"})
+    else:
+        return abort(401)
 
 @app.route("/create", methods=["POST"])
 def create():
@@ -171,10 +215,26 @@ def check():
                 }
             }
 
-        response = es.search(index="pages", body=search_param)
+            response = es.search(index="pages", body=search_param)
+
+            # do a lowercase check as well to prevent duplicate urls with case as the differentiator
+
+            search_param = {
+                "query": {
+                    "term": {
+                        "url.keyword": {
+                            "value": request.args.get("url").lower()
+                        }
+                    }
+                }
+            }
+
+            lower_response = es.search(index="pages", body=search_param)
 
         if response:
             return jsonify(response["hits"]["hits"])
+        elif lower_response:
+            return jsonify(lower_response["hits"]["hits"])
         else:
             return jsonify({"status": "not found"})
     else:
