@@ -12,22 +12,7 @@ main = Blueprint("main", __name__, static_folder="static", static_url_path="")
 
 spell = SpellChecker()
 
-nlp = spacy.load('en_core_web_md')
-
-# def initialize_spell_checker():
-# 	connection = sqlite3.connect(ROOT_DIRECTORY + "/search.db")
-
-# 	cursor = connection.cursor()
-
-# 	keywords = cursor.execute("SELECT keywords FROM posts;").fetchall()
-# 	for k in keywords:
-# 		words_to_add = []
-# 		for l in k[0].split(", "):
-# 			words_to_add.append(l)
-
-# 		spell.word_frequency.load_words(words_to_add)
-
-# initialize_spell_checker()
+nlp = spacy.load('en_core_web_sm')
 
 # This code shows the date a post was published on
 # {% if r[3] != "Page" %} {{ r[4] | strftime }} - {% endif %}
@@ -122,7 +107,7 @@ def results_page():
 
 	special_result = False
 
-	query_with_handled_spaces = request.args.get("query").replace("--", "")
+	query_with_handled_spaces = request.args.get("query").replace("--", "").replace("  ", " ")
 
 	allowed_chars = [" ", '"', ":", "-", "/", ".", "="]
 
@@ -139,9 +124,6 @@ def results_page():
 		random_site = requests.get("https://es-indieweb-search.jamesg.blog/random?pw={}".format(config.ELASTICSEARCH_PASSWORD)).json()["domain"]
 
 		return redirect("https://{}/".format(random_site))
-
-	# if request.form.get("type") == "image":
-	# 	return redirect("/results?{}&type=image".format(cleaned_value_for_query))
 
 	if request.args.get("query"):
 		full_query_with_full_stops = ''.join(e for e in query_with_handled_spaces if e.isalnum() or e == " " or e == ".")
@@ -188,17 +170,21 @@ def results_page():
 			else:
 				rows = requests.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&sort={}&from={}&to={}".format(config.ELASTICSEARCH_PASSWORD, cleaned_value_for_query, order, str(pagination), str(int(pagination)+10))).json()
 
+
 			num_of_results = rows["hits"]["total"]["value"]
 			rows = rows["hits"]["hits"]
 
 			if page == 1:
-				if request.args.get("type") != "image" and len(rows) > 0 and "what is" in cleaned_value or "what are" in cleaned_value  or "what were" in cleaned_value or "why" in cleaned_value or "how" in cleaned_value or "microformats" in cleaned_value:
+				if request.args.get("type") != "image" and len(rows) > 0 and ("what is" in cleaned_value or "what are" in cleaned_value  or "what were" in cleaned_value or "why" in cleaned_value or "how" in cleaned_value or "microformats" in cleaned_value):
 					# remove stopwords from query
 					original = cleaned_value_for_query
 					cleaned_value_for_query = cleaned_value.replace("what is", "").replace("what are", "").replace("why", "").replace("how", "").replace("what were", "").replace("to use", "").strip()
 
-					wiki_direct_result = [item for item in rows if item["_source"]["url"].startswith("https://indieweb.org") and "/" not in item["_source"]["title"] and cleaned_value_for_query.lower().strip() in item["_source"]["title"].lower()]
-					microformats_wiki_direct_result = [item for item in rows if item["_source"]["url"].startswith("https://microformats.org/wiki/") and "/" not in item["_source"]["title"] and cleaned_value_for_query.lower() in item["_source"]["title"].lower()]
+					wiki_direct_result = [item for item in rows if item["_source"]["url"].startswith("https://indieweb.org") \
+						and "/" not in item["_source"]["title"] and cleaned_value_for_query.lower().strip() in item["_source"]["title"].lower()]
+						
+					microformats_wiki_direct_result = [item for item in rows if item["_source"]["url"].startswith("https://microformats.org/wiki/") \
+						and "/" not in item["_source"]["title"] and cleaned_value_for_query.lower() in item["_source"]["title"].lower()]
 
 					if wiki_direct_result:
 						url = wiki_direct_result[0]["_source"]["url"]
@@ -224,17 +210,13 @@ def results_page():
 					source = rows[0]["_source"]
 
 					do_i_use, special_result = search_result_features.generate_featured_snippet(full_query_with_full_stops, special_result, nlp, url, source)
-				elif len(rows) > 0 and rows[0]["_source"]["url"].startswith("https://indieweb.org") or rows[1]["_source"]["url"].startswith("https://indieweb.org"):
-					if rows[0]["_source"]["url"].startswith("https://indieweb.org"):
-						url = rows[0]["_source"]["url"]
-						source = rows[0]["_source"]
-					else:
-						url = rows[1]["_source"]["url"]
-						source = rows[1]["_source"]
+				elif request.args.get("type") != "image" and len(rows) > 0 and rows[0]["_source"]["url"].startswith("https://indieweb.org/"):
+					url = rows[0]["_source"]["url"]
+					source = rows[0]["_source"]
 
-					do_i_use, special_result = search_result_features.generate_featured_snippet(full_query_with_full_stops, special_result, nlp, url, source, direct=True)
+					do_i_use, special_result = search_result_features.generate_featured_snippet(full_query_with_full_stops, special_result, nlp, url, source)
 
-				if "who is" in cleaned_value:
+				if "who is" in cleaned_value or ("." in cleaned_value and len(cleaned_value.split(".")[1]) <= 4):
 					get_homepage = requests.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&domain=true".format(config.ELASTICSEARCH_PASSWORD, cleaned_value_for_query.replace("who is", ""))).json()
 
 					if len(get_homepage.get("hits").get("hits")) > 0:
@@ -242,8 +224,6 @@ def results_page():
 						source = get_homepage["hits"]["hits"][0]["_source"]
 
 						do_i_use, special_result = search_result_features.generate_featured_snippet(full_query_with_full_stops, special_result, nlp, url, source)
-
-				do_i_use, special_result = search_result_features.generate_featured_snippet(cleaned_value, special_result, nlp, url, source, direct=False)
 
 			if len(rows) == 0:
 				out_of_bounds_page = True
@@ -267,7 +247,18 @@ def results_page():
 
 			if "random aeropress" in cleaned_value or "generate aeropress" in cleaned_value and request.args.get("type") != "image":
 				dose, grind_size, time, filters, water, stirring, stir_times, dose_is_point_five, inverted = search_result_features.aeropress_recipe()
-				special_result = {"type": "aeropress_recipe", "dose": dose, "grind_size": grind_size, "time": time, "filters": filters, "water": water, "stirring": stirring, "stir_times": stir_times, "dose_is_point_five": dose_is_point_five, "inverted": inverted}
+				special_result = {
+					"type": "aeropress_recipe",
+					"dose": dose,
+					"grind_size": grind_size,
+					"time": time,
+					"filters": filters,
+					"water": water,
+					"stirring": stirring,
+					"stir_times": stir_times,
+					"dose_is_point_five": dose_is_point_five,
+					"inverted": inverted
+				}
 
 			if request.args.get("type") == "image":
 				base_results_query="/results?query={}&type=image".format(cleaned_value)
@@ -302,6 +293,39 @@ def results_page():
 @main.route("/robots.txt")
 def robots():
 	return send_from_directory(main.static_folder, "robots.txt")
+
+@main.route("/go")
+def go_to_url():
+	# Idea from: https://www.tbray.org/ongoing/When/200x/2003/11/13/ResultRanking
+	page = request.args.get("page")
+	r = request.args.get("r")
+	query = request.args.get("query")
+
+	pagination = "0"
+
+	query_with_handled_spaces = request.args.get("query").replace("--", "")
+
+	cleaned_value_for_query = ''.join(e for e in query_with_handled_spaces if e.isalnum() or e == " " or e == ".")
+
+	if page:
+		# If page cannot be converted into an integer, redirect to homepage
+
+		try:
+			if int(page) > 1:
+				pagination = (int(page) - 1)
+		except:
+			return redirect("/")
+	else:
+		page = 1
+
+	rows = requests.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&sort={}&from={}&to={}&".format(config.ELASTICSEARCH_PASSWORD, query, cleaned_value_for_query, str(pagination), str(int(pagination)), )).json()["hits"]["hits"]
+	
+	urls = [url["_source"]["url"] for url in rows if r == url["_source"]["url"]]
+
+	if len(urls) > 0:
+		return redirect(r)
+	else:
+		return redirect("/")
 
 @main.route('/images/<path:path>')
 def send_static_images(path):
