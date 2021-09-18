@@ -138,7 +138,7 @@ def results_page():
 
 				try:
 					if int(page) > 1:
-						pagination = (int(page) - 1)
+						pagination = (int(page) - 1) * 10
 				except:
 					return redirect("/")
 			else:

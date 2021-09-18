@@ -104,12 +104,18 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
                 photo = ""
 
             for key, value in h_card["properties"].items():
-                if key != "photo":
-                    to_show += "<p><b>{}</b>: {}</p>".format(key.title(), value[0])
+                if key != "photo" and key != "email" and key != "logo" and key != "url":
+                    to_show += "<p><b>{}</b>: {}</p>".format(key.title().replace("-", " "), value[0].strip("/"))
+                elif key == "email":
+                    to_show += "<p><b>{}</b>: <a href='{}'>{}</a></p>".format(key.title(), "mailto:{}".format(value[0].replace("mailto:", "")), value[0].replace("mailto:", ""))
+                elif key == "url":
+                    to_show += "<p><b>{}</b>: <a href='{}'>{}</a></p>".format(key.title(), value[0], value[0].strip("/"))
+
             if soup.find("h1"):
                 title = soup.find("h1").text
             else:
                 title = url
+                
             return "<img src='{}'><p>{}</p>".format(photo, to_show), {"type": "direct_answer", "breadcrumb": original_url, "title": title}
 
     # check if cleaned value refers to an ent type
@@ -175,15 +181,13 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
             if dfn.text.lower().replace(" ", "").replace("-", "") == new_cleaned_value_for_direct_answer.lower().replace(" ", "").replace("-", "") or "define" in new_cleaned_value_for_direct_answer.lower():
                 return "<b style='font-size: 22px'>{}</b><br>{}".format(dfn.text, dfn.find_parent("p").text), {"type": "direct_answer", "breadcrumb": url, "title": post["title"]}
 
-    if len(original_cleaned_value) != 0 and len(original_cleaned_value.split(" ")) > 0:
+    if len(original_cleaned_value) != 0 and len(original_cleaned_value.split(" ")) > 0 and "what is" in original_cleaned_value.lower():
         try:
             do_i_use = c.concordance_list(cleaned_value, width=50)
 
-            print('sds')
-
             # check if in h2
             
-            in_h2 = [f for f in soup.find_all(["h2"]) if cleaned_value in f.text.lower()]
+            in_h2 = [f for f in soup.find_all(["h2"]) if original_cleaned_value in f.text.lower()]
 
             if len(in_h2) == 1:
                 # get p after in_h2
@@ -212,8 +216,6 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
 
             # if len(all_locs) < 3:
             #     return "", special_result
-
-            print('s')
 
             if all_locs:
                 location_of_tag = all_locs[0]
