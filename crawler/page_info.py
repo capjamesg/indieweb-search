@@ -42,8 +42,6 @@ def get_page_info(page_text, page_desc_soup, page_url):
 	
 	# check_url_for_errors(page_url, discovered_urls, broken_urls)
 
-	important_phrases = ""
-
 	contains_hfeed = page_desc_soup.find(class_="h-feed")
 
 	if contains_hfeed:
@@ -150,15 +148,4 @@ def get_page_info(page_text, page_desc_soup, page_url):
 	else:
 		category = "Page"
 
-	print(final_meta_description)
-	print(page_url)
-	print(page_url)
-	print(page_url)
-	print(page_url)
-	print(page_url)
-	print(page_url)
-	print(page_url)
-	print(page_url)
-	print(page_url)
-
-	return page_text, page_desc_soup, published_on, final_meta_description, doc_title, category, important_phrases, remove_doc_title_from_h1_list, False
+	return page_text, page_desc_soup, published_on, final_meta_description, doc_title, category, remove_doc_title_from_h1_list, False

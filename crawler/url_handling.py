@@ -10,7 +10,7 @@ import json
 
 yesterday = datetime.datetime.today() - datetime.timedelta(days=1)
 
-def add_to_database(full_url, published_on, doc_title, meta_description, category, heading_info, page, important_phrases, pages_indexed, page_content, outgoing_links, crawl_budget):
+def add_to_database(full_url, published_on, doc_title, meta_description, category, heading_info, page, pages_indexed, page_content, outgoing_links, crawl_budget, reindex):
 	if page != "" and page.headers:
 		length = page.headers.get("content-length")
 	else:
@@ -48,7 +48,6 @@ def add_to_database(full_url, published_on, doc_title, meta_description, categor
 		"important_phrases": "",
 		"page_content": str(page_content),
 		"page_text": page_content.get_text(),
-		"incoming_links": 0,
 		"outgoing_links": outgoing_links,
 		"page_rank": 0,
 		"domain": full_url.split("/")[2],
@@ -56,15 +55,21 @@ def add_to_database(full_url, published_on, doc_title, meta_description, categor
 		"md5_hash": md5_hash,
 	}
 
+	# results currently being saved to a file, so no need to run this code
+
+	check_if_indexed = requests.post("https://es-indieweb-search.jamesg.blog/check?url={}".format(full_url), headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}).json()
+
+	if len(check_if_indexed) > 0:
+		record["incoming_links"] = check_if_indexed[0]["_source"]["incoming_links"]
+	else:
+		record["incoming_links"] = 0
+
 	# save to json file
 
 	with open("results.json".format(md5_hash), "a+") as f:
 		f.write(json.dumps(record))
 		f.write("\n")
 
-	# results currently being saved to a file, so no need to run this code
-
-	# check_if_indexed = requests.post("https://es-indieweb-search.jamesg.blog/check?url={}".format(full_url), headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}).json()
 
 	# if len(check_if_indexed) == 0:
 	# 	r = requests.post("https://es-indieweb-search.jamesg.blog/create", headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}, json=record)
@@ -91,7 +96,7 @@ def check_remove_url(full_url):
 		print("removed {} from index as it is no longer valid".format(full_url))
 		logging.info("removed {} from index as it is no longer valid".format(full_url))
 
-def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, images_indexed, image_urls, all_links, external_links, discovered_urls, broken_urls, iterate_list_of_urls, site_url, crawl_budget, url):
+def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, external_links, discovered_urls, iterate_list_of_urls, site_url, crawl_budget, url, reindex):
 	"""
 		Crawls URLs in list, adds URLs to index, and returns updated list
 	"""
@@ -204,7 +209,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, images_indexed, 
 			logging.info("{} marked as noindex, skipping".format(full_url))
 			return url, {}, False, []
 
-		final_urls, iterate_list_of_urls, all_links, external_links, discovered_urls = page_link_discovery(links, final_urls, iterate_list_of_urls, full_url, all_links, external_links, discovered_urls, site_url, count)
+		final_urls, iterate_list_of_urls, all_links, external_links, discovered_urls = page_link_discovery(links, final_urls, iterate_list_of_urls, full_url, all_links, external_links, discovered_urls, site_url)
 
 		if page_desc_soup.select("e-content"):
 			page_text = page_desc_soup.select("e-content")[0]
@@ -245,7 +250,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, images_indexed, 
 		# Discover new links that might be on a page to follow later
 
 		# Only index if noindex attribute is not present
-		page_text, page_desc_soup, published_on, meta_description, doc_title, category, important_phrases, remove_doc_title_from_h1_list, noindex = crawler.page_info.get_page_info(page_text, page_desc_soup, full_url)
+		page_text, page_desc_soup, published_on, meta_description, doc_title, category, remove_doc_title_from_h1_list, noindex = crawler.page_info.get_page_info(page_text, page_desc_soup, full_url)
 
 		if noindex == True:
 			return url, discovered_urls, False, all_links
@@ -261,7 +266,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, images_indexed, 
 			return url, discovered_urls, False, links
 			
 		try:
-			pages_indexed = add_to_database(full_url, published_on, doc_title, meta_description, category, heading_info, page, important_phrases, pages_indexed, page_text, len(links), crawl_budget)
+			pages_indexed = add_to_database(full_url, published_on, doc_title, meta_description, category, heading_info, page, pages_indexed, page_text, len(links), crawl_budget, reindex)
 		except Exception as e:
 			print("error with {}".format(full_url))
 			print(e)
@@ -272,7 +277,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, images_indexed, 
 
 	return url, discovered_urls, True, all_links
 
-def page_link_discovery(links, final_urls, iterate_list_of_urls, page_being_processed, all_links, external_links, discovered_urls, site_url, count):
+def page_link_discovery(links, final_urls, iterate_list_of_urls, page_being_processed, all_links, external_links, discovered_urls, site_url):
 	"""
 		Finds all the links on the page and adds them to the list of links to crawl.
 	"""
