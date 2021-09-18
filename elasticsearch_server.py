@@ -72,8 +72,9 @@ def home():
                     },
                 },
                 "script": {
-                    "source": """return _score + Math.log((1 + (doc['word_count'].value))) + Math.sqrt((1 + (doc['incoming_links'].value)) * 5);
+                    "source": """return _score + Math.log((1 + (doc['word_count'].value))) + Math.sqrt((1 + (doc['incoming_links'].value)) * 4);
                     """
+                    # previously * 5, now * 4
                 },
             },
         },
@@ -108,23 +109,6 @@ def home():
 
     return response
 
-@app.route("/create-bulk", methods=["POST"])
-def create_bulk():
-    if request.method == "POST":
-        # check auth header
-        if request.headers.get("Authorization") != "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN):
-            return abort(401)
-
-        data = request.get_json()
-
-        res = helpers.bulk(es, data)
-
-        print(res)
-
-        return jsonify({"status": "ok"})
-    else:
-        return abort(401)
-
 @app.route("/remove-from-index", methods=["POST"])
 def remove_from_index():
     if request.method == "POST":
@@ -153,8 +137,6 @@ def create():
         total_docs_today = int(es.count(index='pages')['count'])
 
         i = es.index(index="pages", body=data, id=total_docs_today + 1)
-
-        print(i)
 
         return jsonify({"status": "ok"})
     else:
