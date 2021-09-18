@@ -3,7 +3,6 @@
 <h1 class="p-name p-summary">Your Search Results</h1>
   <form action="/results" method="GET" role="search">
     <input type="text" id="query" name="query" placeholder="Enter your query" aria-label="Search the IndieWeb" value="{{ query }}">
-    {% if results_type == "image" %}<input type="hidden" id="type" name="type" value="image">{% endif %}
     <input class="search_button" type="submit" value="Search">
   </form>
   <p>Returned {{ '{0:,}'.format(number_of_results) }} search results for your "{{ query }}" query.</p>
@@ -20,28 +19,29 @@
   {% if out_of_bounds_page == False %}
     {% include "search/special_serp_items.html" %}
     <ol class="serp">
-      {% if results_type == "image" %}
-        {% for r in results %}
+      {% set count = 0 %}
+      {% for r in results %}
+      {% set count = count + 1 %}
+      {% if r['_source']['url'] != special_result.breadcrumb %}
         <li>
-          <a class="image_link" href="{{ r[2] }}"><img src="https://search.jamesg.blog/images/{{ r[2].replace('https://jamesg.blog/assets/', '') }}" class="u-photo" alt="{{ r[1] }}" /></a>
-          <p class="p-name"><a href="{{ r[2] }}" class="u-url">{{ r[2] }}</a></p>
-          <p class="p-summary">{{ r[1] | safe }}</p>
+          <p class="breadcrumbs"><a href="{% if count < 3 %}/go?query={{ query }}&page={{ page }}&r={% endif %}{{ r['_source']['url'] }}" style="border-bottom: none;">{% for item in r['_source']['url'].replace("https://", "").replace("http://", "").rstrip("/").split("/") %} {{ item.replace("%20", " ") }} {% if not loop.last %}>{% endif %}{% endfor %}</a></p>
+          <p class="p-name"><a href="{{ r['_source']['url']  }}" class="u-url">{% if r['_source']['title']|length == 0 %}{{ " ".join(r['_source']['url'].split(" ")[:20]) }}{% if r['_source']['url'].split(" ")|length > 20 %}...{% endif %}{% else %}{{ " ".join(r['_source']['title'].split(" ")[:20]) }}{% if r['_source']['title'].split(" ")|length > 20 %}...{% endif %}{% endif %}</a></p>
+          <p class="p-summary">{% if r['_source']['meta_description']|length > 0 %}{{ r['_source']['meta_description'] }}{% elif (r['_source']['h1'].split(",") and r['_source']['h1'].split(",")[0]|length > 0) or r['_source']['h1'] != "" %}{{ r['_source']['h1'].split(",")[0] }}{% else %}{{ r['_source']['h2'].split(",")[0] }}{% endif %}</p>
+          {% if r['_source']['url'].startswith("https://indieweb.org/") or r['_source']['url'].startswith("https://microformats.org/wiki/") %}
+          {% set title_count = 0 %}
+          <p>
+            {% for header in r['_source']['h2'].split(", ")[:5] %}
+              {% if header != "Navigation menu" and header != "See Also" %}
+                <a href="{{ r['_source']['url'] }}#{{ header }}">{{ header }}</a>
+                {% if header != r['_source']['h2'].split(", ")[:5][-1] %} | {% endif %}
+              {% endif %}
+            {% endfor %}
+          </p>
+          {% endif %}
         </li>
-        <hr>
-        {% endfor %}
-      {% else %}
-        {% for r in results %}
-        {% if r['_source']['url'] != special_result.breadcrumb %}
-          <li>
-            <p class="breadcrumbs"><a href="{{ r['_source']['url'] }}" style="border-bottom: none;">{% for item in r['_source']['url'] .replace("https://", "").replace("http://", "").rstrip("/").split("/") %} {{ item }} {% if not loop.last %}>{% endif %}{% endfor %}</a></p>
-            <p class="p-name"><a href="{{ r['_source']['url']  }}" class="u-url">{% if r['_source']['title']|length == 0 %}{{ " ".join(r['_source']['url'].split(" ")[:20]) }}{% if r['_source']['url'].split(" ")|length > 20 %}...{% endif %}{% else %}{{ " ".join(r['_source']['title'].split(" ")[:20]) }}{% if r['_source']['title'].split(" ")|length > 20 %}...{% endif %}{% endif %}</a></p>
-            <p class="p-summary">{% if r['_source']['description']|length > 0 %}{{ r['_source']['description'] }}{% else %}{{ r['_source']['h1'].split(",")[0] }}{% endif %}</p>
-            {% if "https://indieweb.org" in r['_source']['url'] %}<p>{% for header in r['_source']['h2'].split(", ")[:5] %}{% if header != "Navigation menu" and header != "See Also" %}<a href="{{ r['_source']['url'] }}#{{ header }}">{{ header }}</a> | {% endif %}{% endfor %}</p>{% endif %}
-          </li>
-        <hr>
-        {% endif %}
-        {% endfor %}
+      <hr>
       {% endif %}
+      {% endfor %}
     </ol>
   {% elif out_of_bounds_page == True and "on this day" not in query %}
     <p>There are no results matching your query.</p>
