@@ -1,3 +1,4 @@
+from typing import final
 from textblob import WordList
 from nltk.corpus import stopwords
 import crawler.url_handling
@@ -148,5 +149,16 @@ def get_page_info(page_text, page_desc_soup, page_url):
 		category = page_desc_soup.find("a", attrs={"class":"p-category"}).text
 	else:
 		category = "Page"
+
+	print(final_meta_description)
+	print(page_url)
+	print(page_url)
+	print(page_url)
+	print(page_url)
+	print(page_url)
+	print(page_url)
+	print(page_url)
+	print(page_url)
+	print(page_url)
 
 	return page_text, page_desc_soup, published_on, final_meta_description, doc_title, category, important_phrases, remove_doc_title_from_h1_list, False
