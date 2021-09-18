@@ -177,7 +177,7 @@ def process_domain(site, reindex):
 	if reindex == True:
 		return 100, final_urls, namespaces_to_ignore
 	else:
-		return 1000, final_urls, namespaces_to_ignore
+		return 5000, final_urls, namespaces_to_ignore
 
 def build_index(site, reindex):
 	# read crawl_queue.txt
@@ -212,16 +212,18 @@ def build_index(site, reindex):
 
 	# all_links = []
 
-	# don't reindex sites right now
-	# check_if_indexed = requests.post("https://es-indieweb-search.jamesg.blog/check?url={}".format("https://" + site), headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}).json()
+	check_if_indexed = requests.post("https://es-indieweb-search.jamesg.blog/check?url={}".format("https://" + site), headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}).json()
 
-	# if len(check_if_indexed) > 0:
-	# 	# Give small crawl budget to site to quickly find content
-	# 	# crawl_budget = 50
-	# 	return site, []
+	if len(check_if_indexed) == 0:
+		# Give small crawl budget to site to quickly find content
+		crawl_budget = 5000
+	else:
+		crawl_budget = 100
+
+	print("crawl budget: {}".format(crawl_budget))
 	
 	for url in iterate_list_of_urls:
-		url_indexed, discovered, valid, new_links = url_handling.crawl_urls(final_urls, namespaces_to_ignore, indexed, images_indexed, image_urls, links, external_links, discovered_urls, broken_urls, iterate_list_of_urls, site, crawl_budget, url)
+		url_indexed, discovered, valid, new_links = url_handling.crawl_urls(final_urls, namespaces_to_ignore, indexed, links, external_links, discovered_urls, iterate_list_of_urls, site, crawl_budget, url, reindex)
 
 		if valid == True:
 			valid_count += 1
