@@ -5,7 +5,7 @@ es = Elasticsearch(['http://localhost:9200'])
 from bs4 import BeautifulSoup
 import networkx as nx
 import tldextract
-import json
+import csv
 
 indexed = {}
 incoming = {}
@@ -27,8 +27,11 @@ while scroll_size > 0:
 
     scroll_size = len(response['hits']['hits'])
 
-    if iter > 25:
+    if iter < 25:
         pages.extend(response['hits']['hits'])
+
+    if iter == 25:
+        break
 
     iter+=1
     print(iter)
@@ -37,7 +40,7 @@ print('processing links')
 
 # get all pages in domain with elasticsarch
 
-total_all_links = {}
+total_all_links = []
 
 for page in pages:
     page_desc_soup = BeautifulSoup(page["_source"]["page_content"], 'lxml')
@@ -55,28 +58,13 @@ for page in pages:
             if link["href"].startswith("/"):
                 link["href"] = "https://" + domain + link["href"]
 
-            if total_all_links.get(link["href"]):
-                total_all_links[link["href"]] = total_all_links[link["href"]] + 1
-            else:
-                total_all_links[link["href"]] = 1
-            # try:
-            #     G.add_node(link["href"])
-            #     G.add_edge(link["href"], page["_source"]["url"])
-            # except:
-            #     pass
+            total_all_links += [link["href"], page["_source"]["url"]]
 
-print('calculating pagerank')
+print("saving links to file")
 
-# pr = nx.pagerank(G, alpha=0.9, max_iter=100, tol=1e-06)
-
-print('calculated pagerank')
-
-failed = 0
-tried = 0
-
-# save pr.items() to file
-with open("pagerank_elasticsearch.json", "w+") as f:
-    f.write(json.dumps(total_all_links))
+with open("pagerank.csv", "w+") as f:
+    writer = csv.writer(f)
+    writer.writerows(total_all_links)
 
 print('saved pagerank to file')
 
