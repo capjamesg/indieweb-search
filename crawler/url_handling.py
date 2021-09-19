@@ -47,6 +47,7 @@ def add_to_database(full_url, published_on, doc_title, meta_description, categor
 		"length": length,
 		"important_phrases": "",
 		"page_content": str(page_content),
+		"incoming_links": "",
 		"page_text": page_content.get_text(),
 		"outgoing_links": outgoing_links,
 		"page_rank": 0,
@@ -57,19 +58,18 @@ def add_to_database(full_url, published_on, doc_title, meta_description, categor
 
 	# results currently being saved to a file, so no need to run this code
 
-	check_if_indexed = requests.post("https://es-indieweb-search.jamesg.blog/check?url={}".format(full_url), headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}).json()
+	# check_if_indexed = requests.post("https://es-indieweb-search.jamesg.blog/check?url={}".format(full_url), headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}).json()
 
-	if len(check_if_indexed) > 0:
-		record["incoming_links"] = check_if_indexed[0]["_source"]["incoming_links"]
-	else:
-		record["incoming_links"] = 0
+	# if len(check_if_indexed) > 0:
+	# 	record["incoming_links"] = check_if_indexed[0]["_source"]["incoming_links"]
+	# else:
+	# 	record["incoming_links"] = 0
 
 	# save to json file
 
 	with open("results.json".format(md5_hash), "a+") as f:
 		f.write(json.dumps(record))
 		f.write("\n")
-
 
 	# if len(check_if_indexed) == 0:
 	# 	r = requests.post("https://es-indieweb-search.jamesg.blog/create", headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}, json=record)
@@ -139,7 +139,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 
 		try:
 			# Check if page is the right content type before indexing
-			page_test = session.head(full_url, headers=config.HEADERS)
+			page_test = session.head(full_url, headers=config.HEADERS, allow_redirects=True, verify=False)
 		except requests.exceptions.Timeout:
 			logging.error("{} timed out, skipping".format(full_url))
 			check_remove_url(full_url)
@@ -162,7 +162,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 		session.max_redirects = 3
 
 		try:
-			page = session.get(full_url, timeout=10, headers=config.HEADERS, allow_redirects=True)
+			page = session.get(full_url, timeout=10, headers=config.HEADERS, allow_redirects=True, verify=False)
 		except requests.exceptions.Timeout:
 			logging.error("{} timed out, skipping".format(full_url))
 			return url, {}, False, []

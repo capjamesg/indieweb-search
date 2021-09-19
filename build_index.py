@@ -59,21 +59,20 @@ def find_robots_directives(site_url):
 		Finds the robots.txt file on a website, reads the contents, then follows directives.
 	"""
 	try:
-		read_robots = requests.get("https://{}/robots.txt".format(site_url), headers=config.HEADERS, timeout=5)
+		read_robots = requests.get("https://{}/robots.txt".format(site_url), headers=config.HEADERS, timeout=5, allow_redirects=True, verify=False)
 	except requests.exceptions.RequestException as e:
 		logging.error("Error with site: {}".format(e))
-		with open("broken_domains", "a") as file:
-			file.write("{}".format(site_url))
-		return "broken", []
+		return [], []
 	except requests.exceptions.ConnectionError:
 		logging.error("Connection error with site: {}".format(site_url))
-		with open("broken_domains", "a") as file:
+		print('sd')
+		with open("broken_domains.txt", "a") as file:
 			file.write("{}".format(site_url))
-		return "broken", []
+		return [], []
 	except:
 		print("Error: Could not find robots.txt file on {}".format(site_url))
 		logging.error("Error: Could not find robots.txt file on {}".format(site_url))
-		return "broken", []
+		return [], []
 
 	if read_robots.status_code == 404:
 		logging.warning("Robots.txt not found on {}".format(site_url))
@@ -136,7 +135,7 @@ def process_domain(site, reindex):
 
 	# Parse sitemap indexes
 	for u in sitemap_urls:
-		r = requests.get(u)
+		r = requests.get(u, verify=False, headers=config.HEADERS, timeout=5, allow_redirects=True)
 		if r.status_code == 200:
 			# parse with bs4
 			soup = BeautifulSoup(r.text, "html.parser")
@@ -160,7 +159,7 @@ def process_domain(site, reindex):
 	for s in sitemap_urls:
 		# Only URLs not already discovered will be added by this code
 		# Lastmod dates will be added to the final_url value related to the URL if a lastmod date is available
-		feed = requests.get(s, headers=config.HEADERS)
+		feed = requests.get(s, headers=config.HEADERS, timeout=5, verify=False, allow_redirects=True)
 
 		soup = BeautifulSoup(feed.content, "lxml")
 
@@ -186,22 +185,19 @@ def build_index(site, reindex):
 	if crawl_budget == 0:
 		return site, []
 
-	image_urls = []
-
 	if len(final_urls) == 0:
 		final_urls["https://{}".format(site)] = ""
-
-	images_indexed = 0
 
 	iterate_list_of_urls = list(final_urls.keys())
 
 	try:
-		requests.get(iterate_list_of_urls[0], headers=config.HEADERS, timeout=5)
-	except:
+		requests.get(iterate_list_of_urls[0], headers=config.HEADERS, timeout=5, allow_redirects=True, verify=False)
+	except Exception as e:
+		print(e)
 		print("error with {} url and site, skipping".format(iterate_list_of_urls[0]))
 		logging.debug("error with {} url and site, skipping".format(iterate_list_of_urls[0]))
 		return
-
+		
 	print("processing {}".format(site))
 	logging.debug("processing {}".format(site))
 
@@ -209,8 +205,6 @@ def build_index(site, reindex):
 	valid_count = 0	
 
 	indexed_list = {}
-
-	# all_links = []
 
 	check_if_indexed = requests.post("https://es-indieweb-search.jamesg.blog/check?url={}".format("https://" + site), headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}).json()
 
@@ -297,10 +291,13 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
 			print("SITES INDEXED: {}".format(sites_indexed))
 			logging.info("SITES INDEXED: {}".format(sites_indexed))
 
+			futures.remove(future)
+
 			try:
 				url_indexed, discovered = future.result()
 
-				futures.remove(future)
+				if url_indexed == None:
+					futures = []
+					break
 			except Exception as e:
-				print(e)
-				logging.error(e)
+				continue
