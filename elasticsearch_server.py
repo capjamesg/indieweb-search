@@ -72,7 +72,7 @@ def home():
                     },
                 },
                 "script": {
-                    "source": """return _score + Math.log((1 + (doc['word_count'].value))) + Math.sqrt((1 + (doc['incoming_links'].value)) * 4);
+                    "source": """return _score + Math.log((1 + (doc['word_count'].value))) + Math.sqrt((1 + (doc['incoming_links'].value)) * 5);
                     """
                     # previously * 5, now * 4
                 },
@@ -197,26 +197,67 @@ def check():
                 }
             }
 
-            response = es.search(index="pages", body=search_param)
+        response = es.search(index="pages", body=search_param)
 
-            # do a lowercase check as well to prevent duplicate urls with case as the differentiator
+        search_param = {
+            "query": {
+                "term": {
+                    "url.keyword": {
+                        "value": request.args.get("url").lower()
+                    }
+                }
+            }
+        }
 
+        lower_response = es.search(index="pages", body=search_param)
+
+        # do a lowercase check as well to prevent duplicate urls with case as the differentiator
+
+        if request.args.get("url"):
+            if request.args.get("url").endswith("/"):
+                url = request.args.get("url")[:-1]
+            else:
+                url = request.args.get("url") + "/"
+
+            # get opposite of submitted url in terms of trailing slash
+            # this checks to see if a url is in the index with or without a trailing slash
+            # this step is essential for preventing duplicates on the count of different trailing slashes
             search_param = {
                 "query": {
                     "term": {
                         "url.keyword": {
-                            "value": request.args.get("url").lower()
+                            "value": url
                         }
                     }
                 }
             }
 
-            lower_response = es.search(index="pages", body=search_param)
+            trailing_response = es.search(index="pages", body=search_param)
+
+            search_param = {
+                "query": {
+                    "term": {
+                        "url.keyword": {
+                            "value": url.lower()
+                        }
+                    }
+                }
+            }
+
+            lower_trailing_response = es.search(index="pages", body=search_param)
+        else:
+            lower_response = None
+            trailing_response = None
+            lower_trailing_response = None
 
         if response:
             return jsonify(response["hits"]["hits"])
         elif lower_response:
             return jsonify(lower_response["hits"]["hits"])
+        elif trailing_response:
+            return jsonify(trailing_response["hits"]["hits"])
+        elif lower_trailing_response:
+            return jsonify(lower_trailing_response["hits"]["hits"])
         else:
             return jsonify({"status": "not found"})
     else:
