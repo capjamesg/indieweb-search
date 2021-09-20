@@ -1,0 +1,11 @@
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/"
+                       xmlns:moz="http://www.mozilla.org/2006/browser/search/">
+  <ShortName>IndieWeb Search</ShortName>
+  <Description>Search engine for the IndieWeb community.</Description>
+  <InputEncoding>[UTF-8]</InputEncoding>
+  <Image width="16" height="16" type="image/x-icon">[https://indieweb-search.jamesg.blog]</Image>
+  <Url type="text/html" template="https://indieweb-search.jamesg.blog/results">
+    <Param name="query" value="{searchTerms}"/>
+  </Url>
+  <moz:SearchForm>https://indieweb-search.jamesg.blog</moz:SearchForm>
+</OpenSearchDescription>
