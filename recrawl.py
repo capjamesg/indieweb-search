@@ -118,6 +118,7 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
 print("Checking sitemaps for new content")
 
 to_crawl = []
+domains_to_recrawl = []
 
 with open("/home/james/crawler/crawled.csv", "r") as f:
     reader = csv.reader(f)
@@ -135,15 +136,17 @@ with open("/home/james/crawler/crawled.csv", "r") as f:
             print("Error processing domain {}".format(domain))
             logging.info("Error processing domain {}".format(domain))
             continue
+
+        # get todays date
+        today = datetime.datetime.now()
+
+        # get three weeks ago
+        three_weeks_ago = today - datetime.timedelta(weeks=3)
         
+        # if date is older than three weeks ago, add to to_crawl
+        # if no date provided, also add to to_crawl
         for key, value in final_urls.items():
-            # get todays date
-            today = datetime.datetime.now()
-
-            # get three weeks ago
-            three_weeks_ago = today - datetime.timedelta(weeks=3)
-
-            if value != "":
+            if value and value != "":
                 try:
                     # get item key string as datetime
                     item_date = datetime.datetime.strptime(value.split("T")[0], "%Y-%m-%d")
@@ -152,60 +155,13 @@ with open("/home/james/crawler/crawled.csv", "r") as f:
                         to_crawl.append(key)
                 except:
                     print("could not parse date for {}, skipping".format(item))
+            elif not value:
+                to_crawl.append(key)
 
 pages_indexed = 0
 
 with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
     futures = [executor.submit(crawl_urls, {item: ""}, [], 0, [], [], {}, [], "https://" + item, 1, item, False, feed_url_list, False) for item in to_crawl]
-    
-    while len(futures) > 0:
-        for future in concurrent.futures.as_completed(futures):
-            pages_indexed += 1
-
-            print("PAGES INDEXED: {}".format(pages_indexed))
-            logging.info("PAGES INDEXED: {}".format(pages_indexed))
-
-            try:
-                url_indexed, discovered = future.result()
-
-                if url_indexed == None:
-                    futures = []
-                    break
-            except Exception as e:
-                pass
-
-            futures.remove(future)
-
-print("Checking all domains in domains.txt to see if they need updated")
-
-domains_to_recrawl = []
-
-with open("/home/james/crawler/domains.csv", "r") as f:
-    reader = csv.reader(f)
-
-    for item in reader:
-        domain = item[0]
-        date = item[1]
-
-        # get todays date
-        today = datetime.datetime.now()
-
-        # get three weeks ago
-        three_weeks_ago = today - datetime.timedelta(weeks=3)
-
-        if date != "":
-            try:
-                # get item key string as datetime
-                item_date = datetime.datetime.strptime(date, "%Y-%m-%d")
-
-                if item_date < three_weeks_ago:
-                    domains_to_recrawl.append(item)
-            except:
-                print("could not parse date for {}, skipping".format(item))
-
-# recrawl domains w/ budget of 100
-with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
-    futures = [executor.submit(crawl_urls, {item: ""}, [], 0, [], [], {}, [], "", 100, "", False, feed_url_list, False) for item in domains_to_recrawl]
     
     while len(futures) > 0:
         for future in concurrent.futures.as_completed(futures):
