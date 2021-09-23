@@ -21,6 +21,8 @@ body = {"query": {"match_all": {}}}
 
 count = 0
 
+domain_links = {}
+
 # First for loop to get all links from https://simplernerd.com/elasticsearch-scroll-python/
 # Get all links on each page in the index
 # Write all links to a file
@@ -30,39 +32,65 @@ for hits in scroll(es, 'pages', body, '2m', 20):
 
         links = soup.find_all('a')
 
-        print(count)
-        print(h["_source"]["url"])
+        print(str(count) + " " + h["_source"]["url"])
+        
         count += 1
+
+        if not h["_source"]["incoming_links"]:
+            es.update(index='pages', id=h['_id'], body={'doc': {'incoming_links': 0}})
+            print('updated url')
 
         domain = h["_source"]["url"].split('/')[2]
 
         with open('links.csv', 'a') as f:
             for l in links:
                 if l.has_attr('href'):
+                    link = l['href'].split("?")[0].replace("#", "")
                     if l["href"].startswith("/"):
                         link = "https://" + h["_source"]["domain"] + l.get('href')
                     elif l["href"].startswith("//"):
                         link = "https:" + l.get('href')
-                    else:
+                    elif l["href"].startswith("http"):
                         link = l.get('href')
+                    else:
+                        link = "https://" + h["_source"]["domain"] + "/" + l.get('href')
 
-                link_domain = l.get('href').split('/')[2]
+                    link = link.lower()
 
-                if domain == link_domain: 
-                    points = 1
-                elif "u-in-reply-to" in l.get("class") and domain != link_domain:
-                    points = 5
-                elif ("u-repost-of" in l.get("class") or "u-quotation-of" in l.get("class")) and domain != link_domain:
-                    points = 4
-                elif "u-bookmark-of" in l.get("class") and domain != link_domain:
-                    points = 3
-                elif "u-like-of" in l.get("class") and domain != link_domain:
-                    points = 2
-                else:
-                    points = 1
+                    try:
+                        link_domain = link.split('/')[2]
 
-                # points go to the link
-                csv.writer(f).writerow([h["_source"]["url"], link, points])
+                        if domain_links.get(link_domain):
+                            domain_links[link_domain] += 1
+                        else:
+                            domain_links[link_domain] = 1
+
+                        # don't count links to someone's own site
+                        if h["_source"]["domain"] == link_domain:
+                            continue
+                    except:
+                        continue
+
+        #         if domain == link_domain: 
+        #             points = 1
+        #         elif "u-in-reply-to" in l.get("class") and domain != link_domain:
+        #             points = 5
+        #         elif ("u-repost-of" in l.get("class") or "u-quotation-of" in l.get("class")) and domain != link_domain:
+        #             points = 4
+        #         elif "u-bookmark-of" in l.get("class") and domain != link_domain:
+        #             points = 3
+        #         elif "u-like-of" in l.get("class") and domain != link_domain:
+        #             points = 2
+        #         else:
+        #             points = 1
+
+        #         # points go to the link
+                    csv.writer(f).writerow([h["_source"]["url"], link, link_domain])
+
+# write domain_links to file
+# may be a useful metric for determining overall domain authority
+with open('domain_links.json', 'w') as f:
+    json.dump(domain_links, f)
 
 links = {}
 count = 0
@@ -70,7 +98,7 @@ count = 0
 # Open links file
 # Create dictionary with the number of times each domain appears
 for line in open("links.csv"):
-    line = line.strip()
+    line = line.strip().lower()
 
     link = line.split(",")
 
@@ -114,7 +142,14 @@ for link, link_count in links.items():
     if len(response["hits"]["hits"]) == 0:
         print("No results for " + link)
     else:
-        es.update(index="pages", id=response['hits']['hits'][0]['_id'], body={"doc": {"incoming_links": link_count}})
+        try:
+            link_domain = link.split('/')[2].lower()
+
+            referring_domains = domain_links.get(link_domain)
+        except:
+            referring_domains = 0
+
+        es.update(index="pages", id=response['hits']['hits'][0]['_id'], body={"doc": {"incoming_links": link_count, "referring_domains_to_site": referring_domains}})
 
         full_link = response['hits']['hits'][0]['_source']['url']
 

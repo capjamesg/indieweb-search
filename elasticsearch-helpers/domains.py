@@ -1,48 +1,38 @@
+from elasticsearch import Elasticsearch
 from bs4 import BeautifulSoup
-from elasticsearch import Elasticsearch, helpers
-import sqlite3
+import csv
+import json
 
 es = Elasticsearch(['http://localhost:9200'])
 
-response = es.search(index="pages", body={"query":{"match_all":{}}}, size=1000, scroll="2s")
+# Function from https://simplernerd.com/elasticsearch-scroll-python/
+# All credit to them for the function
+def scroll(es, index, body, scroll, size, **kw):
+    page = es.search(index=index, body=body, scroll=scroll, size=size, **kw)
+    scroll_id = page['_scroll_id']
+    hits = page['hits']['hits']
+    while len(hits):
+        yield hits
+        page = es.scroll(scroll_id=scroll_id, scroll=scroll)
+        scroll_id = page['_scroll_id']
+        hits = page['hits']['hits']
 
-pages = []
-iter = 0
+body = {"query": {"match_all": {}}} 
 
-scroll_size = len(response['hits']['hits'])
+count = 0
 
-while scroll_size > 0:
-    response = es.scroll(scroll_id=response['_scroll_id'], scroll="2s")
+links = []
 
-    scroll_size = len(response['hits']['hits'])
+# First for loop to get all links from https://simplernerd.com/elasticsearch-scroll-python/
+# Get all links on each page in the index
+# Write all links to a file
+for hits in scroll(es, 'pages', body, '2m', 20):
+    for h in hits:
+        links.append(h['_source']['domain'])
 
-    if iter < 25:
-        pages.extend(response['hits']['hits'])
-    else:
-        scroll_size = 0
-
-    iter+=1
-    print(iter)
-
-# domains = set()
-
-# for p in pages:
-#     domain = p['_source']['url'].split('/')[2]
-#     domains.add(domain)
-
-# # write domains to file
-# with open('domains.txt', 'a') as f:
-#     for d in domains:
-#         f.write(d + '\n')
-
-for p in pages:
-    page_html = p['_source']['page_content']
-
-    soup = BeautifulSoup(page_html, 'html.parser')
-
-    page_text = soup.get_text()
-
-    # make text unicode
-    page_text = page_text.encode('utf-8').decode('utf-8').replace("\n", " ")
-
-    es.update(index="pages", id=p['_id'], body={"doc":{"text":page_text}})
+links = list(set(links))
+    
+# write domains to next_crawl.txt
+with open('next_crawl.txt', 'w+') as f:
+    for link in links:
+        f.write(link + '\n')
