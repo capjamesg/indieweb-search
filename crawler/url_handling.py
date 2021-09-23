@@ -1,4 +1,4 @@
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Comment
 import requests
 import datetime
 import logging
@@ -11,12 +11,30 @@ import json
 yesterday = datetime.datetime.today() - datetime.timedelta(days=1)
 
 def add_to_database(full_url, published_on, doc_title, meta_description, category, heading_info, page, pages_indexed, page_content, outgoing_links, crawl_budget, reindex):
+	# get last modified date
+
 	if page != "" and page.headers:
 		length = page.headers.get("content-length")
 	else:
 		length = len(page_content)
 
-	md5_hash = hashlib.md5(str(page_content).encode("utf-8")).hexdigest()
+	print('dfsddssd')
+
+	# remove script and style tags from page_content
+
+	for script in page_content(["script", "style"]):
+		script.decompose()
+
+	#remove comments
+
+	comments = page_content.findAll(text=lambda text:isinstance(text, Comment))
+	[comment.extract() for comment in comments]
+
+	md5_hash = hashlib.md5(str("".join([w for w in page_content.get_text().split(" ")[:200]])).encode("utf-8")).hexdigest()
+
+	print('dfsddssd')
+
+	print(md5_hash)
 
 	# check if md5 hash in posts
 
@@ -47,13 +65,15 @@ def add_to_database(full_url, published_on, doc_title, meta_description, categor
 		"length": length,
 		"important_phrases": "",
 		"page_content": str(page_content),
-		"incoming_links": "",
+		"incoming_links": 0,
 		"page_text": page_content.get_text(),
 		"outgoing_links": outgoing_links,
-		"page_rank": 0,
 		"domain": full_url.split("/")[2],
 		"word_count": len(page_content.get_text().split(" ")),
 		"md5_hash": md5_hash,
+		"last_crawled": datetime.datetime.today().strftime("%Y-%m-%d %H:%M:%S"),
+		"referring_domains_to_site": 0, # updated when index is rebuilt
+		"internal_incoming_links": 0 # not actively used
 	}
 
 	# results currently being saved to a file, so no need to run this code
@@ -92,7 +112,7 @@ def check_remove_url(full_url):
 		data = {
 			"id": check_if_indexed["_id"],
 		}
-		r = requests.post("https://es-indieweb-search.jamesg.blog/remove-from-index", headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}, json=data)
+		requests.post("https://es-indieweb-search.jamesg.blog/remove-from-index", headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}, json=data)
 		print("removed {} from index as it is no longer valid".format(full_url))
 		logging.info("removed {} from index as it is no longer valid".format(full_url))
 
@@ -104,24 +124,14 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 
 	full_url = url.replace("http://", "https://")
 
-	if "/tags/" in full_url or "/tag/" in full_url or "/label/" in full_url or "/search/" in full_url:
-		print("{} marked as follow, noindex because it is a tag, label, or search resource".format(full_url))
-		logging.info("{} marked as follow, noindex because it is a tag, label, or search resource".format(full_url))
-		return url, {}, False, []
-
-	elif "javascript:" in full_url:
-		print("{} marked as follow, noindex because it is a javascript resource".format(full_url))
-		logging.info("{} marked as follow, noindex because it is a javascript resource".format(full_url))
-		return url, {}, False, []
-
-	elif "/page/" in full_url and full_url.split("/")[-1].isdigit():
-		print("{} marked as follow, noindex because it is a page archive".format(full_url))
-		logging.info("{} marked as follow, noindex because it is a page archive".format(full_url))
-		return url, {}, False, []
-
 	if len(full_url) > 125:
 		print("{} url too long, skipping".format(full_url))
 		logging.info("{} url too long, skipping".format(full_url))
+		return url, {}, False, []
+
+	if "javascript:" in full_url:
+		print("{} marked as follow, noindex because it is a javascript resource".format(full_url))
+		logging.info("{} marked as follow, noindex because it is a javascript resource".format(full_url))
 		return url, {}, False, []
 
 	# Only get URLs that match namespace exactly
@@ -140,6 +150,14 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 		try:
 			# Check if page is the right content type before indexing
 			page_test = session.head(full_url, headers=config.HEADERS, allow_redirects=True, verify=False)
+
+			# get redirect url
+			# if page_test.history:
+			# 	print(page_test.history)
+			# 	logging.error("{} redirected to {}".format(full_url, page_test.history[0].url))
+			# 	print("{} redirected to {}".format(full_url, page_test.history[0].url))
+			# 	full_url = page_test.history[0].url
+				
 		except requests.exceptions.Timeout:
 			logging.error("{} timed out, skipping".format(full_url))
 			check_remove_url(full_url)
@@ -157,6 +175,21 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			check_remove_url(full_url)
 			logging.info("{} is not a html resource, skipping".format(full_url))
 			return url, {}, False, []
+
+		if page_test.links:
+			header_links = requests.utils.parse_header_links(page_test.links)
+			for link in header_links:
+				if link["rel"] == "canonical":
+					canonical_url = link["url"]
+
+					iterate_list_of_urls.append(canonical_url)
+
+					discovered_urls[canonical_url] = canonical_url
+
+					logging.info("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical_url))
+					print("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical_url))
+
+					return url, discovered_urls, False, []
 
 		session = requests.Session()
 		session.max_redirects = 3
@@ -195,12 +228,63 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			logging.error("{} page failed to load.".format(full_url))
 			return url, {}, False, []
 
+		# check if indexed
+		check_if_indexed = requests.post("https://es-indieweb-search.jamesg.blog/check?url={}".format(full_url), headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}).json()
+
+		# get todays date
+		today = datetime.datetime.now()
+
+		# get date two weeks ago
+		two_weeks_ago = today - datetime.timedelta(days=14)
+
+		if len(check_if_indexed) > 0:
+			# if page was crawled after result of last-modified header, don't crawl page again
+			if check_if_indexed and check_if_indexed["hits"]["hits"][0].get("last_crawled") and check_if_indexed["last_crawled"] <= page.headers.get("last-modified"):
+				logging.info("{} was crawled after last-modified header, skipping".format(full_url))
+				print("{} was crawled after last-modified header, skipping".format(full_url))
+				return url, {}, False, []
+
+		elif check_if_indexed["hits"]["hits"][0].get("last_crawled") < two_weeks_ago:
+			logging.info("{} was crawled less than two weeks ago, skipping".format(full_url))
+			print("{} was crawled less than two weeks ago, skipping".format(full_url))
+			return url, {}, False, []
+
 		try:
 			page_desc_soup = BeautifulSoup(page.content, "html5lib")
 		except:
 			page_desc_soup = BeautifulSoup(page.content, "lxml")
 
-		links = [l for l in page_desc_soup.find_all("a") if (l.get("rel") and "nofollow" not in l["rel"]) or not l.get("rel")]
+		# check for canonical url
+
+		if page_desc_soup.find("link", {"rel": "canonical"}):
+			canonical_url = page_desc_soup.find("link", {"rel": "canonical"})["href"]
+			final_urls[canonical_url] = ""
+
+			iterate_list_of_urls.append(canonical_url)
+
+			discovered_urls[canonical_url] = canonical_url
+
+			logging.info("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical_url))
+			print("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical_url))
+
+			return url, discovered_urls, False, []
+
+		all_external_links = [l for l in page_desc_soup.find_all("a") if l.get("href") and not l.get("href").startswith("/") and site_url not in l.get("href") and not l.startswith("#")]
+		word_count = len(page_desc_soup.get_text().split(" "))
+
+		# if ratio of words to external links is less than 5:1 (respectively), flag page as spam
+		# minimum word count is 150 to avoid false positives
+		# not in active use
+
+		ratio = word_count / all_external_links
+
+		if ratio < 5 and word_count > 150:
+			print("{} ratio of word count to link count is too high, skipping".format(full_url))
+			check_remove_url(full_url)
+			logging.info("{} ratio of word count to link count is too high, skipping".format(full_url))
+			return url, {}, False, []
+
+		links = [l for l in page_desc_soup.find_all("a") if (l.get("rel") and "nofollow" not in l["rel"]) or not l.get("rel") and l.get("href") not in ["#", "javascript:void(0);"]]
 
 		check_if_no_index = page_desc_soup.find("meta", {"name":"robots"})
 
@@ -211,10 +295,29 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 
 		final_urls, iterate_list_of_urls, all_links, external_links, discovered_urls = page_link_discovery(links, final_urls, iterate_list_of_urls, full_url, all_links, external_links, discovered_urls, site_url)
 
+		if "/tags/" in full_url or "/tag/" in full_url or "/label/" in full_url or "/search/" in full_url or "/category/" in full_url or "/categories/" in full_url:
+			print("{} marked as follow, noindex because it is a tag, label, or search resource".format(full_url))
+			logging.info("{} marked as follow, noindex because it is a tag, label, or search resource".format(full_url))
+			return url, {}, False, all_links
+
+		elif "/page/" in full_url and full_url.split("/")[-1].isdigit():
+			print("{} marked as follow, noindex because it is a page archive".format(full_url))
+			logging.info("{} marked as follow, noindex because it is a page archive".format(full_url))
+			return url, {}, False, all_links
+
+		# 20 word minimum will prevent against short notes
 		if page_desc_soup.select("e-content"):
 			page_text = page_desc_soup.select("e-content")[0]
+			if len(page_text.get_text().split(" ")) < 10:
+				print("content on {} is thin (under 10 words in e-content), skipping")
+				logging.info("content on {} is thin (under 10 words in e-content), skipping".format(full_url))
+				return url, {}, False, all_links
 		elif page_desc_soup.select("h-entry"):
 			page_text = page_desc_soup.select("h-entry")
+			if len(page_text.get_text().split(" ")) < 10:
+				print("content on {} is thin (under 10 words in h-entry), skipping")
+				logging.info("content on {} is thin (under 10 words in h-entry), skipping".format(full_url))
+				return url, {}, False, all_links
 		elif page_desc_soup.find("main"):
 			page_text = page_desc_soup.find("main")
 		elif page_desc_soup.find("div", {"id": "main"}):
