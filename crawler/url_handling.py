@@ -257,6 +257,8 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			# check if page has h-feed class on it
 			# if a h-feed class is present, mark page as feed
 			if page_desc_soup.select("[class*=h-feed]"):
+
+				print("*" * 45)
 				if not feeds.get(feed_url):
 					with open("feeds.txt", "a+") as f:
 						f.write("{}, NOETAG\n".format(full_url))
@@ -283,7 +285,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			# 	return url, {}, False, all_links
 
 		if link_discovery == True:
-			final_urls, iterate_list_of_urls, all_links, external_links, discovered_urls = page_link_discovery(links, final_urls, iterate_list_of_urls, full_url, all_links, external_links, discovered_urls, site_url)
+			final_urls, iterate_list_of_urls, all_links, external_links, discovered_urls = page_link_discovery.page_link_discovery(links, final_urls, iterate_list_of_urls, full_url, all_links, external_links, discovered_urls, site_url)
 
 		if "/tags/" in full_url or "/tag/" in full_url or "/label/" in full_url or "/search/" in full_url or "/category/" in full_url or "/categories/" in full_url:
 			print("{} marked as follow, noindex because it is a tag, label, or search resource".format(full_url))
@@ -359,7 +361,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			return url, discovered_urls, False, links
 			
 		try:
-			pages_indexed = add_to_database(full_url, published_on, doc_title, meta_description, category, heading_info, page, pages_indexed, page_text, len(links), crawl_budget, reindex, nofollow_all)
+			pages_indexed = add_to_database.add_to_database(full_url, published_on, doc_title, meta_description, category, heading_info, page, pages_indexed, page_text, len(links), crawl_budget, reindex, nofollow_all)
 		except Exception as e:
 			print("error with {}".format(full_url))
 			print(e)

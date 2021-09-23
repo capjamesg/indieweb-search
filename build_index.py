@@ -167,7 +167,7 @@ def process_domain(site, reindex):
 	else:
 		return 5000, final_urls, namespaces_to_ignore
 
-def build_index(site, reindex):
+def build_index(site, reindex, feeds):
 	# remove from queue before indexing starts
 	# prevents against failure to index and not being recognised in file
 	with open("crawl_queue.txt", "r") as f:
@@ -214,11 +214,9 @@ def build_index(site, reindex):
 	print("crawl budget: {}".format(crawl_budget))
 
 	print("{} urls part of initial crawl".format(len(iterate_list_of_urls)))
-
-	print(iterate_list_of_urls)
 	
 	for url in iterate_list_of_urls:
-		url_indexed, discovered, valid, new_links = url_handling.crawl_urls(final_urls, namespaces_to_ignore, indexed, links, external_links, discovered_urls, iterate_list_of_urls, site, crawl_budget, url, reindex)
+		url_indexed, discovered, valid, new_links = url_handling.crawl_urls(final_urls, namespaces_to_ignore, indexed, links, external_links, discovered_urls, iterate_list_of_urls, site, crawl_budget, url, reindex, feeds, True)
 
 		if valid == True:
 			valid_count += 1
@@ -273,10 +271,17 @@ else:
 with open("blocklist.txt", "r") as block_file:
 	block_list = block_file.readlines()
 
+# get feeds from feeds.txt
+with open("feeds.txt", "r") as f:
+	feeds = f.readlines()
+	feeds = {row.replace("\n", "").lower().split(",")[0]: "" for row in feeds}
+
 to_crawl = [item for item in to_crawl if item not in block_list]
 
+print(feeds)
+
 with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
-	futures = [executor.submit(build_index, url.replace("\n", ""), reindex) for url in to_crawl]
+	futures = [executor.submit(build_index, url.replace("\n", ""), reindex, feeds) for url in to_crawl]
 	
 	while len(futures) > 0:
 		for future in concurrent.futures.as_completed(futures):
