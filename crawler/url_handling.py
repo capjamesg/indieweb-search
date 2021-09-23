@@ -18,8 +18,6 @@ def add_to_database(full_url, published_on, doc_title, meta_description, categor
 	else:
 		length = len(page_content)
 
-	print('dfsddssd')
-
 	# remove script and style tags from page_content
 
 	for script in page_content(["script", "style"]):
@@ -31,10 +29,6 @@ def add_to_database(full_url, published_on, doc_title, meta_description, categor
 	[comment.extract() for comment in comments]
 
 	md5_hash = hashlib.md5(str("".join([w for w in page_content.get_text().split(" ")[:200]])).encode("utf-8")).hexdigest()
-
-	print('dfsddssd')
-
-	print(md5_hash)
 
 	# check if md5 hash in posts
 
@@ -173,14 +167,17 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 				
 		except requests.exceptions.Timeout:
 			logging.error("{} timed out, skipping".format(full_url))
+			print("{} timed out, skipping".format(full_url))
 			check_remove_url(full_url)
 			return url, {}, False, []
 		except requests.exceptions.TooManyRedirects:
 			logging.error("{} too many redirects, skipping".format(full_url))
+			print("{} too many redirects, skipping".format(full_url))
 			check_remove_url(full_url)
 			return url, {}, False, []
 		except:
 			logging.error("{} failed to connect, skipping".format(full_url))
+			print("{} failed to connect, skipping".format(full_url))
 			return url, {}, False, []
 
 		if page_test.headers and page_test.headers.get("content-type") and "text/html" not in page_test.headers["content-type"] and "text/plain" not in page_test.headers["content-type"]:
@@ -189,20 +186,29 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			logging.info("{} is not a html resource, skipping".format(full_url))
 			return url, {}, False, []
 
-		if page_test.links:
-			header_links = requests.utils.parse_header_links(page_test.links)
+		if page_test.headers.get("link"):
+			header_links = requests.utils.parse_header_links(page_test.headers.get("link").rstrip('>').replace('>,<', ',<'))
+
 			for link in header_links:
-				if link["rel"] == "canonical" and link["rel"] != full_url:
-					canonical_url = link["url"]
+				if link["rel"] == "canonical":
+					if link["rel"].startswith("/"):
+						# get site domain
+						domain = full_url.split("/")[2]
+						link["rel"] = "https://" + domain + link["rel"]
 
-					iterate_list_of_urls.append(canonical_url)
+					canonical = link["rel"].strip("/").replace("http://", "https://").split("?")[0]
 
-					discovered_urls[canonical_url] = canonical_url
+					if canonical and canonical != full_url.lower().strip("/").replace("http://", "https://").split("?")[0]:
+						canonical_url = link["url"]
 
-					logging.info("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical_url))
-					print("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical_url))
+						iterate_list_of_urls.append(canonical_url)
 
-					return url, discovered_urls, False, []
+						discovered_urls[canonical_url] = canonical_url
+
+						logging.info("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical_url))
+						print("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical_url))
+
+						return url, discovered_urls, False, []
 
 		session = requests.Session()
 		session.max_redirects = 3
@@ -241,27 +247,6 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			logging.error("{} page failed to load.".format(full_url))
 			return url, {}, False, []
 
-		# check if indexed
-		check_if_indexed = requests.post("https://es-indieweb-search.jamesg.blog/check?url={}".format(full_url), headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}).json()
-
-		# get todays date
-		today = datetime.datetime.now()
-
-		# get date two weeks ago
-		two_weeks_ago = today - datetime.timedelta(days=14)
-
-		if len(check_if_indexed) > 0:
-			# if page was crawled after result of last-modified header, don't crawl page again
-			if check_if_indexed and check_if_indexed["hits"]["hits"][0].get("last_crawled") and check_if_indexed["last_crawled"] <= page.headers.get("last-modified"):
-				logging.info("{} was crawled after last-modified header, skipping".format(full_url))
-				print("{} was crawled after last-modified header, skipping".format(full_url))
-				return url, {}, False, []
-
-		elif check_if_indexed["hits"]["hits"][0].get("last_crawled") < two_weeks_ago:
-			logging.info("{} was crawled less than two weeks ago, skipping".format(full_url))
-			print("{} was crawled less than two weeks ago, skipping".format(full_url))
-			return url, {}, False, []
-
 		try:
 			page_desc_soup = BeautifulSoup(page.content, "html5lib")
 		except:
@@ -271,23 +256,32 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 
 		if page_desc_soup.find("link", {"rel": "canonical"}):
 			canonical_url = page_desc_soup.find("link", {"rel": "canonical"})["href"]
-			final_urls[canonical_url] = ""
+			if canonical_url.startswith("/"):
+				# get site domain
+				domain = full_url.split("/")[2]
+				canonical_url = "https://" + domain + canonical_url
 
-			iterate_list_of_urls.append(canonical_url)
+			canonical = canonical_url.strip("/").replace("http://", "https://").split("?")[0]
+			
+			if canonical and canonical != full_url.lower().strip("/").replace("http://", "https://").split("?")[0]:
+				final_urls[canonical_url] = ""
 
-			discovered_urls[canonical_url] = canonical_url
+				iterate_list_of_urls.append(canonical_url)
 
-			logging.info("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical_url))
-			print("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical_url))
+				discovered_urls[canonical_url] = canonical_url
 
-			return url, discovered_urls, False, []
+				logging.info("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical_url))
+				print("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical_url))
+
+				return url, discovered_urls, False, []
 
 		check_if_no_index = page_desc_soup.find("meta", {"name":"robots"})
 
-		if check_if_no_index and check_if_no_index.get("content") and "noindex" in check_if_no_index.get("content") or "none" in check_if_no_index.get("content"):
+		if check_if_no_index and check_if_no_index.get("content") and ("noindex" in check_if_no_index.get("content") or "none" in check_if_no_index.get("content")):
 			print("{} marked as noindex, skipping".format(full_url))
 			logging.info("{} marked as noindex, skipping".format(full_url))
 			return url, {}, False, []
+
 		elif check_if_no_index and check_if_no_index.get("content") and "nofollow" in check_if_no_index.get("content"):
 			print("all links on {} marked as nofollow due to <meta> robots nofollow value".format(full_url))
 			logging.info("all links on {} marked as nofollow due to <meta> robots nofollow value".format(full_url))
@@ -297,6 +291,27 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			links = [l for l in page_desc_soup.find_all("a") if (l.get("rel") and "nofollow" not in l["rel"]) or (not l.get("rel") and l.get("href") not in ["#", "javascript:void(0);"])]
 		else:
 			links = []
+
+		# check if indexed
+		# check_if_indexed = requests.post("https://es-indieweb-search.jamesg.blog/check?url={}".format(full_url), headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}).json()
+
+		# # get todays date
+		# today = datetime.datetime.now()
+
+		# # get date two weeks ago
+		# two_weeks_ago = today - datetime.timedelta(days=14)
+
+		# if len(check_if_indexed) > 0:
+		# 	# if page was crawled after result of last-modified header, don't crawl page again
+		# 	if check_if_indexed and check_if_indexed[0]["_source"].get("last_crawled") and check_if_indexed["last_crawled"] <= page.headers.get("last-modified"):
+		# 		logging.info("{} was crawled after last-modified header, skipping".format(full_url))
+		# 		print("{} was crawled after last-modified header, skipping".format(full_url))
+		# 		return url, {}, False, all_links
+
+			# elif check_if_indexed and check_if_indexed[0].get("last_crawled") < two_weeks_ago:
+			# 	logging.info("{} was crawled less than two weeks ago, skipping".format(full_url))
+			# 	print("{} was crawled less than two weeks ago, skipping".format(full_url))
+			# 	return url, {}, False, all_links
 
 		final_urls, iterate_list_of_urls, all_links, external_links, discovered_urls = page_link_discovery(links, final_urls, iterate_list_of_urls, full_url, all_links, external_links, discovered_urls, site_url)
 
