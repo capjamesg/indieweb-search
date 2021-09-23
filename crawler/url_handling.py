@@ -137,6 +137,8 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 	# Only get URLs that match namespace exactly
 	in_matching_namespace = [s for s in namespaces_to_ignore if s.startswith(full_url.replace("http://", "").replace("https://", "").replace(site_url, "")) == full_url]
 
+	nofollow_all = False
+
 	# The next line of code skips indexing namespaces excluded in robots.txt
 	if len(in_matching_namespace) < 2:
 		# lastmod = final_urls[full_url]
@@ -152,11 +154,22 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			page_test = session.head(full_url, headers=config.HEADERS, allow_redirects=True, verify=False)
 
 			# get redirect url
-			# if page_test.history:
-			# 	print(page_test.history)
-			# 	logging.error("{} redirected to {}".format(full_url, page_test.history[0].url))
-			# 	print("{} redirected to {}".format(full_url, page_test.history[0].url))
-			# 	full_url = page_test.history[0].url
+			if page_test.history:
+				logging.error("{} redirected to {}".format(full_url, page_test.history[0].url))
+				print("{} redirected to {}".format(full_url, page_test.history[0].url))
+				full_url = page_test.history[0].url
+
+			if page_test.headers.get("X-Robots-Tag"):
+				# only obey directives pointed at indieweb-search or everyone
+				if "indieweb-search:" in page_test.headers.get("X-Robots-Tag") or ":" not in page_test.headers.get("X-Robots-Tag"):
+					if "noindex" in page_test.headers.get("X-Robots-Tag") or "none" in page_test.headers.get("X-Robots-Tag"):
+						print("{} marked as noindex".format(full_url))
+						logging.info("{} marked as noindex".format(full_url))
+						return url, {}, False, []
+					elif "nofollow" in page_test.headers.get("X-Robots-Tag"):
+						print("all links on {} marked as nofollow due to X-Robots-Tag nofollow value".format(full_url))
+						logging.info("all links on {} marked as nofollow due to X-Robots-Tag nofollow value".format(full_url))
+						nofollow_all = True
 				
 		except requests.exceptions.Timeout:
 			logging.error("{} timed out, skipping".format(full_url))
@@ -269,29 +282,21 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 
 			return url, discovered_urls, False, []
 
-		all_external_links = [l for l in page_desc_soup.find_all("a") if l.get("href") and not l.get("href").startswith("/") and site_url not in l.get("href") and not l.startswith("#")]
-		word_count = len(page_desc_soup.get_text().split(" "))
-
-		# if ratio of words to external links is less than 5:1 (respectively), flag page as spam
-		# minimum word count is 150 to avoid false positives
-		# not in active use
-
-		ratio = word_count / all_external_links
-
-		if ratio < 5 and word_count > 150:
-			print("{} ratio of word count to link count is too high, skipping".format(full_url))
-			check_remove_url(full_url)
-			logging.info("{} ratio of word count to link count is too high, skipping".format(full_url))
-			return url, {}, False, []
-
-		links = [l for l in page_desc_soup.find_all("a") if (l.get("rel") and "nofollow" not in l["rel"]) or not l.get("rel") and l.get("href") not in ["#", "javascript:void(0);"]]
-
 		check_if_no_index = page_desc_soup.find("meta", {"name":"robots"})
 
-		if check_if_no_index and check_if_no_index.get("content") and "noindex" in check_if_no_index.get("content"):
+		if check_if_no_index and check_if_no_index.get("content") and "noindex" in check_if_no_index.get("content") or "none" in check_if_no_index.get("content"):
 			print("{} marked as noindex, skipping".format(full_url))
 			logging.info("{} marked as noindex, skipping".format(full_url))
 			return url, {}, False, []
+		elif check_if_no_index and check_if_no_index.get("content") and "nofollow" in check_if_no_index.get("content"):
+			print("all links on {} marked as nofollow due to <meta> robots nofollow value".format(full_url))
+			logging.info("all links on {} marked as nofollow due to <meta> robots nofollow value".format(full_url))
+			nofollow_all = True
+
+		if nofollow_all == False:
+			links = [l for l in page_desc_soup.find_all("a") if (l.get("rel") and "nofollow" not in l["rel"]) or (not l.get("rel") and l.get("href") not in ["#", "javascript:void(0);"])]
+		else:
+			links = []
 
 		final_urls, iterate_list_of_urls, all_links, external_links, discovered_urls = page_link_discovery(links, final_urls, iterate_list_of_urls, full_url, all_links, external_links, discovered_urls, site_url)
 
