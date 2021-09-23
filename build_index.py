@@ -10,6 +10,11 @@ import config
 import crawler.url_handling as url_handling
 import concurrent.futures
 
+# ignore warning about http:// connections
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
 start_time = datetime.datetime.now()
 
 # initialize folders before logging starts to prevent an error on first run
@@ -65,9 +70,6 @@ def find_robots_directives(site_url):
 		return [], []
 	except requests.exceptions.ConnectionError:
 		logging.error("Connection error with site: {}".format(site_url))
-		print('sd')
-		with open("broken_domains.txt", "a") as file:
-			file.write("{}".format(site_url))
 		return [], []
 	except:
 		print("Error: Could not find robots.txt file on {}".format(site_url))
@@ -154,7 +156,7 @@ def process_domain(site, reindex):
 
 	# Added just to make sure the homepage is in the initial crawl queue
 	if len(sitemap_urls) > 2:
-		final_urls[site] = ""
+		final_urls["https://{}".format(site)] = ""
 
 	for s in sitemap_urls:
 		# Only URLs not already discovered will be added by this code
@@ -179,6 +181,25 @@ def process_domain(site, reindex):
 		return 5000, final_urls, namespaces_to_ignore
 
 def build_index(site, reindex):
+	# remove from queue before indexing starts
+	# prevents against failure to index and not being recognised in file
+	with open("crawl_queue2.txt", "r") as f:
+		rows = f.readlines()
+	print('sds')
+	print(rows)
+	rows.remove(site + "\n")
+	print('sds')
+
+	with open("crawl_queue2.txt", "w+") as f:
+		f.writelines(rows)
+
+	# get date
+	date = datetime.datetime.now().strftime("%Y-%m-%d")
+
+	with open("crawled2.txt", "a+") as f:
+		f.write("{}, {}".format(site, date))
+	print('sds')
+
 	# read crawl_queue.txt
 	crawl_budget, final_urls, namespaces_to_ignore = process_domain(site, reindex)
 
@@ -197,7 +218,7 @@ def build_index(site, reindex):
 		print("error with {} url and site, skipping".format(iterate_list_of_urls[0]))
 		logging.debug("error with {} url and site, skipping".format(iterate_list_of_urls[0]))
 		return
-		
+
 	print("processing {}".format(site))
 	logging.debug("processing {}".format(site))
 
@@ -206,15 +227,9 @@ def build_index(site, reindex):
 
 	indexed_list = {}
 
-	check_if_indexed = requests.post("https://es-indieweb-search.jamesg.blog/check?url={}".format("https://" + site), headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}).json()
-
-	if len(check_if_indexed) == 0:
-		# Give small crawl budget to site to quickly find content
-		crawl_budget = 5000
-	else:
-		crawl_budget = 100
-
 	print("crawl budget: {}".format(crawl_budget))
+
+	print("{} urls part of initial crawl".format(len(iterate_list_of_urls)))
 	
 	for url in iterate_list_of_urls:
 		url_indexed, discovered, valid, new_links = url_handling.crawl_urls(final_urls, namespaces_to_ignore, indexed, links, external_links, discovered_urls, iterate_list_of_urls, site, crawl_budget, url, reindex)
@@ -242,20 +257,6 @@ def build_index(site, reindex):
 				print("{} not indexed, added".format(item))
 				iterate_list_of_urls.append(item)
 
-	with open("crawl_queue2.txt", "r") as f:
-		rows = f.readlines()
-
-	rows.remove(site + "\n")
-
-	with open("crawl_queue2.txt", "w+") as f:
-		f.writelines(rows)
-
-	# get date
-	date = datetime.datetime.now().strftime("%Y-%m-%d")
-
-	with open("crawled2.txt", "a+") as f:
-		f.write("{}, {}".format(site, date))
-
 	# with open(ROOT_DIRECTORY + "/data/all_links.csv","w") as f:
 	# 	wr = csv.writer(f)
 	# 	# wr.writerow(["page_linking", "link_to", "datetime", "external"])
@@ -271,15 +272,22 @@ sites_indexed = 0
 
 # if reindex argument present
 if len(sys.argv) > 1 and sys.argv[1] == "reindex":
-	with open("crawled2.txt", "r") as f:
+	with open("crawl_queue2.txt", "r") as f:
 		rows = f.readlines()
 
-	to_crawl = [row.replace("\n", "") for row in rows]
+	to_crawl = [row.replace("\n", "").lower() for row in rows]
 	reindex = True
 else:
 	with open("crawl_queue2.txt", "r") as f:
 		to_crawl = f.readlines()
 		reindex = False
+
+# don't include items on block list in a crawl
+# used to avoid accidentally crawling sites that have already been flagged as spam
+with open("blocklist.txt", "r") as block_file:
+	block_list = block_file.readlines()
+
+to_crawl = [item for item in to_crawl if item not in block_list]
 
 with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
 	futures = [executor.submit(build_index, url.replace("\n", ""), reindex) for url in to_crawl]
@@ -291,8 +299,6 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
 			print("SITES INDEXED: {}".format(sites_indexed))
 			logging.info("SITES INDEXED: {}".format(sites_indexed))
 
-			futures.remove(future)
-
 			try:
 				url_indexed, discovered = future.result()
 
@@ -300,4 +306,6 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
 					futures = []
 					break
 			except Exception as e:
-				continue
+				pass
+
+			futures.remove(future)
