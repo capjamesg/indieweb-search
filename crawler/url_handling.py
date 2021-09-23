@@ -1,102 +1,13 @@
-from bs4 import BeautifulSoup, Comment
+from bs4 import BeautifulSoup
 import requests
 import datetime
 import logging
 import config
 import crawler.page_info
-import crawler.image_handling
-import hashlib
-import json
+import crawler.add_to_database as add_to_database
+import crawler.discovery as page_link_discovery
 
 yesterday = datetime.datetime.today() - datetime.timedelta(days=1)
-
-def add_to_database(full_url, published_on, doc_title, meta_description, category, heading_info, page, pages_indexed, page_content, outgoing_links, crawl_budget, reindex):
-	# get last modified date
-
-	if page != "" and page.headers:
-		length = page.headers.get("content-length")
-	else:
-		length = len(page_content)
-
-	# remove script and style tags from page_content
-
-	for script in page_content(["script", "style"]):
-		script.decompose()
-
-	#remove comments
-
-	comments = page_content.findAll(text=lambda text:isinstance(text, Comment))
-	[comment.extract() for comment in comments]
-
-	md5_hash = hashlib.md5(str("".join([w for w in page_content.get_text().split(" ")[:200]])).encode("utf-8")).hexdigest()
-
-	# check if md5 hash in posts
-
-	r = requests.post("https://es-indieweb-search.jamesg.blog/check?hash={}".format(md5_hash), headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)})
-
-	if r.status_code == 200:
-		if r.json() and len(r.json()) > 0 and r.json()["url"] != full_url:
-			print("content duplicate of existing record, skipping")
-			return pages_indexed
-
-	if type(published_on) == dict and published_on.get("datetime") != None:
-		date_to_record = published_on["datetime"].split("T")[0]
-	else:
-		date_to_record = ""
-
-	record = {
-		"title": doc_title,
-		"meta_description": meta_description,
-		"url": full_url,
-		"published_on": date_to_record,
-		"category": category,
-		"h1": ", ".join(heading_info["h1"]),
-		"h2": ", ".join(heading_info["h2"]),
-		"h3": ", ".join(heading_info["h3"]),
-		"h4": ", ".join(heading_info["h4"]),
-		"h5": ", ".join(heading_info["h5"]),
-		"h6": ", ".join(heading_info["h6"]),
-		"length": length,
-		"important_phrases": "",
-		"page_content": str(page_content),
-		"incoming_links": 0,
-		"page_text": page_content.get_text(),
-		"outgoing_links": outgoing_links,
-		"domain": full_url.split("/")[2],
-		"word_count": len(page_content.get_text().split(" ")),
-		"md5_hash": md5_hash,
-		"last_crawled": datetime.datetime.today().strftime("%Y-%m-%d %H:%M:%S"),
-		"referring_domains_to_site": 0, # updated when index is rebuilt
-		"internal_incoming_links": 0 # not actively used
-	}
-
-	# results currently being saved to a file, so no need to run this code
-
-	# check_if_indexed = requests.post("https://es-indieweb-search.jamesg.blog/check?url={}".format(full_url), headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}).json()
-
-	# if len(check_if_indexed) > 0:
-	# 	record["incoming_links"] = check_if_indexed[0]["_source"]["incoming_links"]
-	# else:
-	# 	record["incoming_links"] = 0
-
-	# save to json file
-
-	with open("results.json".format(md5_hash), "a+") as f:
-		f.write(json.dumps(record))
-		f.write("\n")
-
-	# if len(check_if_indexed) == 0:
-	# 	r = requests.post("https://es-indieweb-search.jamesg.blog/create", headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}, json=record)
-	# else:
-	# 	r = requests.post("https://es-indieweb-search.jamesg.blog/update", headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}, json=record)
-	# 	print("updated page {} ({}/{})".format(full_url, pages_indexed, crawl_budget))
-
-	print("indexed new page {} ({}/{})".format(full_url, pages_indexed, crawl_budget))
-	logging.info("indexed new page {} ({}/{})".format(full_url, pages_indexed, crawl_budget))
-
-	pages_indexed += 1
-
-	return pages_indexed
 
 def check_remove_url(full_url):
 	check_if_indexed = requests.post("https://es-indieweb-search.jamesg.blog/check?url={}".format(full_url), headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}).json()
@@ -110,7 +21,7 @@ def check_remove_url(full_url):
 		print("removed {} from index as it is no longer valid".format(full_url))
 		logging.info("removed {} from index as it is no longer valid".format(full_url))
 
-def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, external_links, discovered_urls, iterate_list_of_urls, site_url, crawl_budget, url, reindex):
+def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, external_links, discovered_urls, iterate_list_of_urls, site_url, crawl_budget, url, reindex, feeds, link_discovery=True):
 	"""
 		Crawls URLs in list, adds URLs to index, and returns updated list
 	"""
@@ -226,7 +137,8 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			logging.error("{} failed to connect, skipping".format(full_url))
 			return url, {}, False, []
 
-		if page.status_code == 404:
+		# 404 = not found, 410 = gone
+		if page.status_code == 404 or page.status_code == 410:
 			return url, {}, False, []
 
 		elif page.status_code == 301 or page.status_code == 302 or page.status_code == 308:
@@ -252,6 +164,21 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 		except:
 			page_desc_soup = BeautifulSoup(page.content, "lxml")
 
+		# if http-equiv refresh redirect present
+		# not recommended by W3C but still worth checking for just in case
+		if page_desc_soup.find("meta", attrs={"http-equiv": "refresh"}):
+			refresh_url = page_desc_soup.find("meta", attrs={"http-equiv": "refresh"})["content"].split(";")[1].split("=")[1]
+
+			if refresh_url:
+				final_urls[refresh_url] = ""
+
+				iterate_list_of_urls.append(refresh_url)
+
+				discovered_urls[refresh_url] = refresh_url
+
+			# add new page to crawl queue so that previous validation can happen again (i.e. checking for canonical header)
+			return url, {}, False, []
+
 		# check for canonical url
 
 		if page_desc_soup.find("link", {"rel": "canonical"}):
@@ -271,7 +198,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 				discovered_urls[canonical_url] = canonical_url
 
 				logging.info("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical_url))
-				print("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical_url))
+				print("{} has a canonical durl of {}, skipping and added canonical URL to queue".format(full_url, canonical_url))
 
 				return url, discovered_urls, False, []
 
@@ -291,6 +218,48 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			links = [l for l in page_desc_soup.find_all("a") if (l.get("rel") and "nofollow" not in l["rel"]) or (not l.get("rel") and l.get("href") not in ["#", "javascript:void(0);"])]
 		else:
 			links = []
+
+		# check for feed with rel alternate
+		# only support rss and atom right now
+		# link_discovery = False when crawling with feed discovery
+		# using link_discovery = False to avoid searching for feeds too
+		if link_discovery == True:
+			if page_desc_soup.find("link", {"rel": "alternate", "type": "application/rss+xml"}):
+				feed_url = page_desc_soup.find("link", {"rel": "alternate", "type": "application/rss+xml"})["href"]
+				
+				if feed_url.startswith("/"):
+					# get site domain
+					domain = full_url.split("/")[2]
+					feed_url = "https://" + domain + feed_url
+
+				canonical = feed_url.strip("/").replace("http://", "https://").split("?")[0]
+
+				if not feeds.get(feed_url):
+					with open("feeds.txt", "a+") as f:
+						# NOETAG is substitute value
+						# if none is provided, feed validation will fail
+						f.write("{}, NOETAG\n".format(feed_url))
+
+			elif page_desc_soup.find("link", {"rel": "alternate", "type": "application/atom+xml"}):
+				feed_url = page_desc_soup.find("link", {"rel": "alternate", "type": "application/atom+xml"})["href"]
+
+				if feed_url.startswith("/"):
+					# get site domain
+					domain = full_url.split("/")[2]
+					feed_url = "https://" + domain + feed_url
+
+				canonical = feed_url.strip("/").replace("http://", "https://").split("?")[0]
+
+				if not feeds.get(feed_url):
+					with open("feeds.txt", "a+") as f:
+						f.write("{}, NOETAG\n".format(feed_url))
+
+			# check if page has h-feed class on it
+			# if a h-feed class is present, mark page as feed
+			if page_desc_soup.select("[class*=h-feed]"):
+				if not feeds.get(feed_url):
+					with open("feeds.txt", "a+") as f:
+						f.write("{}, NOETAG\n".format(full_url))
 
 		# check if indexed
 		# check_if_indexed = requests.post("https://es-indieweb-search.jamesg.blog/check?url={}".format(full_url), headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}).json()
@@ -313,7 +282,8 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			# 	print("{} was crawled less than two weeks ago, skipping".format(full_url))
 			# 	return url, {}, False, all_links
 
-		final_urls, iterate_list_of_urls, all_links, external_links, discovered_urls = page_link_discovery(links, final_urls, iterate_list_of_urls, full_url, all_links, external_links, discovered_urls, site_url)
+		if link_discovery == True:
+			final_urls, iterate_list_of_urls, all_links, external_links, discovered_urls = page_link_discovery(links, final_urls, iterate_list_of_urls, full_url, all_links, external_links, discovered_urls, site_url)
 
 		if "/tags/" in full_url or "/tag/" in full_url or "/label/" in full_url or "/search/" in full_url or "/category/" in full_url or "/categories/" in full_url:
 			print("{} marked as follow, noindex because it is a tag, label, or search resource".format(full_url))
@@ -389,7 +359,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			return url, discovered_urls, False, links
 			
 		try:
-			pages_indexed = add_to_database(full_url, published_on, doc_title, meta_description, category, heading_info, page, pages_indexed, page_text, len(links), crawl_budget, reindex)
+			pages_indexed = add_to_database(full_url, published_on, doc_title, meta_description, category, heading_info, page, pages_indexed, page_text, len(links), crawl_budget, reindex, nofollow_all)
 		except Exception as e:
 			print("error with {}".format(full_url))
 			print(e)
@@ -399,67 +369,3 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 	print('finished {}'.format(full_url))
 
 	return url, discovered_urls, True, all_links
-
-def page_link_discovery(links, final_urls, iterate_list_of_urls, page_being_processed, all_links, external_links, discovered_urls, site_url):
-	"""
-		Finds all the links on the page and adds them to the list of links to crawl.
-	"""
-
-	discovered_urls = {}
-
-	for link in links:
-		if link.get("href"):
-			if "://" in link.get("href") and len(link.get("href").split("://")) > 0 and link.get("href").split("://")[0] != "https" and link.get("href").split(":")[0] != "http":
-				# url is wrong protocol, continue
-				continue
-
-			link["href"] = link["href"].split("?")[0]
-
-			if link["href"].startswith("//"):
-				all_links.append([page_being_processed, link.get("href"), datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "external"])
-				external_links["https://" + link["href"]] = page_being_processed
-				continue
-
-			if "@" in link["href"]:
-				continue
-
-			# Add start of URL to end of any links that don't have it
-			elif link["href"].startswith("/"):
-				full_link = "https://{}".format(site_url) + link["href"]
-			elif link["href"].startswith("http"):
-				full_link = link["href"]
-			elif "//" in link["href"] and "http" not in link["href"]:
-				continue
-			else:
-				if ".." not in link["href"]:
-					full_link = "{}/{}".format("/".join(page_being_processed.split("/")[:-1]), link["href"])
-				else:
-					continue
-
-			if "?" in full_link:
-				full_link = full_link[:full_link.index("?")]
-
-			if full_link.endswith("//"):
-				full_link = full_link[:-1]
-
-			if "./" in full_link:
-				full_link = full_link.replace("./", "")
-
-			if full_link not in final_urls.keys() \
-			and "#" not in full_link \
-			and (full_link.startswith("https://{}".format(site_url)) or full_link.startswith("http://{}".format(site_url))) \
-			and ".xml" not in full_link \
-			and ".pdf" not in full_link \
-			and not full_link.startswith("//") \
-			and len(final_urls) < 1000:
-			# and ((reindex == True and len(page_being_processed.replace("https://").strip("/").split("/")) == 0) or reindex == False):
-				all_links.append([page_being_processed, link.get("href"), datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "internal", link.text])
-				print("indexing queue now contains " + full_link)
-				logging.debug("indexing queue now contains " + full_link)
-				final_urls[full_link] = ""
-
-				iterate_list_of_urls.append(full_link)
-
-				discovered_urls[full_link] = page_being_processed
-
-	return final_urls, iterate_list_of_urls, all_links, external_links, discovered_urls
