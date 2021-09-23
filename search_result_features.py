@@ -187,7 +187,7 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
 
             # check if in h2
             
-            in_h2 = [f for f in soup.find_all(["h2"]) if original_cleaned_value in f.text.lower()]
+            in_h2 = [f for f in soup.find_all(["h2", "h3"]) if original_cleaned_value in f.text.lower()]
 
             if len(in_h2) == 1:
                 # get p after in_h2
@@ -219,6 +219,9 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
 
             if all_locs:
                 location_of_tag = all_locs[0]
+                position_in__parent_list = location_of_tag.find_parent().index(location_of_tag)
+            elif len(in_h2) > 1:
+                location_of_tag = in_h2[1]
                 position_in__parent_list = location_of_tag.find_parent().index(location_of_tag)
             elif len((soup, new_cleaned_value_for_direct_answer)) > 0:
                 position_in__parent_list = 0
