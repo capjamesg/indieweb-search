@@ -63,8 +63,13 @@ def find_robots_directives(site_url):
 	"""
 		Finds the robots.txt file on a website, reads the contents, then follows directives.
 	"""
+
+	# allow five redirects before raising an exception
+	session = requests.Session()
+	session.max_redirects = 5
+	
 	try:
-		read_robots = requests.get("https://{}/robots.txt".format(site_url), headers=config.HEADERS, timeout=5, allow_redirects=True, verify=False)
+		read_robots = session.get("https://{}/robots.txt".format(site_url), headers=config.HEADERS, timeout=5, allow_redirects=True, verify=False)
 	except requests.exceptions.RequestException as e:
 		logging.error("Error with site: {}".format(e))
 		return [], []
@@ -110,24 +115,6 @@ def find_robots_directives(site_url):
 	return namespaces_to_ignore, sitemap_urls
 
 def process_domain(site, reindex):
-	# read crawl_queue.txt
-	# with open("crawl_queue2.txt", "r") as file:
-	# 	file = file.readlines()
-	# 	next_site = file[0].strip().replace(", ", ",").split(",")
-	# 	site = next_site[0]
-	# 	if len(next_site) > 1:
-	# 		# let user specify crawl budget for each site
-	# 		if next_site[1].isnumeric():
-	# 			crawl_budget = int(next_site[1])
-	# 		elif next_site[1] == "RECRAWL":
-	# 			crawl_budget = 50
-	# 		else:
-	# 			crawl_budget = 1000
-	# 	else:
-	# 		crawl_budget = 1000
-			
-	# 	print("Crawl budget: {}".format(str(crawl_budget)))
-
 	final_urls = {}
 	
 	namespaces_to_ignore, sitemap_urls = find_robots_directives(site)
@@ -183,22 +170,19 @@ def process_domain(site, reindex):
 def build_index(site, reindex):
 	# remove from queue before indexing starts
 	# prevents against failure to index and not being recognised in file
-	with open("crawl_queue2.txt", "r") as f:
+	with open("crawl_queue.txt", "r") as f:
 		rows = f.readlines()
-	print('sds')
-	print(rows)
-	rows.remove(site + "\n")
-	print('sds')
 
-	with open("crawl_queue2.txt", "w+") as f:
-		f.writelines(rows)
+	# rows.remove(site + "\n")
+
+	# with open("crawl_queue.txt", "w+") as f:
+	# 	f.writelines(rows)
 
 	# get date
 	date = datetime.datetime.now().strftime("%Y-%m-%d")
 
-	with open("crawled2.txt", "a+") as f:
-		f.write("{}, {}".format(site, date))
-	print('sds')
+	with open("crawled2.csv", "a+") as f:
+		csv.writer(f).writerow([site, date])
 
 	# read crawl_queue.txt
 	crawl_budget, final_urls, namespaces_to_ignore = process_domain(site, reindex)
@@ -212,7 +196,7 @@ def build_index(site, reindex):
 	iterate_list_of_urls = list(final_urls.keys())
 
 	try:
-		requests.get(iterate_list_of_urls[0], headers=config.HEADERS, timeout=5, allow_redirects=True, verify=False)
+		requests.get("https://" + site, headers=config.HEADERS, timeout=5, allow_redirects=True, verify=False)
 	except Exception as e:
 		print(e)
 		print("error with {} url and site, skipping".format(iterate_list_of_urls[0]))
@@ -230,6 +214,8 @@ def build_index(site, reindex):
 	print("crawl budget: {}".format(crawl_budget))
 
 	print("{} urls part of initial crawl".format(len(iterate_list_of_urls)))
+
+	print(iterate_list_of_urls)
 	
 	for url in iterate_list_of_urls:
 		url_indexed, discovered, valid, new_links = url_handling.crawl_urls(final_urls, namespaces_to_ignore, indexed, links, external_links, discovered_urls, iterate_list_of_urls, site, crawl_budget, url, reindex)
@@ -272,13 +258,13 @@ sites_indexed = 0
 
 # if reindex argument present
 if len(sys.argv) > 1 and sys.argv[1] == "reindex":
-	with open("crawl_queue2.txt", "r") as f:
+	with open("crawl_queue.txt", "r") as f:
 		rows = f.readlines()
 
 	to_crawl = [row.replace("\n", "").lower() for row in rows]
 	reindex = True
 else:
-	with open("crawl_queue2.txt", "r") as f:
+	with open("crawl_queue.txt", "r") as f:
 		to_crawl = f.readlines()
 		reindex = False
 

@@ -218,6 +218,9 @@ img {
 .image_link {
   border-bottom: none;
 }
+.charts {
+  max-width: 100% !important;
+}
 
 a:focus {
   background-color: #006BD6;

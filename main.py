@@ -101,7 +101,7 @@ def results_page():
 
 	if site and site == "jamesg.blog":
 		# used for special jamesg.blog search redirect, not for open use
-		site = [x for x in site if x.isalpha() or x == "."]
+		site = "".join([x for x in site if x.isalpha() or x == "."])
 
 		return redirect('/results?query=site:"{}"%20{}'.format(site, request.args.get("query")))
 
@@ -175,7 +175,7 @@ def results_page():
 			rows = rows["hits"]["hits"]
 
 			if page == 1:
-				if request.args.get("type") != "image" and len(rows) > 0 and ("what is" in cleaned_value or "what are" in cleaned_value  or "what were" in cleaned_value or "why" in cleaned_value or "how" in cleaned_value or "microformats" in cleaned_value):
+				if request.args.get("type") != "image" and len(rows) > 2 and ("what is" in cleaned_value or "what are" in cleaned_value  or "what were" in cleaned_value or "why" in cleaned_value or "how" in cleaned_value or "microformats" in cleaned_value):
 					# remove stopwords from query
 					original = cleaned_value_for_query
 					cleaned_value_for_query = cleaned_value.replace("what is", "").replace("what are", "").replace("why", "").replace("how", "").replace("what were", "").replace("to use", "").strip()

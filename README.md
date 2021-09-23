@@ -130,6 +130,12 @@ This project makes use of the following technologies:
 - pytextrank
 - pyspellchecker
 
+## Acknowledgements
+
+Thank you to [@snarfed](https://github.com/snarfed) for putting together [IndieMap](https://github.com/snarfed/indie-map), a project that crawled many IndieWeb sites to create a social graph. IndieMap provided inspiration, motivation, and a list of domains from which this project started indexing.
+
+Thank you also to every member of the IndieWeb community. The support from community members is helping to make this search engine more effective.
+
 ## License
 
 This project is licensed under the [MIT license](LICENSE).

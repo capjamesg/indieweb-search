@@ -1,1 +1,4 @@
-bielinski.de
+prtl.sh
+digital-garden-jekyll-template.netlify.app
+bnijenhuis.nl
+furbo.org

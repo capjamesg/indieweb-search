@@ -67,22 +67,15 @@ def home():
                 "query": {
                     "query_string": {
                         "query": query,
-                        "fields": ["title^2", "description^1", "url^1.5", "category^0", "published^0", "keywords^0", "text^3", "h1^2", "h2^1.5", "h3^1.2", "h4^0.5", "h5^0.75", "h6^0.25"],
+                        "fields": ["title^2", "description^1.5", "url^1.3", "category^0", "published^0", "keywords^0", "text^2.8", "h1^1.7", "h2^1.5", "h3^1.2", "h4^0.5", "h5^0.75", "h6^0.25"],
                         "minimum_should_match": "3<75%",
                     },
                 },
                 "script": {
-                    "source": """return _score + Math.log((1 + (doc['word_count'].value))) + Math.sqrt((1 + (doc['incoming_links'].value)) * 5);
+                    "source": """
+                        return _score + Math.sqrt((1 + (doc['incoming_links'].value) + (1 + doc['referring_domains'].value)) * 3.5) + Math.log((1 + (doc['word_count'].value)));
                     """
-                    # previously * 5, now * 4
                 },
-            },
-        },
-        "highlight": {
-            "pre_tags": ["<b>"],
-            "post_tags": ["</b>"],
-            "fields": {
-                "description": {},
             },
         },
     }
@@ -199,21 +192,22 @@ def check():
 
         response = es.search(index="pages", body=search_param)
 
-        search_param = {
-            "query": {
-                "term": {
-                    "url.keyword": {
-                        "value": request.args.get("url").lower()
-                    }
-                }
-            }
-        }
-
-        lower_response = es.search(index="pages", body=search_param)
-
         # do a lowercase check as well to prevent duplicate urls with case as the differentiator
 
         if request.args.get("url"):
+
+            search_param = {
+                "query": {
+                    "term": {
+                        "url.keyword": {
+                            "value": request.args.get("url").lower()
+                        }
+                    }
+                }
+            }
+
+            lower_response = es.search(index="pages", body=search_param)
+            
             if request.args.get("url").endswith("/"):
                 url = request.args.get("url")[:-1]
             else:
