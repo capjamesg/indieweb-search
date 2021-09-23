@@ -192,7 +192,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 		if page_test.links:
 			header_links = requests.utils.parse_header_links(page_test.links)
 			for link in header_links:
-				if link["rel"] == "canonical":
+				if link["rel"] == "canonical" and link["rel"] != full_url:
 					canonical_url = link["url"]
 
 					iterate_list_of_urls.append(canonical_url)
