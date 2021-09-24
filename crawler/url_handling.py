@@ -198,7 +198,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 				discovered_urls[canonical_url] = canonical_url
 
 				logging.info("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical_url))
-				print("{} has a canonical durl of {}, skipping and added canonical URL to queue".format(full_url, canonical_url))
+				print("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical_url))
 
 				return url, discovered_urls, False, []
 
@@ -262,27 +262,6 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 				if not feeds.get(feed_url):
 					with open("feeds.txt", "a+") as f:
 						f.write("{}, NOETAG\n".format(full_url))
-
-		# check if indexed
-		# check_if_indexed = requests.post("https://es-indieweb-search.jamesg.blog/check?url={}".format(full_url), headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}).json()
-
-		# # get todays date
-		# today = datetime.datetime.now()
-
-		# # get date two weeks ago
-		# two_weeks_ago = today - datetime.timedelta(days=14)
-
-		# if len(check_if_indexed) > 0:
-		# 	# if page was crawled after result of last-modified header, don't crawl page again
-		# 	if check_if_indexed and check_if_indexed[0]["_source"].get("last_crawled") and check_if_indexed["last_crawled"] <= page.headers.get("last-modified"):
-		# 		logging.info("{} was crawled after last-modified header, skipping".format(full_url))
-		# 		print("{} was crawled after last-modified header, skipping".format(full_url))
-		# 		return url, {}, False, all_links
-
-			# elif check_if_indexed and check_if_indexed[0].get("last_crawled") < two_weeks_ago:
-			# 	logging.info("{} was crawled less than two weeks ago, skipping".format(full_url))
-			# 	print("{} was crawled less than two weeks ago, skipping".format(full_url))
-			# 	return url, {}, False, all_links
 
 		if link_discovery == True:
 			final_urls, iterate_list_of_urls, all_links, external_links, discovered_urls = page_link_discovery.page_link_discovery(links, final_urls, iterate_list_of_urls, full_url, all_links, external_links, discovered_urls, site_url)
