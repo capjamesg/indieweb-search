@@ -1,8 +1,8 @@
 from bs4 import BeautifulSoup
+from .direct_answers import events, recipes, reviews, whatis, whois
 import functools
 import datetime
 import random
-import mf2py
 import nltk
 
 @functools.lru_cache()
@@ -42,81 +42,35 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
 
     all_locations = []
 
-    # if "what is" in original_cleaned_value
-    if "what is" in original_cleaned_value or "what are" in original_cleaned_value or "what were" in original_cleaned_value or direct == True or "microformats" in original_cleaned_value:
-        #  if "is a" in p.text.lower() or "are an" in p.text.lower() and original_cleaned_value.lower() in p.text.lower() 
-        original_cleaned_value = original_cleaned_value.replace("what is", "").replace("what are", "").replace("what were", "").strip().lower()
+    do_i_use, response = recipes.parse_recipe(original_cleaned_value, soup, url, post)
 
-        p_tags = [p.text for p in soup.find_all(["p", "span"]) if ("p-summary" in p.attrs.get("class", []) and p.text != None) or "{} is".format(original_cleaned_value) in p.text.lower() or "{} are".format(original_cleaned_value) in p.text.lower()]
+    if do_i_use != None and response != None:
+        return do_i_use, response
 
-        if soup.find("h1"):
-            title = soup.find("h1").text
-        elif soup.find("title"):
-            title = soup.find("title").text
-        else:
-            title = "IndieWeb"
+    do_i_use, response = reviews.parse_review(original_cleaned_value, soup, url, post)
 
-        if len(p_tags) > 0:
-            return "<p>{}</p>".format(p_tags[0]), {"type": "direct_answer", "breadcrumb": url, "title": title}
+    if do_i_use != None and response != None:
+        return do_i_use, response
 
-    if "who is" in original_cleaned_value or (("." in original_cleaned_value and len(original_cleaned_value.split(".")[0]) > 3 and len(original_cleaned_value.split(".")[0]) > 1 and len(original_cleaned_value.split(" ")) == 1)):
-        cleaned_value = " ".join([item for item in original_cleaned_value.split(" ") if item != "who" and item != "is"])
+    do_i_use, response = events.parse_event(original_cleaned_value, soup, url, post)
 
-        mf2s = mf2py.parse(doc=soup)["items"]
+    if do_i_use != None and response != None:
+        return do_i_use, response
+    
+    do_i_use, response = whatis.parse_what_is(original_cleaned_value, soup, url, direct)
 
-        h_card = ""
+    if do_i_use != None and response != None:
+        return do_i_use, response
 
-        for item in mf2s:
-            if item.get("type") and item.get("type")[0] == "h-card":
-                h_card = item
-                break
+    do_i_use, response = whois.parse_whois(original_cleaned_value, soup, url, original_url)
 
-        if h_card == "":
-            for item in mf2s:
-                if item.get("type") and item.get("type")[0] == "h-entry" and item.get("properties") and item.get("properties").get("author"):
-                    h_card = item.get("properties").get("author")[0]
-                    break
+    if do_i_use != None and response != None:
+        return do_i_use, response
 
-        if h_card == None:
-            h_card = ""
+    do_i_use, response = whois.parse_social(original_cleaned_value, soup, url, original_url)
 
-        to_show = ""
-
-        if len(h_card) > 0:
-            name = h_card["properties"].get("name")
-
-            if name:
-                name = h_card["properties"].get("name")[0]
-            else:
-                name = ""
-
-            photo = h_card["properties"].get("photo")
-            
-            if photo and photo[0].startswith("/"):
-                photo = "https://" + url + h_card["properties"].get("photo")[0]
-            elif photo and photo[0].startswith("http"):
-                photo = photo[0]
-            elif photo and photo[0].startswith("//"):
-                photo = "https:" + photo[0]
-            elif photo:
-                photo = photo
-            else:
-                photo = ""
-
-            for key, value in h_card["properties"].items():
-                if key != "photo" and key != "email" and key != "logo" and key != "url":
-                    to_show += "<p><b>{}</b>: {}</p>".format(key.title().replace("-", " "), value[0].strip("/"))
-                elif key == "email":
-                    to_show += "<p><b>{}</b>: <a href='{}'>{}</a></p>".format(key.title(), "mailto:{}".format(value[0].replace("mailto:", "")), value[0].replace("mailto:", ""))
-                elif key == "url":
-                    to_show += "<p><b>{}</b>: <a href='{}'>{}</a></p>".format(key.title(), value[0], value[0].strip("/"))
-
-            if soup.find("h1"):
-                title = soup.find("h1").text
-            else:
-                title = url
-                
-            return "<img src='{}'><p>{}</p>".format(photo, to_show), {"type": "direct_answer", "breadcrumb": original_url, "title": title}
+    if do_i_use != None and response != None:
+        return do_i_use, response
 
     # check if cleaned value refers to an ent type
     ent_types = {
