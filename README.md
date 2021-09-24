@@ -2,9 +2,11 @@
 
 This repository contains the source code for the indieweb-search crawler and web application.
 
-All files in the crawler/ directory relate to the web crawler. All files in the main directory relate to the web application.
+All files in the `crawler/` directory relate to the web crawler. All files in the main directory relate to the web application.
 
 The search engine is available at [indieweb-search.jamesg.blog](https://indieweb-search.jamesg.blog).
+
+Further documentation on the search engine is available on the [IndieWeb wiki](https://indieweb.org/IndieWeb_Search).
 
 *Please note that this project is still in active development and there may be many bugs present. This project is a fork of my personal website search engine and is currently being tweaked to meet the needs of indexing other sites.*
 
@@ -104,15 +106,68 @@ If you would like to request your site be indexed on indieweb-search.jamesg.blog
 
 Only contributors to the IndieWeb wiki will be considered at this stage due to the limited compute resources available for this project.
 
+## Search Result API
+
+Results pages from IndieWeb Search are programmatically accessible in two ways:
+
+1. By using the dedicated JSON API flags in the URL of a results page.
+2. By parsing the results page with microformats.
+
+Each results page is marked up with the h-feed microformat so you can parse results.
+
+To find out more information about a result, including the raw text stored in the index that corresponds to the result, we recommend using the API.
+
+### JSON API Usage
+
+To use the JSON API, append one of the two flags below to the end of a search result URL:
+
+- "serp_as_json=direct": Returns the featured snippet displayed in the search result. No more than one featured snippet will be returned.
+- "serp_as_json=results_page": Returns all results displayed in the search result, excluding the featured snippet result.
+
+Here is an example JSON API call:
+
+    https://indieweb-search.jamesg.blog/results?query=what+is+a+web+crawler&serp_as_json=results_page
+
+This API call returns:
+
+- category
+- domain
+- h1
+- h2
+- h3
+- incoming_links (integer)
+- length (whole document length)
+- meta_description
+- outgoing_links (integer)
+- published_on (not always available)
+- title
+- url
+- word_count (integer)
+
+This feature is not currently deployed on production.
+
+## Rich Results
+
+IndieWeb Search may return a rich result for a site. This can happen under a number of circumstances. For example, if a site has a h-card, the h-card will be returned as a rich result in response to a "who is" query. Or if a page is marked up as h-review and a user looks for a review, the review might be returned as a rich result.
+
+Only one rich result can appear per query.
+
+To maximise your chances of getting a rich result, we recommend using semantic HTML in your code.
+
+Some rich results are only available if you use microformats in your code.
+
+These are:
+
+- Reviews: use h-review for a chance to get a rich result for a review.
+- Events: use h-event for a chance to get a rich result for an event description.
+- Profiles: use h-card for a chance to get a rich result in response to a "who is" query. The h-card must be on your home page.
+- Recipes: use h-recipe for a chance to get a rich result for a recipe.
+
 ## Contributing
 
 Feel free to contribute to this project no matter how much background you have in search.
 
-Some things that need worked on are:
-
-- Testing as many queries as possible on the live search engine to identify opportunities for improvements.
-- Automating the process of calculating incoming links (maybe just cron jobs?) and updating the index.
-- Improving the answer to "who is [domain-name]" to make sure all images appear correctly.
+Please refer to the Issues page in this repository for a list of features which have been proposed and bugs that need fixed. You can propose your own feature or help work on an existing request.
 
 If you think something is missing from IndieWeb Search that would help you and potentially others, feel free to try your hand at implementing your idea.
 
