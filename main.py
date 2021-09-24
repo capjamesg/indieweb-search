@@ -145,11 +145,11 @@ def results_page():
 				page = 1
 
 			if request.args.get("order") == "date_asc":
-				order = "published ASC"
+				order = "date_asc"
 			elif request.args.get("order") == "date_desc":
-				order = "published DESC"
+				order = "date_desc"
 			else:
-				order = "score, length, published DESC"
+				order = "score"
 
 			cleaned_value_for_query = cleaned_value_for_query.replace("what is", "")
 
@@ -166,16 +166,15 @@ def results_page():
 				query_params = "".join(query_params.split("AND")[1:])
 			
 			if "site:" in request.args.get("query"):
-				rows = requests.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&sort={}&from={}&to={}&site={}".format(config.ELASTICSEARCH_PASSWORD, cleaned_value_for_query.replace("=", " "), order, str(pagination), str(int(pagination)), query_values_in_list[-1].replace("%", ""), )).json()
+				rows = requests.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&sort={}&from={}&to={}&site={}".format(config.ELASTICSEARCH_PASSWORD, cleaned_value_for_query.replace("review", "").replace("who is", "").strip(), order, str(pagination), str(int(pagination)), query_values_in_list[-1].replace("%", "") )).json()
 			else:
-				rows = requests.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&sort={}&from={}&to={}".format(config.ELASTICSEARCH_PASSWORD, cleaned_value_for_query, order, str(pagination), str(int(pagination)+10))).json()
-
+				rows = requests.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&sort={}&from={}&to={}".format(config.ELASTICSEARCH_PASSWORD, cleaned_value_for_query.replace("review", "").replace("who is", "").strip(), order, str(pagination), str(int(pagination)+10))).json()
 
 			num_of_results = rows["hits"]["total"]["value"]
 			rows = rows["hits"]["hits"]
 
 			if page == 1:
-				if request.args.get("type") != "image" and len(rows) > 2 and ("what is" in cleaned_value or "what are" in cleaned_value  or "what were" in cleaned_value or "why" in cleaned_value or "how" in cleaned_value or "microformats" in cleaned_value):
+				if request.args.get("type") != "image" and len(rows) > 1 and ("what is" in cleaned_value or "event" in cleaned_value or "review" in cleaned_value or "recipe" in cleaned_value or "what are" in cleaned_value  or "what were" in cleaned_value or "why" in cleaned_value or "how" in cleaned_value or "microformats" in cleaned_value) and "who is" not in cleaned_value:
 					# remove stopwords from query
 					original = cleaned_value_for_query
 					cleaned_value_for_query = cleaned_value.replace("what is", "").replace("what are", "").replace("why", "").replace("how", "").replace("what were", "").replace("to use", "").strip()
@@ -200,6 +199,9 @@ def results_page():
 						source = None
 
 					do_i_use, special_result = search_result_features.generate_featured_snippet(original, special_result, nlp, url, source)
+
+					if do_i_use == "" and len(rows) > 1:
+						do_i_use, special_result = search_result_features.generate_featured_snippet(original, special_result, nlp, rows[1]["_source"]["url"], rows[1]["_source"])
 				elif request.args.get("type") != "image" and len(rows) > 0 and rows[0]["_source"]["url"].startswith("https://jamesg.blog"):
 					url = rows[0]["_source"]["url"]
 					source = rows[0]["_source"]
@@ -216,14 +218,19 @@ def results_page():
 
 					do_i_use, special_result = search_result_features.generate_featured_snippet(full_query_with_full_stops, special_result, nlp, url, source)
 
-				if "who is" in cleaned_value or ("." in cleaned_value and len(cleaned_value.split(".")[1]) <= 4):
-					get_homepage = requests.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&domain=true".format(config.ELASTICSEARCH_PASSWORD, cleaned_value_for_query.replace("who is", ""))).json()
+				if "who is" in cleaned_value or ("." in cleaned_value and len(cleaned_value.split(".")[1]) <= 4) or cleaned_value.endswith("social"):
+					get_homepage = requests.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&domain=true".format(config.ELASTICSEARCH_PASSWORD, cleaned_value_for_query.replace("who is", "").replace("social", ""))).json()
 
 					if len(get_homepage.get("hits").get("hits")) > 0:
 						url = get_homepage["hits"]["hits"][0]["_source"]["url"]
 						source = get_homepage["hits"]["hits"][0]["_source"]
 
 						do_i_use, special_result = search_result_features.generate_featured_snippet(full_query_with_full_stops, special_result, nlp, url, source)
+
+						# don't show h-cards from other domains
+						if not special_result.get("breadcrumb").startswith(url):
+							special_result = False
+							do_i_use = ""
 
 			if len(rows) == 0:
 				out_of_bounds_page = True
@@ -259,6 +266,24 @@ def results_page():
 					"dose_is_point_five": dose_is_point_five,
 					"inverted": inverted
 				}
+
+			if request.args.get("serp_as_json") and request.args.get("serp_as_json") == "direct":
+				if special_result:
+					return jsonify({"text": do_i_use, "featured_serp": special_result})
+				else:
+					return jsonify({"message": "no custom serp available on this search"})
+			elif request.args.get("serp_as_json") and request.args.get("serp_as_json") == "results_page":
+				for r in rows:
+					del r["_source"]["page_rank"] # not in use, in some records crawled in a legacy codebase
+					del r["_source"]["md5_hash"]
+					del r["_source"]["page_content"]
+					del r["_source"]["important_phrases"]
+					del r["_source"]["page_text"]
+					del r["_source"]["h4"]
+					del r["_source"]["h5"]
+					del r["_source"]["h6"]
+
+				return jsonify({"results": [r["_source"] for r in rows]})
 
 			if request.args.get("type") == "image":
 				base_results_query="/results?query={}&type=image".format(cleaned_value)
