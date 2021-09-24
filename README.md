@@ -121,8 +121,8 @@ To find out more information about a result, including the raw text stored in th
 
 To use the JSON API, append one of the two flags below to the end of a search result URL:
 
-- "serp_as_json=direct": Returns the featured snippet displayed in the search result. No more than one featured snippet will be returned.
-- "serp_as_json=results_page": Returns all results displayed in the search result, excluding the featured snippet result.
+- `serp_as_json=direct`: Returns the featured snippet displayed in the search result. No more than one featured snippet will be returned.
+- `serp_as_json=results_page`: Returns all results displayed in the search result, excluding the featured snippet result.
 
 Here is an example JSON API call:
 
