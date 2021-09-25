@@ -235,18 +235,23 @@ def results_page():
 			if len(rows) == 0:
 				out_of_bounds_page = True
 
-				identify_mistakes = spell.unknown(cleaned_value_for_query.split(" "))
+				identify_mistakes = spell.unknown(cleaned_value.split('"')[-1].split(" "))
 
 				final_query = ""
 
 				suggestion = False
 
-				for w in cleaned_value_for_query.split(" "):
+				for w in cleaned_value.split('"')[-1].split(" "):
 					if w in identify_mistakes:
 						final_query += spell.correction(w) + " "
 						suggestion = True
 					else:
 						final_query += w + " "
+
+					print(cleaned_value.split('"')[-1].split(" "))
+
+					final_query = '"'.join(cleaned_value.split('"')[:-1]) + " " + final_query
+					
 			else:
 				out_of_bounds_page = False
 				suggestion = False

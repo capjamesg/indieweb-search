@@ -59,6 +59,8 @@ def parse_whois(original_cleaned_value, soup, url, original_url):
             else:
                 title = url
                 
+            print("<img src='{}' height='100' width='100' style='float: right;'><p>{}</p>".format(photo, to_show))
+                
             return "<img src='{}' height='100' width='100' style='float: right;'><p>{}</p>".format(photo, to_show), {"type": "direct_answer", "breadcrumb": original_url, "title": title}
 
     return None, None

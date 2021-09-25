@@ -6,7 +6,7 @@
   {% if query == 'site:"jamesg.blog"' %}
     <p>Use the form below to find a web page on {{ query.replace("site:", "").replace('"', "") }}.</p>
   {% else %}
-    <p>Use the form below to find a web page made by someone in the IndieWeb community.</p>
+    <p>Use the form below to search web sites published by members of the IndieWeb community and related sites.</p>
   {% endif %}
   <form action="/results" method="GET" role="search">
     <input type="text" id="query" name="query" placeholder="Enter your query" aria-label="Search" />
