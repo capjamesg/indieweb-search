@@ -40,6 +40,9 @@ def poll_feeds(f):
     # request will return 304 if feed has not changed based on provided etag
     r = requests.get(url, headers={'If-None-Match': feed_etag.strip()})
 
+    # get etag
+    etag = r.headers.get('etag')
+
     if r.status_code == 304:
         print("Feed {} unchanged".format(url))
         return
@@ -92,28 +95,38 @@ def poll_feeds(f):
 
                         print("crawled {} url".format(jf2["url"]))
 
+    if etag == None:
+        etag = ""
+        
+    return url, etag
+
 feeds_indexed = 0
 
+feeds = []
+
 with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
-	futures = [executor.submit(poll_feeds, item) for item in feeds]
-	
-	while len(futures) > 0:
-		for future in concurrent.futures.as_completed(futures):
-			feeds_indexed += 1
+    futures = [executor.submit(poll_feeds, item) for item in feeds]
+    
+    while len(futures) > 0:
+        for future in concurrent.futures.as_completed(futures):
+            feeds_indexed += 1
 
-			print("FEEDS INDEXED: {}".format(feeds_indexed))
-			logging.info("FEEDS INDEXED: {}".format(feeds_indexed))
+            print("FEEDS INDEXED: {}".format(feeds_indexed))
+            logging.info("FEEDS INDEXED: {}".format(feeds_indexed))
+            
+            try:
+                url, etag = future.result()
 
-			try:
-				url_indexed, discovered = future.result()
+                feeds.append([url, etag])
+            except Exception as e:
+                pass
 
-				if url_indexed == None:
-					futures = []
-					break
-			except Exception as e:
-				pass
+            futures.remove(future)
 
-			futures.remove(future)
+# overwrite feeds to include new etags
+with open("/home/james/crawler/feeds.txt", "w+") as f:
+    for feed in feeds:
+        f.write(feed[0] + ", " + feed[1] + "\n")
 
 print("Checking sitemaps for new content")
 

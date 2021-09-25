@@ -10,9 +10,9 @@
     {% if ordered_by == "date_asc" %}
     Ordered by date (ascending). You can also order by <a href="{{ base_results_query }}">relevance</a> or <a href="{{ base_results_query }}&order=date_desc">date (descending)</a>.
     {% elif ordered_by == "date_desc" %}
-    Ordered by date (descending). You can also order by <a href="{{ base_results_query }}&order=date_asc">date (ascending)</a> or <a href="{{ base_results_query }}">relevance</a>.
+    Ordered by date (descending). You can also order by <a href="{{ base_results_query }}&order=date_asc">oldest</a> or <a href="{{ base_results_query }}">relevance</a>.
     {% else %}
-    Ordered by relevance. You can also order by <a href="{{ base_results_query }}&order=date_asc">date (ascending)</a> or <a href="{{ base_results_query }}&order=date_desc">date (descending)</a>.
+    Ordered by relevance. You can also order by <a href="{{ base_results_query }}&order=date_asc">most recent</a> or <a href="{{ base_results_query }}&order=date_desc">date (descending)</a>.
     {% endif %}
   </p>
   {% if special_result == False %}<hr>{% endif %}
@@ -27,13 +27,12 @@
           <p class="breadcrumbs"><a href="{% if count < 3 %}/go?query={{ query }}&page={{ page }}&r={% endif %}{{ r['_source']['url'] }}" style="border-bottom: none;">{% for item in r['_source']['url'].replace("https://", "").replace("http://", "").rstrip("/").split("/") %} {{ item.replace("%20", " ") }} {% if not loop.last %}>{% endif %}{% endfor %}</a></p>
           <p class="p-name"><a href="{% if count < 3 %}/go?query={{ query }}&page={{ page }}&r={% endif %}{{ r['_source']['url'] }}" class="u-url">{% if r['_source']['title']|length == 0 %}{{ " ".join(r['_source']['url'].split(" ")[:20]) }}{% if r['_source']['url'].split(" ")|length > 20 %}...{% endif %}{% else %}{{ " ".join(r['_source']['title'].split(" ")[:20]) }}{% if r['_source']['title'].split(" ")|length > 20 %}...{% endif %}{% endif %}</a></p>
           <p class="p-summary">{% if r['_source']['meta_description']|length > 0 %}{{ r['_source']['meta_description'] }}{% elif (r['_source']['h1'].split(",") and r['_source']['h1'].split(",")[0]|length > 0) or r['_source']['h1'] != "" %}{{ r['_source']['h1'].split(",")[0] }}{% else %}{{ r['_source']['h2'].split(",")[0] }}{% endif %}</p>
-          {{ r['_source']['word_count'] }} | {{ r['_source']['incoming_links'] }}
           {% if r['_source']['url'].startswith("https://indieweb.org/") or r['_source']['url'].startswith("https://microformats.org/wiki/") %}
           {% set title_count = 0 %}
           <p>
             {% for header in r['_source']['h2'].split(", ")[:5] %}
               {% if header != "Navigation menu" and header != "See Also" %}
-                <a href="{{ r['_source']['url'] }}#{{ header }}">{{ header }}</a>
+                <a href="{{ r['_source']['url'] }}#{{ header.replace(' ', '_') }}">{{ header }}</a>
                 {% if header != r['_source']['h2'].split(", ")[:5][-1] %} | {% endif %}
               {% endif %}
             {% endfor %}
@@ -44,13 +43,14 @@
       {% endif %}
       {% endfor %}
     </ol>
-  {% elif out_of_bounds_page == Truey %}
+  {% elif out_of_bounds_page == True %}
     <p>There are no results matching your query.</p>
     {% if suggestion_made and corrected_text.strip() != query.strip() %}
       <p>Did you mean <a href="/results?query={{ corrected_text.strip() }}">{{ corrected_text.strip() }}</a>?</p>
     {% else %}
       <p>Please make sure your spelling is correct and if it is, try searching for another term.</p>
     {% endif %}
+  {% endif %}
   {% if page_count > 1 %}
     <ol class="tab">
       {% if page != 1 %}

@@ -11,6 +11,7 @@ app = Flask(__name__)
 def home():
     pw = config.ELASTICSEARCH_PASSWORD
     query = request.args.get("q")
+    original_query = query
     domain_param = request.args.get("domain")
     from_num = request.args.get("from")
     if not from_num:
@@ -29,10 +30,10 @@ def home():
 
     if len(query) > 0:
         for w in range(0, len(query.split(" "))):
-            if w == 0:
-                final_query += query.split(" ")[w] + "^3"
-            else:
-                final_query += query.split(" ")[w]
+            # if w == 0:
+            #     final_query += query.split(" ")[w] + "^2"
+            # else:
+            final_query += query.split(" ")[w]
 
         if site and len(site) > 0:
             query = query + " AND (url:{})".format(site)
@@ -67,13 +68,13 @@ def home():
                 "query": {
                     "query_string": {
                         "query": query,
-                        "fields": ["title^2", "description^1.5", "url^1.3", "category^0", "published^0", "keywords^0", "text^2.8", "h1^1.7", "h2^1.5", "h3^1.2", "h4^0.5", "h5^0.75", "h6^0.25"],
+                        "fields": ["title^2", "description^1.5", "url^1.3", "category^0", "published^0", "keywords^0", "text^2.8", "h1^1.7", "h2^1.5", "h3^1.2", "h4^0.5", "h5^0.75", "h6^0.25", "domain^3"],
                         "minimum_should_match": "3<75%",
                     },
                 },
                 "script": {
                     "source": """
-                        return _score + Math.sqrt((1 + (doc['incoming_links'].value) + (1 + doc['referring_domains'].value)) * 3.5) + Math.log((1 + (doc['word_count'].value)));
+                        return _score + Math.log((1 + (doc['incoming_links'].value)) * 3.5) + Math.log((1 + (doc['word_count'].value)));
                     """
                 },
             },
@@ -94,6 +95,47 @@ def home():
                     "url": "https://" + domain.strip()
                 }
             }
+        }
+
+    sort = request.args.get("sort")
+
+    if sort and sort == "date_asc":
+        search_param = {
+            "from": int(from_num),
+            "size": 10,
+            "query": {
+                "query_string": {
+                    "query": query,
+                    "fields": ["title^2", "description^1.5", "url^1.3", "category^0", "published^0", "keywords^0", "text^2.8", "h1^1.7", "h2^1.5", "h3^1.2", "h4^0.5", "h5^0.75", "h6^0.25", "domain^3"],
+                    "minimum_should_match": "3<75%",
+                },
+            },
+            "sort": [
+                {
+                    "published": {
+                        "order": "asc"
+                    }
+                }
+            ]
+        }
+    elif sort and sort == "date_desc":
+        search_param = {
+            "from": int(from_num),
+            "size": 10,
+            "query": {
+                "query_string": {
+                    "query": query,
+                    "fields": ["title^2", "description^1.5", "url^1.3", "category^0", "published^0", "keywords^0", "text^2.8", "h1^1.7", "h2^1.5", "h3^1.2", "h4^0.5", "h5^0.75", "h6^0.25", "domain^3"],
+                    "minimum_should_match": "3<75%",
+                },
+            },
+            "sort": [
+                {
+                    "published": {
+                        "order": "desc"
+                    }
+                }
+            ]
         }
 
     #* saturation(doc['pagerank'].value, 10)"

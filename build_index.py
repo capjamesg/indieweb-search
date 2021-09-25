@@ -43,8 +43,6 @@ def initialize_folders():
 
 			writer.writerow(header_rows_to_write[f])
 
-initialize_folders()
-
 logging.basicConfig(level=logging.DEBUG, filename="{}/logs/{}.log".format(ROOT_DIRECTORY, datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
 
 broken_urls = []
@@ -93,7 +91,6 @@ def find_robots_directives(site_url):
 
 	for processed_line in read_robots.content.decode("utf-8").split("\n"):
 		# Only read directives pointed at all user agents or my crawler user agent
-		
 		if "User-agent: *" in processed_line or "User-agent: jamesg-search" in processed_line:
 			next_line_is_to_be_read = True
 
@@ -173,15 +170,15 @@ def build_index(site, reindex, feeds):
 	with open("crawl_queue.txt", "r") as f:
 		rows = f.readlines()
 
-	# rows.remove(site + "\n")
+	rows.remove(site + "\n")
 
-	# with open("crawl_queue.txt", "w+") as f:
-	# 	f.writelines(rows)
+	with open("crawl_queue.txt", "w+") as f:
+		f.writelines(rows)
 
 	# get date
 	date = datetime.datetime.now().strftime("%Y-%m-%d")
 
-	with open("crawled2.csv", "a+") as f:
+	with open("crawled.csv", "a+") as f:
 		csv.writer(f).writerow([site, date])
 
 	# read crawl_queue.txt
@@ -250,53 +247,52 @@ def build_index(site, reindex, feeds):
 
 	return url_indexed, discovered
 
-futures = []
+if __name__ == "__main__":
+	futures = []
 
-sites_indexed = 0
+	sites_indexed = 0
 
-# if reindex argument present
-if len(sys.argv) > 1 and sys.argv[1] == "reindex":
-	with open("crawl_queue.txt", "r") as f:
-		rows = f.readlines()
+	# if reindex argument present
+	if len(sys.argv) > 1 and sys.argv[1] == "reindex":
+		with open("crawl_queue.txt", "r") as f:
+			rows = f.readlines()
 
-	to_crawl = [row.replace("\n", "").lower() for row in rows]
-	reindex = True
-else:
-	with open("crawl_queue.txt", "r") as f:
-		to_crawl = f.readlines()
-		reindex = False
+		to_crawl = [row.replace("\n", "").lower() for row in rows]
+		reindex = True
+	else:
+		with open("crawl_queue.txt", "r") as f:
+			to_crawl = f.readlines()
+			reindex = False
 
-# don't include items on block list in a crawl
-# used to avoid accidentally crawling sites that have already been flagged as spam
-with open("blocklist.txt", "r") as block_file:
-	block_list = block_file.readlines()
+	# don't include items on block list in a crawl
+	# used to avoid accidentally crawling sites that have already been flagged as spam
+	with open("blocklist.txt", "r") as block_file:
+		block_list = block_file.readlines()
 
-# get feeds from feeds.txt
-with open("feeds.txt", "r") as f:
-	feeds = f.readlines()
-	feeds = {row.replace("\n", "").lower().split(",")[0]: "" for row in feeds}
+	# get feeds from feeds.txt
+	with open("feeds.txt", "r") as f:
+		feeds = f.readlines()
+		feeds = {row.replace("\n", "").lower().split(",")[0]: "" for row in feeds}
 
-to_crawl = [item for item in to_crawl if item not in block_list]
+	to_crawl = [item for item in to_crawl if item not in block_list]
 
-print(feeds)
+	with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
+		futures = [executor.submit(build_index, url.replace("\n", ""), reindex, feeds) for url in to_crawl]
+		
+		while len(futures) > 0:
+			for future in concurrent.futures.as_completed(futures):
+				sites_indexed += 1
 
-with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
-	futures = [executor.submit(build_index, url.replace("\n", ""), reindex, feeds) for url in to_crawl]
-	
-	while len(futures) > 0:
-		for future in concurrent.futures.as_completed(futures):
-			sites_indexed += 1
+				print("SITES INDEXED: {}".format(sites_indexed))
+				logging.info("SITES INDEXED: {}".format(sites_indexed))
 
-			print("SITES INDEXED: {}".format(sites_indexed))
-			logging.info("SITES INDEXED: {}".format(sites_indexed))
+				try:
+					url_indexed, discovered = future.result()
 
-			try:
-				url_indexed, discovered = future.result()
+					if url_indexed == None:
+						futures = []
+						break
+				except Exception as e:
+					pass
 
-				if url_indexed == None:
-					futures = []
-					break
-			except Exception as e:
-				pass
-
-			futures.remove(future)
+				futures.remove(future)

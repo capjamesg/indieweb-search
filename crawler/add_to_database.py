@@ -79,7 +79,7 @@ def add_to_database(full_url, published_on, doc_title, meta_description, categor
 		"referring_domains_to_site": 0, # updated when index is rebuilt
 		"internal_incoming_links": 0, # not actively used
 		"http_headers": str(page.headers),
-		"page_is_nofollow": nofollow_all
+		"page_is_nofollow": nofollow_all,
 	}
 
 	# results currently being saved to a file, so no need to run this code

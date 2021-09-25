@@ -28,6 +28,10 @@ domain_links = {}
 # Write all links to a file
 for hits in scroll(es, 'pages', body, '2m', 20):
     for h in hits:
+        # don't count links on pages that specified nofollow in the X-Robots-Tag header
+        if h["_source"].get("page_is_nofollow") and h["_source"].get("page_is_nofollow") == "true":
+            continue
+
         soup = BeautifulSoup(h['_source']['page_content'], 'html.parser')
 
         links = soup.find_all('a')
@@ -42,9 +46,19 @@ for hits in scroll(es, 'pages', body, '2m', 20):
 
         domain = h["_source"]["url"].split('/')[2]
 
+        # check for nofollow or none meta values
+        check_if_no_index = soup.find("meta", {"name":"robots"})
+
+        if check_if_no_index and check_if_no_index.get("content") and ("noindex" in check_if_no_index.get("content") or "none" in check_if_no_index.get("content")):
+            print("all links on {} marked as nofollow, skipping".format(h["_source"]["url"]))
+            continue
+
         with open('links.csv', 'a') as f:
             for l in links:
                 if l.has_attr('href'):
+                    # skip nofollow links
+                    if l.has_attr("rel") and l['rel'] == "nofollow":
+                        continue
                     link = l['href'].split("?")[0].replace("#", "")
                     if l["href"].startswith("/"):
                         link = "https://" + h["_source"]["domain"] + l.get('href')
@@ -70,21 +84,7 @@ for hits in scroll(es, 'pages', body, '2m', 20):
                             continue
                     except:
                         continue
-
-        #         if domain == link_domain: 
-        #             points = 1
-        #         elif "u-in-reply-to" in l.get("class") and domain != link_domain:
-        #             points = 5
-        #         elif ("u-repost-of" in l.get("class") or "u-quotation-of" in l.get("class")) and domain != link_domain:
-        #             points = 4
-        #         elif "u-bookmark-of" in l.get("class") and domain != link_domain:
-        #             points = 3
-        #         elif "u-like-of" in l.get("class") and domain != link_domain:
-        #             points = 2
-        #         else:
-        #             points = 1
-
-        #         # points go to the link
+                    
                     csv.writer(f).writerow([h["_source"]["url"], link, link_domain])
 
 # write domain_links to file
