@@ -241,16 +241,18 @@ def results_page():
 
 				suggestion = False
 
-				for w in cleaned_value.split('"')[-1].split(" "):
-					if w in identify_mistakes:
-						final_query += spell.correction(w) + " "
+				cleaned_items = cleaned_value.split('"')[-1].split(" ")
+
+				for w in range(0, len(cleaned_items)):
+					if cleaned_items[w] in identify_mistakes and cleaned_items[w] != "":
+						final_query += spell.correction(cleaned_items[w]) + " "
 						suggestion = True
+
+						final_query = " " + final_query
 					else:
-						final_query += w + " "
+						final_query += cleaned_items[w] + " "
 
-					print(cleaned_value.split('"')[-1].split(" "))
-
-					final_query = '"'.join(cleaned_value.split('"')[:-1]) + " " + final_query
+				final_query = "".join(cleaned_value.split('"')[:-1]) + '" ' + final_query
 					
 			else:
 				out_of_bounds_page = False
