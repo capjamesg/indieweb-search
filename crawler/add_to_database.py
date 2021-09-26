@@ -6,7 +6,7 @@ import config
 import hashlib
 import json
 
-def add_to_database(full_url, published_on, doc_title, meta_description, category, heading_info, page, pages_indexed, page_content, outgoing_links, crawl_budget, reindex, nofollow_all):
+def add_to_database(full_url, published_on, doc_title, meta_description, heading_info, page, pages_indexed, page_content, outgoing_links, crawl_budget, nofollow_all, main_page_content):
 	# get last modified date
 
 	if page != "" and page.headers:
@@ -58,7 +58,6 @@ def add_to_database(full_url, published_on, doc_title, meta_description, categor
 		"meta_description": meta_description,
 		"url": full_url,
 		"published_on": date_to_record,
-		"category": category,
 		"h1": ", ".join(heading_info["h1"]),
 		"h2": ", ".join(heading_info["h2"]),
 		"h3": ", ".join(heading_info["h3"]),
@@ -72,7 +71,7 @@ def add_to_database(full_url, published_on, doc_title, meta_description, categor
 		"page_text": page_content.get_text(),
 		"outgoing_links": outgoing_links,
 		"domain": full_url.split("/")[2],
-		"word_count": len(page_content.get_text().split(" ")),
+		"word_count": len(main_page_content.get_text().split(" ")),
 		"md5_hash": md5_hash,
 		"last_crawled": datetime.datetime.today().strftime("%Y-%m-%d %H:%M:%S"),
 		"favicon": favicon,

@@ -21,7 +21,7 @@ def check_remove_url(full_url):
 		print("removed {} from index as it is no longer valid".format(full_url))
 		logging.info("removed {} from index as it is no longer valid".format(full_url))
 
-def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, external_links, discovered_urls, iterate_list_of_urls, site_url, crawl_budget, url, reindex, feeds, link_discovery=True):
+def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, external_links, discovered_urls, iterate_list_of_urls, site_url, crawl_budget, url, feeds, link_discovery=True):
 	"""
 		Crawls URLs in list, adds URLs to index, and returns updated list
 	"""
@@ -32,12 +32,12 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 	if len(full_url) > 125:
 		print("{} url too long, skipping".format(full_url))
 		logging.info("{} url too long, skipping".format(full_url))
-		return url, {}, False, []
+		return url, {}, False
 
 	if "javascript:" in full_url:
 		print("{} marked as follow, noindex because it is a javascript resource".format(full_url))
 		logging.info("{} marked as follow, noindex because it is a javascript resource".format(full_url))
-		return url, {}, False, []
+		return url, {}, False
 
 	# Only get URLs that match namespace exactly
 	in_matching_namespace = [s for s in namespaces_to_ignore if s.startswith(full_url.replace("http://", "").replace("https://", "").replace(site_url, "")) == full_url]
@@ -80,22 +80,22 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			logging.error("{} timed out, skipping".format(full_url))
 			print("{} timed out, skipping".format(full_url))
 			check_remove_url(full_url)
-			return url, {}, False, []
+			return url, {}, False
 		except requests.exceptions.TooManyRedirects:
 			logging.error("{} too many redirects, skipping".format(full_url))
 			print("{} too many redirects, skipping".format(full_url))
 			check_remove_url(full_url)
-			return url, {}, False, []
+			return url, {}, False
 		except:
 			logging.error("{} failed to connect, skipping".format(full_url))
 			print("{} failed to connect, skipping".format(full_url))
-			return url, {}, False, []
+			return url, {}, False
 
 		if page_test.headers and page_test.headers.get("content-type") and "text/html" not in page_test.headers["content-type"] and "text/plain" not in page_test.headers["content-type"]:
 			print("{} is not a html resource, skipping".format(full_url))
 			check_remove_url(full_url)
 			logging.info("{} is not a html resource, skipping".format(full_url))
-			return url, {}, False, []
+			return url, {}, False
 
 		if page_test.headers.get("link"):
 			header_links = requests.utils.parse_header_links(page_test.headers.get("link").rstrip('>').replace('>,<', ',<'))
@@ -119,7 +119,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 						logging.info("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical_url))
 						print("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical_url))
 
-						return url, discovered_urls, False, []
+						return url, discovered_urls, False
 
 		session = requests.Session()
 		session.max_redirects = 3
@@ -128,18 +128,18 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			page = session.get(full_url, timeout=10, headers=config.HEADERS, allow_redirects=True, verify=False)
 		except requests.exceptions.Timeout:
 			logging.error("{} timed out, skipping".format(full_url))
-			return url, {}, False, []
+			return url, {}, False
 		except requests.exceptions.TooManyRedirects:
 			logging.error("{} too many redirects, skipping".format(full_url))
 			check_remove_url(full_url)
-			return url, {}, False, []
+			return url, {}, False
 		except:
 			logging.error("{} failed to connect, skipping".format(full_url))
-			return url, {}, False, []
+			return url, {}, False
 
 		# 404 = not found, 410 = gone
 		if page.status_code == 404 or page.status_code == 410:
-			return url, {}, False, []
+			return url, {}, False
 
 		elif page.status_code == 301 or page.status_code == 302 or page.status_code == 308:
 			redirected_to = page.headers["Location"]
@@ -151,13 +151,13 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 
 				discovered_urls[redirected_to] = redirected_to
 
-			return url, {}, False, []
+			return url, {}, False
 				
 		elif page.status_code != 200:
 			print("{} page failed to load.".format(full_url))
 			check_remove_url(full_url)
 			logging.error("{} page failed to load.".format(full_url))
-			return url, {}, False, []
+			return url, {}, False
 
 		try:
 			page_desc_soup = BeautifulSoup(page.content, "html5lib")
@@ -200,14 +200,14 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 				logging.info("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical_url))
 				print("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical_url))
 
-				return url, discovered_urls, False, []
+				return url, discovered_urls, False
 
 		check_if_no_index = page_desc_soup.find("meta", {"name":"robots"})
 
 		if check_if_no_index and check_if_no_index.get("content") and ("noindex" in check_if_no_index.get("content") or "none" in check_if_no_index.get("content")):
 			print("{} marked as noindex, skipping".format(full_url))
 			logging.info("{} marked as noindex, skipping".format(full_url))
-			return url, {}, False, []
+			return url, {}, False
 
 		elif check_if_no_index and check_if_no_index.get("content") and "nofollow" in check_if_no_index.get("content"):
 			print("all links on {} marked as nofollow due to <meta> robots nofollow value".format(full_url))
@@ -269,12 +269,12 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 		if "/tags/" in full_url or "/tag/" in full_url or "/label/" in full_url or "/search/" in full_url or "/category/" in full_url or "/categories/" in full_url:
 			print("{} marked as follow, noindex because it is a tag, label, or search resource".format(full_url))
 			logging.info("{} marked as follow, noindex because it is a tag, label, or search resource".format(full_url))
-			return url, {}, False, all_links
+			return url, {}, False
 
 		elif "/page/" in full_url and full_url.split("/")[-1].isdigit():
 			print("{} marked as follow, noindex because it is a page archive".format(full_url))
 			logging.info("{} marked as follow, noindex because it is a page archive".format(full_url))
-			return url, {}, False, all_links
+			return url, {}, False
 
 		# 20 word minimum will prevent against short notes
 		if page_desc_soup.select("e-content"):
@@ -282,13 +282,14 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			if len(page_text.get_text().split(" ")) < 10:
 				print("content on {} is thin (under 10 words in e-content), skipping")
 				logging.info("content on {} is thin (under 10 words in e-content), skipping".format(full_url))
-				return url, {}, False, all_links
+				return url, {}, False
+
 		elif page_desc_soup.select("h-entry"):
 			page_text = page_desc_soup.select("h-entry")
 			if len(page_text.get_text().split(" ")) < 10:
 				print("content on {} is thin (under 10 words in h-entry), skipping")
 				logging.info("content on {} is thin (under 10 words in h-entry), skipping".format(full_url))
-				return url, {}, False, all_links
+				return url, {}, False
 		elif page_desc_soup.find("main"):
 			page_text = page_desc_soup.find("main")
 		elif page_desc_soup.find("div", {"id": "main"}):
@@ -305,7 +306,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			page_text = page_desc_soup.find("body")
 
 		if page_text == None:
-			return url, discovered_urls, False, all_links
+			return url, discovered_urls, False
 
 		heading_info = {
 			"h1": [],
@@ -321,26 +322,21 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 				for h in page_text.find_all(k):
 					v.append(h.text)
 
-		# Discover new links that might be on a page to follow later
-
 		# Only index if noindex attribute is not present
-		page_text, page_desc_soup, published_on, meta_description, doc_title, category, remove_doc_title_from_h1_list, noindex = crawler.page_info.get_page_info(page_text, page_desc_soup, full_url)
+		page_text, page_desc_soup, published_on, meta_description, doc_title, noindex = crawler.page_info.get_page_info(page_text, page_desc_soup, full_url)
 
 		if noindex == True:
-			return url, discovered_urls, False, all_links
-
-		if remove_doc_title_from_h1_list == True:
-			heading_info["h1"] = heading_info["h1"].remove(doc_title)
+			return url, discovered_urls, False
 			
 		count += 1
 
 		if check_if_no_index and check_if_no_index.get("content") and "noindex" in check_if_no_index.get("content"):
 			print("{} marked as noindex, skipping".format(full_url))
 			logging.info("{} marked as noindex, skipping".format(full_url))
-			return url, discovered_urls, False, links
+			return url, discovered_urls, False
 			
 		try:
-			pages_indexed = add_to_database.add_to_database(full_url, published_on, doc_title, meta_description, category, heading_info, page, pages_indexed, page_text, len(links), crawl_budget, reindex, nofollow_all)
+			pages_indexed = add_to_database.add_to_database(full_url, published_on, doc_title, meta_description, heading_info, page, pages_indexed, page_desc_soup, len(links), crawl_budget, nofollow_all, page_text, page_desc_soup, site_url, page_desc_soup.find("body"))
 		except Exception as e:
 			print("error with {}".format(full_url))
 			print(e)
@@ -349,4 +345,4 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 
 	print('finished {}'.format(full_url))
 
-	return url, discovered_urls, True, all_links
+	return url, discovered_urls, True
