@@ -86,3 +86,45 @@ def parse_social(original_cleaned_value, soup, url, original_url):
             return "<h3>{} Social Links</h3><ul>{}</ul>".format(title, to_show), {"type": "direct_answer", "breadcrumb": original_url, "title": title}
 
     return None, None
+
+def parse_feed(original_cleaned_value, soup, url, original_url):
+    # get all feeds on a page
+    if original_cleaned_value.endswith("inspect feed"):
+
+        to_show = ""
+        feeds = soup.find_all("a", {"rel": "alternate"})
+
+        # check for h-feed
+        h_feed = soup.select(".h-feed")
+
+        if h_feed:
+            to_show += "<li><b>Microformats h-feed</b>: <a href='{}'>{}</li>".format(url, url)
+
+        if len(feeds) > 0:
+            to_show = ""
+
+            for link in feeds:
+                if link.get("href"):
+                    link_type = link.get("type")
+                    if link_type:
+                        link_type = link_type.split("/")[1].split("+")
+
+                        if link_type != None:
+                            link_type = link_type[0]
+
+                            to_show += "<li><b>{} feed</b>: <a href='{}'>{}</li>".format(link_type, link.get("href"))
+                        elif link_type == "application/json":
+                            link_type = "JSON"
+
+                            to_show += "<li><b>{} feed</b>: <a href='{}'>{}</li>".format(link_type, link.get("href"))
+                    else:
+                        to_show += "<li><b>Feed</b>: <a href='{}'>{}</li>".format(link.get("href"), link.get("href"))
+
+            if soup.find("h1"):
+                title = soup.find("h1").text
+            else:
+                title = url
+
+            return "<h3>{} Feeds</h3><ul>{}</ul>".format(title, to_show), {"type": "direct_answer", "breadcrumb": original_url, "title": title}
+
+    return None, None

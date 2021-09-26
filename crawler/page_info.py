@@ -130,22 +130,14 @@ def get_page_info(page_text, page_desc_soup, page_url):
 			final_meta_description += "..."
 			break
 
-	remove_doc_title_from_h1_list = False
-
 	if page_desc_soup.find("title") != None:
 		doc_title = page_desc_soup.find("title").text
 	elif page_desc_soup.find("h1") != None:
 		doc_title = page_desc_soup.find("h1").text
-		remove_doc_title_from_h1_list = True
 	else:
 		doc_title = page_url
 
 	if doc_title == "":
 		doc_title = page_url
-	
-	if page_desc_soup.find("a", attrs={"class":"p-category"}) != None:
-		category = page_desc_soup.find("a", attrs={"class":"p-category"}).text
-	else:
-		category = "Page"
 
-	return page_text, page_desc_soup, published_on, final_meta_description, doc_title, category, remove_doc_title_from_h1_list, False
+	return page_text, page_desc_soup, published_on, final_meta_description, doc_title, False

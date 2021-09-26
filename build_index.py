@@ -213,12 +213,10 @@ def build_index(site, reindex, feeds):
 	print("{} urls part of initial crawl".format(len(iterate_list_of_urls)))
 	
 	for url in iterate_list_of_urls:
-		url_indexed, discovered, valid, new_links = url_handling.crawl_urls(final_urls, namespaces_to_ignore, indexed, links, external_links, discovered_urls, iterate_list_of_urls, site, crawl_budget, url, reindex, feeds, True)
+		url_indexed, discovered, valid = url_handling.crawl_urls(final_urls, namespaces_to_ignore, indexed, links, external_links, discovered_urls, iterate_list_of_urls, site, crawl_budget, url, feeds, True)
 
 		if valid == True:
 			valid_count += 1
-
-		# all_links.append([[url_indexed, link] for link in new_links])
 
 		if valid_count == 0 and indexed == 25:
 			break
@@ -238,13 +236,6 @@ def build_index(site, reindex, feeds):
 				print("{} not indexed, added".format(item))
 				iterate_list_of_urls.append(item)
 
-	# with open(ROOT_DIRECTORY + "/data/all_links.csv","w") as f:
-	# 	wr = csv.writer(f)
-	# 	# wr.writerow(["page_linking", "link_to", "datetime", "external"])
-	# 	wr.writerows(all_links)
-
-	# broken_links.check_for_invalid_links()
-
 	return url_indexed, discovered
 
 if __name__ == "__main__":
@@ -252,17 +243,8 @@ if __name__ == "__main__":
 
 	sites_indexed = 0
 
-	# if reindex argument present
-	if len(sys.argv) > 1 and sys.argv[1] == "reindex":
-		with open("crawl_queue.txt", "r") as f:
-			rows = f.readlines()
-
-		to_crawl = [row.replace("\n", "").lower() for row in rows]
-		reindex = True
-	else:
-		with open("crawl_queue.txt", "r") as f:
-			to_crawl = f.readlines()
-			reindex = False
+	with open("crawl_queue.txt", "r") as f:
+		to_crawl = f.readlines()
 
 	# don't include items on block list in a crawl
 	# used to avoid accidentally crawling sites that have already been flagged as spam
@@ -277,7 +259,7 @@ if __name__ == "__main__":
 	to_crawl = [item for item in to_crawl if item not in block_list]
 
 	with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
-		futures = [executor.submit(build_index, url.replace("\n", ""), reindex, feeds) for url in to_crawl]
+		futures = [executor.submit(build_index, url.replace("\n", ""), feeds) for url in to_crawl]
 		
 		while len(futures) > 0:
 			for future in concurrent.futures.as_completed(futures):
