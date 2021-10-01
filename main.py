@@ -327,39 +327,6 @@ def results_page():
 def robots():
 	return send_from_directory(main.static_folder, "robots.txt")
 
-@main.route("/go")
-def go_to_url():
-	# Idea from: https://www.tbray.org/ongoing/When/200x/2003/11/13/ResultRanking
-	page = request.args.get("page")
-	r = request.args.get("r")
-	query = request.args.get("query")
-
-	pagination = "0"
-
-	query_with_handled_spaces = request.args.get("query").replace("--", "")
-
-	cleaned_value_for_query = ''.join(e for e in query_with_handled_spaces if e.isalnum() or e == " " or e == ".")
-
-	if page:
-		# If page cannot be converted into an integer, redirect to homepage
-
-		try:
-			if int(page) > 1:
-				pagination = (int(page) - 1)
-		except:
-			return redirect("/")
-	else:
-		page = 1
-
-	rows = requests.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&sort={}&from={}&to={}&".format(config.ELASTICSEARCH_PASSWORD, query, cleaned_value_for_query, str(pagination), str(int(pagination)), )).json()["hits"]["hits"]
-	
-	urls = [url["_source"]["url"] for url in rows if r == url["_source"]["url"]]
-
-	if len(urls) > 0:
-		return redirect(r)
-	else:
-		return redirect("/")
-
 @main.route("/websub/<string:id>", methods=["GET", "POST"])
 def websub(id):
 	with open("websub_subscriptions.txt", "r") as f:
