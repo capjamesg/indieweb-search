@@ -162,7 +162,7 @@ def process_domain(site, reindex):
 	if reindex == True:
 		return 100, final_urls, namespaces_to_ignore
 	else:
-		return 5000, final_urls, namespaces_to_ignore
+		return 2, final_urls, namespaces_to_ignore
 
 def build_index(site, feeds, reindex=False):
 	# remove from queue before indexing starts
@@ -170,14 +170,14 @@ def build_index(site, feeds, reindex=False):
 	with open("crawl_queue.txt", "r") as f:
 		rows = f.readlines()
 
-	if site in rows:
-		rows.remove(site)
+	# if site in rows:
+	# 	rows.remove(site)
 	
-	if site + "\n" in rows:
-		rows.remove(site  + "\n")
+	# if site + "\n" in rows:
+	# 	rows.remove(site  + "\n")
 
-	with open("crawl_queue.txt", "w+") as f:
-		f.writelines(rows)
+	# with open("crawl_queue.txt", "w+") as f:
+	# 	f.writelines(rows)
 
 	if feeds != None:
 		feeds = feeds.get(site)
@@ -251,23 +251,14 @@ def build_index(site, feeds, reindex=False):
 	with open("feeds.json", "r") as f:
 		feeds = json.loads(f.read())
 
-	feeds[url_indexed] = feeds
+	feeds[site] = all_feeds
 
 	with open("feeds.json", "w+") as f:
-		f.write(json.dumps(feeds))
+		json.dump(feeds, f)
 
 	# write to crawled.csv
 	with open("crawled.csv", "a+") as f:
 		csv.writer(f).writerow([site, date])
-
-	# write to crawl_queue.txt
-	with open("crawl_queue.txt", "a+") as f:
-		f.writelines(list(set(iterate_list_of_urls)))
-
-	return site, list(set(iterate_list_of_urls))
-
-	with open("feeds.json", "w") as f:
-		f.write(json.dumps(feeds))
 
 	for item in discovered.keys():
 		if not indexed_list.get(item):

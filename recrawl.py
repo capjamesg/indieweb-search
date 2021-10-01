@@ -19,9 +19,19 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 # read feeds.txt
-with open('/home/james/crawler/feeds.json', 'r') as f:
+# /home/james/crawler/
+with open('feeds.json', 'r') as f:
     feeds = json.load(f)
-    feed_url_list = [item.get("url") for item in feeds]
+    feed_final = []
+
+    feed_url_list = []
+    for item in feeds.values():
+        for i in item:
+            for k in i:
+                feed_url_list.append(k.get("url"))
+                feed_final.append(k)
+        
+    feeds = feed_final
 
 feeds_parsed = {}
 
@@ -77,9 +87,12 @@ def poll_feeds(f):
 
         for entry in feed.entries:
             site_url = "https://" + entry.link.split("/")[2]
-            crawl_urls({entry.link: ""}, [], 0, [], [], {}, [], site_url, 1, entry.link, False, feed_url_list, False)
+            crawl_urls({entry.link: ""}, [], 0, [], [], {}, [], site_url, 1, entry.link, False, feeds, feed_url_list, False)
 
             print("crawled {} url".format(entry.link))
+
+        # update etag
+        f["etag"] = etag
     elif mime_type == "h-feed":
         mf2_raw = mf2py.parse(r.text)
 
@@ -93,7 +106,7 @@ def poll_feeds(f):
                         if jf2["url"].startswith("/"):
                             jf2["url"] = site_url + jf2["url"]
 
-                        crawl_urls({jf2["url"]: ""}, [], 0, [], [], {}, [], site_url, 1, jf2["url"], False, feed_url_list, False)
+                        crawl_urls({jf2["url"]: ""}, [], 0, [], [], {}, [], site_url, 1, jf2["url"], False, feeds, feed_url_list, False)
 
                         print("crawled {} url".format(jf2["url"]))
 
@@ -105,7 +118,7 @@ def poll_feeds(f):
         if items and len(items) > 0:
             for item in items:
                 if item.get("url"):
-                    crawl_urls({item["url"]: ""}, [], 0, [], [], {}, [], "https://" + site_url, 1, item["url"], False, feed_url_list, False)
+                    crawl_urls({item["url"]: ""}, [], 0, [], [], {}, [], "https://" + site_url, 1, item["url"], False, feeds, feed_url_list, False)
 
                     print("crawled {} url".format(item["url"]))
 
@@ -115,12 +128,14 @@ def poll_feeds(f):
         expire_date = f.get("expire_date")
 
         if f.get("websub_sent") != True or datetime.datetime.now() > datetime.datetime.strptime(expire_date, "%Y-%m-%dT%H:%M:%S.%fZ"):
-            ten_random_chars = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
+            # random string of 20 letters and numbers
+            # each websub endpoint needs to be different
+            random_string = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(20))
 
             with open("websub_subscriptions.txt", "a+") as file:
-                file.write(url + "," + ten_random_chars + "\n")
+                file.write(url + "," + random_string + "\n")
 
-            r = requests.post(url, headers={'Content-Type': 'application/x-www-form-urlencoded'}, data="hub.mode=subscribe&sub.topic={}&hub.callback=https://indieweb-search.jamesg.blog/websub/{}".format(url, ten_random_chars))
+            r = requests.post(url, headers={'Content-Type': 'application/x-www-form-urlencoded'}, data="hub.mode=subscribe&sub.topic={}&hub.callback=https://indieweb-search.jamesg.blog/websub/{}".format(url, random_string))
 
             print("sent websub request to {}".format(url))
 
@@ -129,11 +144,9 @@ def poll_feeds(f):
     if etag == None:
         etag = ""
         
-    return url, etag
+    return url, etag, f
 
 feeds_indexed = 0
-
-feeds = []
 
 with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
     futures = [executor.submit(poll_feeds, item) for item in feeds]
@@ -146,25 +159,28 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
             logging.info("FEEDS INDEXED: {}".format(feeds_indexed))
             
             try:
-                url, etag = future.result()
+                url, etag, full_item = future.result()
 
                 feeds.append([url, etag])
+
+                if etag:
+                    full_item["etag"] = etag
+
             except Exception as e:
                 pass
 
             futures.remove(future)
 
-# overwrite feeds to include new etags
-with open("/home/james/crawler/feeds.txt", "w+") as f:
-    for feed in feeds:
-        f.write(feed[0] + ", " + feed[1] + "\n")
+# write feeds to feeds.json
+with open("feeds.json", "w") as file:
+    json.dump(feeds, file)
 
 print("Checking sitemaps for new content")
 
 to_crawl = []
 domains_to_recrawl = []
 
-with open("/home/james/crawler/crawled.csv", "r") as f:
+with open("crawled.csv", "r") as f:
     reader = csv.reader(f)
 
     for item in reader:
@@ -205,7 +221,7 @@ with open("/home/james/crawler/crawled.csv", "r") as f:
 pages_indexed = 0
 
 with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
-    futures = [executor.submit(crawl_urls, {item: ""}, [], 0, [], [], {}, [], "https://" + item, 1, item, False, feeds, feed_url_list, False) for item in to_crawl]
+    futures = [executor.submit(crawl_urls, {item: ""}, [], 0, [], [], {}, [], "https://" + item, 1, item, feeds, feed_url_list, False) for item in to_crawl]
     
     while len(futures) > 0:
         for future in concurrent.futures.as_completed(futures):
@@ -221,6 +237,7 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
                     futures = []
                     break
             except Exception as e:
+                print(e)
                 pass
 
             futures.remove(future)
