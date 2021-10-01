@@ -72,6 +72,11 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
     if do_i_use != None and response != None:
         return do_i_use, response
 
+    do_i_use, response = whois.parse_get_rel(original_cleaned_value, soup, url, original_url)
+
+    if do_i_use != None and response != None:
+        return do_i_use, response
+
     # check if cleaned value refers to an ent type
     ent_types = {
         "founder": "PERSON", 

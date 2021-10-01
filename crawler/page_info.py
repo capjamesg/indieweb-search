@@ -1,13 +1,8 @@
 from typing import final
 from textblob import WordList
 from nltk.corpus import stopwords
-import crawler.url_handling
+from bs4 import BeautifulSoup
 import datetime
-
-# Get last index start time
-# with open("static/index_stats.json") as file:
-# 	index_stats = json.load(file)
-# 	last_index_start = index_stats.get("last_index_start")
 
 stopwords = set(stopwords.words('english'))
 
@@ -21,26 +16,10 @@ full_stopwords_list = {}
 for word in stopwords:
 	full_stopwords_list[word] = ""
 
-# def check_url_for_errors(page_url, discovered_urls, broken_urls):
-# 	"""
-# 		Checks if a URL is malformed.
-# 	"""
-
-# 	if page_url.islower() == False:
-# 		crawler.url_handling.log_error(page_url, 200, "URL contains an uppercase character.", discovered_urls, broken_urls)
-
-# 	if "_" in page_url:
-# 		crawler.url_handling.log_error(page_url, 200, "URL contains an underscore.", discovered_urls, broken_urls)
-
-# 	if len(page_url) > 100:
-# 		crawler.url_handling.log_error(page_url, 200, "URL is {} characters long (too long).".format(len(page_url)), discovered_urls, broken_urls)
-
 def get_page_info(page_text, page_desc_soup, page_url):
 	"""
 		Scrapes page information for index and returns it to be added to the database later.
 	"""
-	
-	# check_url_for_errors(page_url, discovered_urls, broken_urls)
 
 	contains_hfeed = page_desc_soup.find(class_="h-feed")
 
@@ -129,6 +108,8 @@ def get_page_info(page_text, page_desc_soup, page_url):
 		if char_count > 180:
 			final_meta_description += "..."
 			break
+
+	final_meta_description = BeautifulSoup(final_meta_description, "html.parser").text
 
 	if page_desc_soup.find("title") != None:
 		doc_title = page_desc_soup.find("title").text

@@ -8,8 +8,10 @@ from time import mktime
 from crawler.url_handling import crawl_urls
 import build_index
 import concurrent.futures
+import string
+import random
 import logging
-import config
+import json
 
 # ignore insecure request warning
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
@@ -17,19 +19,16 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 # read feeds.txt
-with open('/home/james/crawler/feeds.txt', 'r') as f:
-    feeds = f.readlines()
-    feed_url_list = [x.split(",")[0].strip() for x in feeds]
+with open('/home/james/crawler/feeds.json', 'r') as f:
+    feeds = json.load(f)
+    feed_url_list = [item.get("url") for item in feeds]
 
 feeds_parsed = {}
 
 def poll_feeds(f):
-    if len(f.split(", ")) > 1:
-        url, feed_etag = f.split(",")
-        url = "https://" + url
-    else:
-        url = "https://" + f.split()[0]
-        feed_etag = ""
+    url = f.get("url")
+    feed_etag = f.get("etag")
+    mime_type = f.get("mime_type")
 
     # used to skip duplicate entries in feeds.txt
     if feeds_parsed.get(url.lower()):
@@ -57,7 +56,11 @@ def poll_feeds(f):
 
     print("polling " + url)
 
-    if "xml" in content_type or ".xml" in url:
+    site_url = "https://" + url.split("/")[2] 
+
+    allowed_xml_content_types = ['application/rss+xml', 'application/atom+xml']
+
+    if content_type in allowed_xml_content_types or mime_type in allowed_xml_content_types or mime_type == "feed":
         feed = feedparser.parse(url)
 
         etag = feed.get("etag", "")
@@ -77,14 +80,13 @@ def poll_feeds(f):
             crawl_urls({entry.link: ""}, [], 0, [], [], {}, [], site_url, 1, entry.link, False, feed_url_list, False)
 
             print("crawled {} url".format(entry.link))
-    else:
+    elif mime_type == "h-feed":
         mf2_raw = mf2py.parse(r.text)
 
         for item in mf2_raw["items"]:
             if item.get("type") and item.get("type")[0] == "h-feed" and item.get("children"):
                 for child in item["children"]:
                     jf2 = microformats2.to_jf2(child)
-                    site_url = "https://" + url.split("/")[2] 
                     if jf2.get("url"):
                         if type(jf2["url"]) == list:
                             jf2["url"] = jf2["url"][0]
@@ -94,6 +96,35 @@ def poll_feeds(f):
                         crawl_urls({jf2["url"]: ""}, [], 0, [], [], {}, [], site_url, 1, jf2["url"], False, feed_url_list, False)
 
                         print("crawled {} url".format(jf2["url"]))
+
+    elif mime_type == "application/json":
+        # parse as JSON Feed per jsonfeed.org spec
+
+        items = r.json().get("items")
+
+        if items and len(items) > 0:
+            for item in items:
+                if item.get("url"):
+                    crawl_urls({item["url"]: ""}, [], 0, [], [], {}, [], "https://" + site_url, 1, item["url"], False, feed_url_list, False)
+
+                    print("crawled {} url".format(item["url"]))
+
+    elif mime_type == "websub":
+        # send request to renew websub if the websub subscription has expired
+
+        expire_date = f.get("expire_date")
+
+        if f.get("websub_sent") != True or datetime.datetime.now() > datetime.datetime.strptime(expire_date, "%Y-%m-%dT%H:%M:%S.%fZ"):
+            ten_random_chars = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
+
+            with open("websub_subscriptions.txt", "a+") as file:
+                file.write(url + "," + ten_random_chars + "\n")
+
+            r = requests.post(url, headers={'Content-Type': 'application/x-www-form-urlencoded'}, data="hub.mode=subscribe&sub.topic={}&hub.callback=https://indieweb-search.jamesg.blog/websub/{}".format(url, ten_random_chars))
+
+            print("sent websub request to {}".format(url))
+
+        pass
 
     if etag == None:
         etag = ""
@@ -174,7 +205,7 @@ with open("/home/james/crawler/crawled.csv", "r") as f:
 pages_indexed = 0
 
 with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
-    futures = [executor.submit(crawl_urls, {item: ""}, [], 0, [], [], {}, [], "https://" + item, 1, item, False, feed_url_list, False) for item in to_crawl]
+    futures = [executor.submit(crawl_urls, {item: ""}, [], 0, [], [], {}, [], "https://" + item, 1, item, False, feeds, feed_url_list, False) for item in to_crawl]
     
     while len(futures) > 0:
         for future in concurrent.futures.as_completed(futures):

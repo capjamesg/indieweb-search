@@ -87,6 +87,21 @@ def parse_social(original_cleaned_value, soup, url, original_url):
 
     return None, None
 
+def parse_get_rel(original_cleaned_value, soup, url, original_url):
+    # get all feeds on a page
+    if original_cleaned_value.endswith("get rel"):
+        # get all rel values
+        rel_values = soup.select("link[rel]")
+
+        to_show = ""
+
+        for link in rel_values:
+            to_show += "<li>{}: <a href='{}'>{}</li>".format("".join(link.get("rel")), link.get("href"), link.get("href"))
+
+        return "<h3>'Rel' Attributes for {}</h3><ul>{}</ul>".format(original_url.replace("https://", "").replace("http://", "").strip("/"), to_show), {"type": "direct_answer", "breadcrumb": original_url, "title": soup.find_all("h1")[0].text}
+
+    return None, None
+
 def parse_feed(original_cleaned_value, soup, url, original_url):
     # get all feeds on a page
     if original_cleaned_value.endswith("inspect feed"):
