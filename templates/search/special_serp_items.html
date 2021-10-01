@@ -20,7 +20,7 @@
 {% if special_result and special_result.type == "direct_answer" and results_type != "image" %}
     <div class="serp" style="border: 3px dotted royalblue; padding: 10px;">
     {% if do_i_use %}<p>{{ do_i_use | safe }}</p>{% endif %}
-    <p><a href="/go?query={{ query }}&page={{ page }}&r={{ special_result.breadcrumb }}&s=direct_answer">{{ special_result.title }}</a></p>
-    {% if special_result.breadcrumb %}<p class="breadcrumbs"><a href="/go?query={{ query }}&page={{ page }}&r={{ special_result.breadcrumb }}&s=direct_answer" style="border-bottom: none;">{% for item in special_result.breadcrumb.replace("https://", "").rstrip("/").split("/") %} {{ item }} {% if not loop.last %}>{% endif %}{% endfor %}</a></p>{% endif %}
+    <p><a href="{{ special_result.breadcrumb }}">{{ special_result.title }}</a></p>
+    {% if special_result.breadcrumb %}<p class="breadcrumbs"><a href="{{ special_result.breadcrumb }}" style="border-bottom: none;">{% for item in special_result.breadcrumb.replace("https://", "").rstrip("/").split("/") %} {{ item }} {% if not loop.last %}>{% endif %}{% endfor %}</a></p>{% endif %}
     </div>
 {% endif %}
