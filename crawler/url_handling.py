@@ -21,7 +21,7 @@ def check_remove_url(full_url):
 		print("removed {} from index as it is no longer valid".format(full_url))
 		logging.info("removed {} from index as it is no longer valid".format(full_url))
 
-def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, external_links, discovered_urls, iterate_list_of_urls, site_url, crawl_budget, url, feeds, link_discovery=True):
+def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, external_links, discovered_urls, iterate_list_of_urls, site_url, crawl_budget, url, feeds, feed_urls, link_discovery=True):
 	"""
 		Crawls URLs in list, adds URLs to index, and returns updated list
 	"""
@@ -91,7 +91,9 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			print("{} failed to connect, skipping".format(full_url))
 			return url, {}, False
 
-		if page_test.headers and page_test.headers.get("content-type") and "text/html" not in page_test.headers["content-type"] and "text/plain" not in page_test.headers["content-type"]:
+		# only index html documents
+
+		if page_test.headers and page_test.headers.get("content-type") and "text/html" not in page_test.headers["content-type"]:
 			print("{} is not a html resource, skipping".format(full_url))
 			check_remove_url(full_url)
 			logging.info("{} is not a html resource, skipping".format(full_url))
@@ -221,47 +223,56 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 
 		# check for feed with rel alternate
 		# only support rss and atom right now
-		# link_discovery = False when crawling with feed discovery
-		# using link_discovery = False to avoid searching for feeds too
-		if link_discovery == True:
-			if page_desc_soup.find("link", {"rel": "alternate", "type": "application/rss+xml"}):
-				feed_url = page_desc_soup.find("link", {"rel": "alternate", "type": "application/rss+xml"})["href"]
-				
-				if feed_url.startswith("/"):
+
+		if page_desc_soup.find_all("link", {"rel": "alternate"}):
+			for feed_item in page_desc_soup.find_all("link", {"rel": "alternate"}):
+				if feed_item["href"].startswith("/"):
 					# get site domain
 					domain = full_url.split("/")[2]
-					feed_url = "https://" + domain + feed_url
+					feed_url = "https://" + domain + feed_item["href"]
 
-				canonical = feed_url.strip("/").replace("http://", "https://").split("?")[0]
+					canonical = feed_url.strip("/").replace("http://", "https://").split("?")[0]
 
-				if not feeds.get(feed_url):
-					with open("feeds.txt", "a+") as f:
-						# NOETAG is substitute value
-						# if none is provided, feed validation will fail
-						f.write("{}, NOETAG\n".format(feed_url))
+					if feed_url and feed_url not in feed_urls:
+						feeds.append({"url": feed_url, "mime_type": feed_item.get("type"), "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
+						feed_urls.append(feed_url)
 
-			elif page_desc_soup.find("link", {"rel": "alternate", "type": "application/atom+xml"}):
-				feed_url = page_desc_soup.find("link", {"rel": "alternate", "type": "application/atom+xml"})["href"]
+		# check if page has h-feed class on it
+		# if a h-feed class is present, mark page as feed
 
-				if feed_url.startswith("/"):
-					# get site domain
-					domain = full_url.split("/")[2]
-					feed_url = "https://" + domain + feed_url
+		if page_desc_soup.select(".h-feed"):
+			feeds.append({"url": full_url, "mime_type": "h-feed", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
+			feed_urls.append(full_url)
 
-				canonical = feed_url.strip("/").replace("http://", "https://").split("?")[0]
+		# check for websub hub
 
-				if not feeds.get(feed_url):
-					with open("feeds.txt", "a+") as f:
-						f.write("{}, NOETAG\n".format(feed_url))
+		if page_desc_soup.find("link", {"rel": "hub"}):
+			websub_hub = page_desc_soup.find("link", {"rel": "hub"})["href"]
 
-			# check if page has h-feed class on it
-			# if a h-feed class is present, mark page as feed
-			if page_desc_soup.select("[class*=h-feed]"):
+			feeds.append({"url": websub_hub, "mime_type": "websub", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
+			
+			feed_urls.append(full_url)
 
-				print("*" * 45)
-				if not feeds.get(feed_url):
-					with open("feeds.txt", "a+") as f:
-						f.write("{}, NOETAG\n".format(full_url))
+		# parse link headers
+		link_headers = page.headers.get("Link")
+
+		if link_headers:
+			link_headers = link_headers.split(",")
+
+			for link_header in link_headers:
+				if "rel=\"hub\"" in link_header:
+					websub_hub = link_header.split(";")[0].strip("<>")
+
+					feeds.append({"url": websub_hub, "mime_type": "websub", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
+					
+					feed_urls.append(full_url)
+
+				if "rel=\"alternate\"" in link_header:
+					feed_url = link_header.split(";")[0].strip("<>")
+
+					if feed_url and feed_url not in feed_urls:
+						feeds.append({"url": feed_url, "mime_type": "feed", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
+						feed_urls.append(feed_url)
 
 		if link_discovery == True:
 			final_urls, iterate_list_of_urls, all_links, external_links, discovered_urls = page_link_discovery.page_link_discovery(links, final_urls, iterate_list_of_urls, full_url, all_links, external_links, discovered_urls, site_url)
@@ -336,7 +347,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			return url, discovered_urls, False
 			
 		try:
-			pages_indexed = add_to_database.add_to_database(full_url, published_on, doc_title, meta_description, heading_info, page, pages_indexed, page_desc_soup, len(links), crawl_budget, nofollow_all, page_text, page_desc_soup, site_url, page_desc_soup.find("body"))
+			pages_indexed = add_to_database.add_to_database(full_url, published_on, doc_title, meta_description, heading_info, page, pages_indexed, page_desc_soup, len(links), crawl_budget, nofollow_all, page_desc_soup.find("body"))
 		except Exception as e:
 			print("error with {}".format(full_url))
 			print(e)
@@ -345,4 +356,4 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 
 	print('finished {}'.format(full_url))
 
-	return url, discovered_urls, True
+	return url, discovered_urls, True, feeds

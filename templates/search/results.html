@@ -16,8 +16,8 @@
     {% endif %}
   </p>
   {% if special_result == False %}<hr>{% endif %}
+  {% include "search/special_serp_items.html" %}
   {% if out_of_bounds_page == False %}
-    {% include "search/special_serp_items.html" %}
     <ol class="serp">
       {% set count = 0 %}
       {% for r in results %}

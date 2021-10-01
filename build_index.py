@@ -3,8 +3,8 @@ import requests
 import datetime
 import logging
 from config import ROOT_DIRECTORY
+import json
 import csv
-import sys
 import os
 import config
 import crawler.url_handling as url_handling
@@ -164,16 +164,28 @@ def process_domain(site, reindex):
 	else:
 		return 5000, final_urls, namespaces_to_ignore
 
-def build_index(site, reindex, feeds):
+def build_index(site, feeds, reindex=False):
 	# remove from queue before indexing starts
 	# prevents against failure to index and not being recognised in file
 	with open("crawl_queue.txt", "r") as f:
 		rows = f.readlines()
 
-	rows.remove(site + "\n")
+	if site in rows:
+		rows.remove(site)
+	
+	if site + "\n" in rows:
+		rows.remove(site  + "\n")
 
 	with open("crawl_queue.txt", "w+") as f:
 		f.writelines(rows)
+
+	if feeds != None:
+		feeds = feeds.get(site)
+
+	if feeds:
+		feed_urls = [item.get("url") for item in feeds]
+	else:
+		feed_urls = []
 
 	# get date
 	date = datetime.datetime.now().strftime("%Y-%m-%d")
@@ -211,9 +223,11 @@ def build_index(site, reindex, feeds):
 	print("crawl budget: {}".format(crawl_budget))
 
 	print("{} urls part of initial crawl".format(len(iterate_list_of_urls)))
+
+	all_feeds = []
 	
 	for url in iterate_list_of_urls:
-		url_indexed, discovered, valid = url_handling.crawl_urls(final_urls, namespaces_to_ignore, indexed, links, external_links, discovered_urls, iterate_list_of_urls, site, crawl_budget, url, feeds, True)
+		url_indexed, discovered, valid, discovered_feeds = url_handling.crawl_urls(final_urls, namespaces_to_ignore, indexed, links, external_links, discovered_urls, iterate_list_of_urls, site, crawl_budget, url, [], feed_urls, True)
 
 		if valid == True:
 			valid_count += 1
@@ -231,10 +245,34 @@ def build_index(site, reindex, feeds):
 
 		indexed_list[url_indexed] = True
 
-		for item in discovered.keys():
-			if not indexed_list.get(item):
-				print("{} not indexed, added".format(item))
-				iterate_list_of_urls.append(item)
+		all_feeds.append(discovered_feeds)
+
+	# update feeds.json to include new feeds
+	with open("feeds.json", "r") as f:
+		feeds = json.loads(f.read())
+
+	feeds[url_indexed] = feeds
+
+	with open("feeds.json", "w+") as f:
+		f.write(json.dumps(feeds))
+
+	# write to crawled.csv
+	with open("crawled.csv", "a+") as f:
+		csv.writer(f).writerow([site, date])
+
+	# write to crawl_queue.txt
+	with open("crawl_queue.txt", "a+") as f:
+		f.writelines(list(set(iterate_list_of_urls)))
+
+	return site, list(set(iterate_list_of_urls))
+
+	with open("feeds.json", "w") as f:
+		f.write(json.dumps(feeds))
+
+	for item in discovered.keys():
+		if not indexed_list.get(item):
+			print("{} not indexed, added".format(item))
+			iterate_list_of_urls.append(item)
 
 	return url_indexed, discovered
 
@@ -251,10 +289,8 @@ if __name__ == "__main__":
 	with open("blocklist.txt", "r") as block_file:
 		block_list = block_file.readlines()
 
-	# get feeds from feeds.txt
-	with open("feeds.txt", "r") as f:
-		feeds = f.readlines()
-		feeds = {row.replace("\n", "").lower().split(",")[0]: "" for row in feeds}
+	with open("feeds.json", "r") as feed_file:
+		feeds = json.load(feed_file)
 
 	to_crawl = [item for item in to_crawl if item not in block_list]
 
@@ -275,6 +311,8 @@ if __name__ == "__main__":
 						futures = []
 						break
 				except Exception as e:
+					print(e)
+					print("Skipped indexing site any more due to error.")
 					pass
 
 				futures.remove(future)

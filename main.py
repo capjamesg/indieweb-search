@@ -1,4 +1,4 @@
-import sqlite3
+from crawler.url_handling import crawl_urls
 import datetime
 import math
 import re
@@ -7,6 +7,7 @@ from flask import render_template, request, redirect, send_from_directory, jsoni
 from spellchecker import SpellChecker
 from . import search_result_features, config
 import requests
+import json
 
 main = Blueprint("main", __name__, static_folder="static", static_url_path="")
 
@@ -174,7 +175,7 @@ def results_page():
 			rows = rows["hits"]["hits"]
 
 			if page == 1:
-				if request.args.get("type") != "image" and len(rows) > 1 and ("what is" in cleaned_value or "event" in cleaned_value or "review" in cleaned_value or "recipe" in cleaned_value or "what are" in cleaned_value  or "what were" in cleaned_value or "why" in cleaned_value or "how" in cleaned_value or "microformats" in cleaned_value) and "who is" not in cleaned_value:
+				if request.args.get("type") != "image" and ("what is" in cleaned_value or "event" in cleaned_value or "review" in cleaned_value or "recipe" in cleaned_value or "what are" in cleaned_value  or "what were" in cleaned_value or "why" in cleaned_value or "how" in cleaned_value or "microformats" in cleaned_value) and "who is" not in cleaned_value:
 					# remove stopwords from query
 					original = cleaned_value_for_query
 					cleaned_value_for_query = cleaned_value.replace("what is", "").replace("what are", "").replace("why", "").replace("how", "").replace("what were", "").replace("to use", "").strip()
@@ -218,8 +219,8 @@ def results_page():
 
 					do_i_use, special_result = search_result_features.generate_featured_snippet(full_query_with_full_stops, special_result, nlp, url, source)
 
-				if "who is" in cleaned_value or ("." in cleaned_value and len(cleaned_value.split(".")[1]) <= 4) or cleaned_value.endswith("social"):
-					get_homepage = requests.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&domain=true".format(config.ELASTICSEARCH_PASSWORD, cleaned_value_for_query.replace("who is", "").replace("social", ""))).json()
+				if "who is" in cleaned_value or ("." in cleaned_value and len(cleaned_value.split(".")[1]) <= 4) or cleaned_value.endswith("social") or cleaned_value.endswith("get rel"):
+					get_homepage = requests.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&domain=true".format(config.ELASTICSEARCH_PASSWORD, cleaned_value_for_query.replace("who is", "").replace("get rel", "").replace("social", ""))).json()
 
 					if len(get_homepage.get("hits").get("hits")) > 0:
 						url = get_homepage["hits"]["hits"][0]["_source"]["url"]
@@ -358,6 +359,44 @@ def go_to_url():
 		return redirect(r)
 	else:
 		return redirect("/")
+
+@main.route("/websub/<string:id>", methods=["GET", "POST"])
+def websub(id):
+	with open("websub_subscriptions.txt", "r") as f:
+		subscriptions = f.readlines()
+
+		ids = [s.split(" ")[0] for s in subscriptions]
+		urls = [s.split(" ")[1] for s in subscriptions]
+
+	if request.method == "GET":
+		if id in subscriptions:
+			challenge = request.args.get("hub.challenge")
+
+			return challenge, 200
+		else:
+			return "", 404
+
+	if id in subscriptions:
+		# treat "fat pings" as regular requests because we need to crawl a page as is
+		# reference: https://indieweb.org/How_to_publish_and_consume_WebSub#How_to_Subscribe
+
+		index = ids.index(id)
+
+		url = urls[index]
+
+		with open("feeds.json", "r") as file:
+			feeds = json.load(file)
+
+		if feeds and feeds.get(url.split("/")[2]):
+			feeds = feeds[url.split("/")[2]]
+			feed_urls = [item.get("url") for item in feeds]
+		else:
+			feeds = []
+			feed_urls = []
+
+		crawl_urls({url: ""}, [], 0, [], [], {}, [], "https://" + url, 1, url, False, feeds, feed_urls, False)
+	
+	return ", 404"
 
 @main.route('/images/<path:path>')
 def send_static_images(path):
