@@ -163,6 +163,21 @@ These are:
 - Profiles: use h-card for a chance to get a rich result in response to a "who is" query. The h-card must be on your home page.
 - Recipes: use h-recipe for a chance to get a rich result for a recipe.
 
+## Recrawling
+
+Recrawling sites is currently in development.
+
+At the moment, this project collects all feeds from a site during a crawl and saves the feeds to the feeds.json file. These feeds are then read in the recrawl.py script which can be executed on demand. The recrawl script looks for any new items in the feed and then indexes them. In addition, the recrawl script looks through all indexed sitemaps and will index the URLs in them. This will help keep more content on a site fresh and ensure that most new pages are discovered and indexed without having to run a full recrawl.
+
+This script is currently set up to run once per day via a cron job on the main project server.
+
+The following feed types can be read by the recrawl script:
+
+- JSON Feed (see [jsonfeed.org](https://jsonfeed.org) for more information)
+- RSS feeds
+- Atom feeds
+- Microformats h-feeds (see [h-feed](https://microformats.org/wiki/h-feed) for more information)
+
 ## Contributing
 
 Feel free to contribute to this project no matter how much background you have in search.

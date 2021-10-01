@@ -1,4 +1,3 @@
-from crawler.url_handling import crawl_urls
 import datetime
 import math
 import re
@@ -350,18 +349,9 @@ def websub(id):
 		index = ids.index(id)
 
 		url = urls[index]
-
-		with open("feeds.json", "r") as file:
-			feeds = json.load(file)
-
-		if feeds and feeds.get(url.split("/")[2]):
-			feeds = feeds[url.split("/")[2]]
-			feed_urls = [item.get("url") for item in feeds]
-		else:
-			feeds = []
-			feed_urls = []
-
-		crawl_urls({url: ""}, [], 0, [], [], {}, [], "https://" + url, 1, url, False, feeds, feed_urls, False)
+		
+		with open("next_crawl_queue.txt", "a+") as file:
+			file.write(url + "\n")
 	
 	return ", 404"
 
