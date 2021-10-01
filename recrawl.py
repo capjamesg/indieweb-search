@@ -220,6 +220,21 @@ with open("crawled.csv", "r") as f:
 
 pages_indexed = 0
 
+# next_crawl_queue.txt contains all individual urls that should be crawled
+# currently this file only contains urls found in websub
+with open("next_crawl_queue.txt", "r") as f:
+    for line in f:
+        line = line.strip()
+
+        if line not in to_crawl:
+            to_crawl.append(line)
+
+# this will remove all lines from next_crawl_queue.txt so we do not reindex the same urls in the next recrawl
+
+file = open("next_crawl_queue.txt", "w+")
+
+file.close()
+
 with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
     futures = [executor.submit(crawl_urls, {item: ""}, [], 0, [], [], {}, [], "https://" + item, 1, item, feeds, feed_url_list, False) for item in to_crawl]
     

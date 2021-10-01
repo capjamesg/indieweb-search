@@ -225,6 +225,7 @@ def build_index(site, feeds, reindex=False):
 	print("{} urls part of initial crawl".format(len(iterate_list_of_urls)))
 
 	all_feeds = []
+	discovered_feeds_dict = {}
 	
 	for url in iterate_list_of_urls:
 		url_indexed, discovered, valid, discovered_feeds = url_handling.crawl_urls(final_urls, namespaces_to_ignore, indexed, links, external_links, discovered_urls, iterate_list_of_urls, site, crawl_budget, url, [], feed_urls, True)
@@ -245,7 +246,11 @@ def build_index(site, feeds, reindex=False):
 
 		indexed_list[url_indexed] = True
 
-		all_feeds.append(discovered_feeds)
+		for f in discovered_feeds:
+			if discovered_feeds_dict.get(f.get("url")) == None:
+				all_feeds.append(f)
+				feed_urls.append(f.get("url"))
+				discovered_feeds_dict[f.get("url")] = True
 
 	# update feeds.json to include new feeds
 	with open("feeds.json", "r") as f:

@@ -276,12 +276,18 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 					
 					feed_urls.append(full_url)
 
+					print("{} is a websub hub, will save to feeds.json".format(websub_hub))
+					logging.info("{} is a websub hub, will save to feeds.json".format(websub_hub))
+
 				if "rel=\"alternate\"" in link_header:
 					feed_url = link_header.split(";")[0].strip("<>")
 
 					if feed_url and feed_url not in feed_urls:
 						feeds.append({"url": feed_url, "mime_type": "feed", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
 						feed_urls.append(feed_url)
+
+						print("found feed {}, will save to feeds.json".format(feed_url))
+						logging.info("found feed {}, will save to feeds.json".format(feed_url))
 
 		if link_discovery == True:
 			final_urls, iterate_list_of_urls, all_links, external_links, discovered_urls = page_link_discovery.page_link_discovery(links, final_urls, iterate_list_of_urls, full_url, all_links, external_links, discovered_urls, site_url)
