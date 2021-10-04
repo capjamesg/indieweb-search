@@ -13,30 +13,27 @@ import random
 import logging
 import json
 import config
-import mysql.connector
 
 # ignore insecure request warning
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
-database = mysql.connector.connect(
-    host="localhost",
-    user=config.MYSQL_DB_USER,
-    password=config.MYSQL_DB_PASSWORD,
-    database="feeds"
-)
+headers = {
+    "Authorization": config.ELASTICSEARCH_API_TOKEN
+}
 
-cursor = database.cursor()
+feeds = requests.post("https://es-indieweb-search.jamesg.blog/feeds", headers=headers).json()
 
-feeds = cursor.execute("SELECT * FROM feeds").fetchall()
+# get url of all feeds
+feed_url_list = [f[1] for f in feeds]
 
 feeds_parsed = {}
 
 def poll_feeds(f):
-    url = f.get("url")
-    feed_etag = f.get("etag")
-    mime_type = f.get("mime_type")
+    url = f[1]
+    feed_etag = f[2]
+    mime_type = f[4]
 
     # used to skip duplicate entries in feeds.txt
     if feeds_parsed.get(url.lower()):

@@ -341,16 +341,23 @@ def get_feeds_for_url():
         abort(401)
 
     if request.method == "POST":
-        website_url = request.form["website_url"]
+        website_url = request.form.get("website_url")
 
-        cursor = database.cursor()
+        if website_url:
+            cursor = database.cursor()
 
-        cursor.execute("SELECT * FROM feeds WHERE website_url = %s", (website_url,))
+            cursor.execute("SELECT * FROM feeds WHERE website_url = %s", (website_url,))
 
-        if cursor.fetchone():
-            return cursor.fetchone()[0]
+            if cursor.fetchone():
+                return jsonify(cursor.fetchone()[0])
+            else:
+                return jsonify({"message": "No results matching this URL were found."})
         else:
-            return jsonify({"message": "No results matching this URL were found."})
+            cursor = database.cursor()
+
+            cursor.execute("SELECT * FROM feeds")
+
+            return jsonify(cursor.fetchall())
 
     return jsonify({"message": "Method not allowed."}), 405
 
