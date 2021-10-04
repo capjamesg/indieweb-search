@@ -21,7 +21,7 @@ def check_remove_url(full_url):
 		print("removed {} from index as it is no longer valid".format(full_url))
 		logging.info("removed {} from index as it is no longer valid".format(full_url))
 
-def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, external_links, discovered_urls, iterate_list_of_urls, site_url, crawl_budget, url, feeds, feed_urls, link_discovery=True):
+def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, external_links, discovered_urls, iterate_list_of_urls, site_url, crawl_budget, url, feeds, feed_urls, site, link_discovery=True):
 	"""
 		Crawls URLs in list, adds URLs to index, and returns updated list
 	"""
@@ -236,7 +236,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 					canonical = feed_url.strip("/").replace("http://", "https://").split("?")[0]
 
 					if feed_url and feed_url not in feed_urls:
-						feeds.append({"url": feed_url, "mime_type": feed_item.get("type"), "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
+						feeds.append({"website_url": site, "feed_url": feed_url, "mime_type": feed_item.get("type"), "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
 						feed_urls.append(feed_url)
 						print("found feed {}, will save to feeds.json".format(feed_url))
 						logging.info("found feed {}, will save to feeds.json".format(feed_url))
@@ -245,7 +245,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 		# if a h-feed class is present, mark page as feed
 
 		if page_desc_soup.select(".h-feed"):
-			feeds.append({"url": full_url, "mime_type": "h-feed", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
+			feeds.append({"website_url": site, "feed_url": full_url, "mime_type": "h-feed", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
 			feed_urls.append(full_url)
 			print("{} is a h-feed, will save to feeds.json".format(full_url))
 			logging.info("{} is a h-feed, will save to feeds.json".format(full_url))
@@ -255,7 +255,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 		if page_desc_soup.find("link", {"rel": "hub"}):
 			websub_hub = page_desc_soup.find("link", {"rel": "hub"})["href"]
 
-			feeds.append({"url": websub_hub, "mime_type": "websub", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
+			feeds.append({"website_url": site, "feed_url": websub_hub, "mime_type": "websub", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
 			
 			feed_urls.append(full_url)
 
@@ -272,7 +272,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 				if "rel=\"hub\"" in link_header:
 					websub_hub = link_header.split(";")[0].strip("<>")
 
-					feeds.append({"url": websub_hub, "mime_type": "websub", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
+					feeds.append({"website_url": site, "feed_url": websub_hub, "mime_type": "websub", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
 					
 					feed_urls.append(full_url)
 
@@ -283,7 +283,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 					feed_url = link_header.split(";")[0].strip("<>")
 
 					if feed_url and feed_url not in feed_urls:
-						feeds.append({"url": feed_url, "mime_type": "feed", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
+						feeds.append({"website_url": site, "feed_url": feed_url, "mime_type": "feed", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
 						feed_urls.append(feed_url)
 
 						print("found feed {}, will save to feeds.json".format(feed_url))

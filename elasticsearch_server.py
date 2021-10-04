@@ -1,7 +1,15 @@
 from flask import Flask, request, abort, jsonify, send_from_directory
-from elasticsearch import Elasticsearch, helpers
+from elasticsearch import Elasticsearch
+import mysql.connector
 import random
 import config
+
+database = mysql.connector.connect(
+    host="localhost",
+    user=config.MYSQL_DB_USER,
+    password=config.MYSQL_DB_PASSWORD,
+    database="feeds"
+)
 
 es = Elasticsearch(['http://localhost:9200'])
 
@@ -11,7 +19,6 @@ app = Flask(__name__)
 def home():
     pw = config.ELASTICSEARCH_PASSWORD
     query = request.args.get("q")
-    original_query = query
     domain_param = request.args.get("domain")
     from_num = request.args.get("from")
     if not from_num:
@@ -326,3 +333,48 @@ def random_page():
 @app.route("/assets/<path:path>")
 def send_assets(path):
     return send_from_directory("static", path)
+
+# return feeds associated with URL
+@app.route("/feeds", methods=["GET", "POST"])
+def get_feeds_for_url():
+    if not request.headers.get("Authorization") or request.headers.get("Authorization") != config.ELASTICSEARCH_API_TOKEN:
+        abort(401)
+
+    if request.method == "POST":
+        website_url = request.form["website_url"]
+
+        cursor = database.cursor()
+
+        cursor.execute("SELECT * FROM feeds WHERE website_url = %s", (website_url,))
+
+        if cursor.fetchone():
+            return cursor.fetchone()[0]
+        else:
+            return jsonify({"message": "No results matching this URL were found."})
+
+    return jsonify({"message": "Method not allowed."}), 405
+
+@app.route("/save", methods=["POST"])
+def save_feed():
+    if not request.headers.get("Authorization") or request.headers.get("Authorization") != config.ELASTICSEARCH_API_TOKEN:
+        abort(401)
+
+    if request.method == "POST":
+        result = request.get_json()["feeds"]
+
+        for r in result:
+            cursor = database.cursor()
+
+            cursor.execute("SELECT * FROM feeds WHERE website_url = %s AND feed_url = %s AND mime_type = %s", (r["website_url"], r["feed_url"], r["mime_type"]))
+
+            if cursor.fetchone():
+                # delete feed because it already exists to make room for the new feed
+                cursor.execute("DELETE FROM feeds WHERE website_url = %s AND feed_url = %s AND mime_type = %s", (r["website_url"], r["feed_url"], r["mime_type"]))
+
+            cursor.execute("INSERT INTO feeds (website_url, feed_url, etag, discovered, mime_type) VALUES (%s, %s, %s, %s, %s)", (r["website_url"], r["feed_url"], r["etag"], r["discovered"], r["mime_type"]))
+
+            database.commit()
+
+        return jsonify({"message": "Feeds successfully saved."})
+
+    return 200
