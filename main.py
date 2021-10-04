@@ -6,22 +6,12 @@ from flask import render_template, request, redirect, send_from_directory, jsoni
 from spellchecker import SpellChecker
 from . import search_result_features, config
 import requests
-import json
 
 main = Blueprint("main", __name__, static_folder="static", static_url_path="")
 
 spell = SpellChecker()
 
 nlp = spacy.load('en_core_web_sm')
-
-# This code shows the date a post was published on
-# {% if r[3] != "Page" %} {{ r[4] | strftime }} - {% endif %}
-# The code has been removed from the template, but it can be added back in if needed
-
-# @app.template_filter('strftime')
-# def jinja2_filter_datetime(value_to_parse):
-# 	value_to_parse = datetime.datetime.strptime(value_to_parse, "%Y-%m-%d")
-# 	return value_to_parse.strftime("%d %B, %Y")
 
 def parse_advanced_search(advanced_filter_to_search, query_with_handled_spaces, query_params, query_values_in_list, operand, inverted=False):
 	# Advanced search term to look for (i.e. before:")
@@ -326,35 +316,6 @@ def results_page():
 def robots():
 	return send_from_directory(main.static_folder, "robots.txt")
 
-@main.route("/websub/<string:id>", methods=["GET", "POST"])
-def websub(id):
-	with open("websub_subscriptions.txt", "r") as f:
-		subscriptions = f.readlines()
-
-		ids = [s.split(" ")[0] for s in subscriptions]
-		urls = [s.split(" ")[1] for s in subscriptions]
-
-	if request.method == "GET":
-		if id in subscriptions:
-			challenge = request.args.get("hub.challenge")
-
-			return challenge, 200
-		else:
-			return "", 404
-
-	if id in subscriptions:
-		# treat "fat pings" as regular requests because we need to crawl a page as is
-		# reference: https://indieweb.org/How_to_publish_and_consume_WebSub#How_to_Subscribe
-
-		index = ids.index(id)
-
-		url = urls[index]
-		
-		with open("next_crawl_queue.txt", "a+") as file:
-			file.write(url + "\n")
-	
-	return ", 404"
-
 @main.route('/images/<path:path>')
 def send_static_images(path):
 	return send_from_directory("static/images", path)
@@ -377,7 +338,13 @@ def stats():
 
 	domains = count_request["domains"]
 
-	return render_template("search/stats.html", count=count, domains=domains, title="IndieWeb Search Index Stats")
+	headers = {
+		"Authorization": config.ELASTICSEARCH_API_TOKEN
+	}
+
+	feed_breakdown_request = requests.get("https://es-indieweb-search.jamesg.blog/feed_breakdown", headers=headers).json()
+
+	return render_template("search/stats.html", count=count, domains=domains, title="IndieWeb Search Index Stats", feed_breakdown=feed_breakdown_request)
 
 @main.route("/about")
 def about():

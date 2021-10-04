@@ -284,7 +284,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 						logging.info("{} is a websub hub, will save to feeds.json".format(websub_hub))
 
 					if "rel=\"alternate\"" in link_header:
-						feed_url = link_header.split(";")[0].strip("<>")
+						feed_url = link_header.split(";")[0].strip().strip("<>")
 
 						if feed_url and feed_url not in feed_urls:
 							feeds.append({"website_url": site, "feed_url": feed_url, "mime_type": "feed", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
