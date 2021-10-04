@@ -1,29 +1,26 @@
 import requests
 import mf2py
-import csv
 import datetime
 import feedparser
 import microformats2
 from time import mktime
 from crawler.url_handling import crawl_urls
-import build_index
 import concurrent.futures
-import string
-import random
 import logging
-import json
 import config
+import os
 
 # ignore insecure request warning
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
-headers = {
-    "Authorization": config.ELASTICSEARCH_API_TOKEN
+HEADERS = {
+    "Authorization": config.ELASTICSEARCH_API_TOKEN,
+    "Content-Type": "application/json"
 }
 
-feeds = requests.post("https://es-indieweb-search.jamesg.blog/feeds", headers=headers).json()
+feeds = requests.post("https://es-indieweb-search.jamesg.blog/feeds", headers=HEADERS).json()
 
 # get url of all feeds
 feed_url_list = [f[1] for f in feeds]
@@ -87,7 +84,14 @@ def poll_feeds(f):
             print("crawled {} url".format(entry.link))
 
         # update etag
-        f["etag"] = etag
+        f[2] = etag
+
+        modify_feed = requests.post("https://es-indieweb-search.jamesg.blog/update_feed", headers=HEADERS, json={"item": f})
+
+        if modify_feed.status_code != 200:
+            print("{} status code returned while modifying {}".format(modify_feed.status_code, url))
+        else:
+            print("updated etag for {}".format(url))
     elif mime_type == "h-feed":
         mf2_raw = mf2py.parse(r.text)
 
@@ -125,12 +129,14 @@ def poll_feeds(f):
         if f.get("websub_sent") != True or datetime.datetime.now() > datetime.datetime.strptime(expire_date, "%Y-%m-%dT%H:%M:%S.%fZ"):
             # random string of 20 letters and numbers
             # each websub endpoint needs to be different
-            random_string = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(20))
 
-            with open("websub_subscriptions.txt", "a+") as file:
-                file.write(url + "," + random_string + "\n")
+            headers = {
+                "Authorization": config.ELASTICSEARCH_API_TOKEN
+            }
 
-            r = requests.post(url, headers={'Content-Type': 'application/x-www-form-urlencoded'}, data="hub.mode=subscribe&sub.topic={}&hub.callback=https://indieweb-search.jamesg.blog/websub/{}".format(url, random_string))
+            r = requests.post("https://es-indieweb-search.jamesg.blog/create_websub", headers=headers, data={"website_url": url})
+
+            r = requests.post(url, headers={'Content-Type': 'application/x-www-form-urlencoded'}, data="hub.mode=subscribe&sub.topic={}&hub.callback=https://es-indieweb-search.jamesg.blog/websub/{}".format(url, r.get_json()["key"]))
 
             print("sent websub request to {}".format(url))
 
@@ -141,113 +147,120 @@ def poll_feeds(f):
         
     return url, etag, f
 
-feeds_indexed = 0
+def process_feeds():
+    feeds_indexed = 0
 
-with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
-    futures = [executor.submit(poll_feeds, item) for item in feeds]
-    
-    while len(futures) > 0:
-        for future in concurrent.futures.as_completed(futures):
-            feeds_indexed += 1
+    with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
+        futures = [executor.submit(poll_feeds, item) for item in feeds]
+        
+        while len(futures) > 0:
+            for future in concurrent.futures.as_completed(futures):
+                feeds_indexed += 1
 
-            print("FEEDS INDEXED: {}".format(feeds_indexed))
-            logging.info("FEEDS INDEXED: {}".format(feeds_indexed))
-            
-            try:
-                url, etag, full_item = future.result()
+                print("FEEDS INDEXED: {}".format(feeds_indexed))
+                logging.info("FEEDS INDEXED: {}".format(feeds_indexed))
+                
+                try:
+                    url, etag, full_item = future.result()
 
-                feeds.append([url, etag])
+                    feeds.append([url, etag])
 
-                if etag:
-                    full_item["etag"] = etag
+                    if etag:
+                        full_item["etag"] = etag
 
-            except Exception as e:
-                pass
+                except Exception as e:
+                    pass
 
-            futures.remove(future)
+                futures.remove(future)
 
-# write feeds to feeds.json
-with open("feeds.json", "w") as file:
-    json.dump(feeds, file)
+def process_crawl_queue_from_websub():
+    r = requests.get("https://es-indieweb-search.jamesg.blog/crawl_queue", headers=headers)
 
-print("Checking sitemaps for new content")
+    pages_indexed = 0
 
-to_crawl = []
-domains_to_recrawl = []
+    to_crawl = r.json()
 
-with open("crawled.csv", "r") as f:
-    reader = csv.reader(f)
+    domains_indexed = {}
 
-    for item in reader:
-        domain = item[0]
-        date = item[1]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
+        futures = [executor.submit(crawl_urls, {item: ""}, [], 0, [], [], {}, [], "https://" + item, 1, item, feeds, feed_url_list, False) for item in to_crawl]
+        
+        while len(futures) > 0:
+            for future in concurrent.futures.as_completed(futures):
+                pages_indexed += 1
 
-        domain = domain.strip().replace("\n", "")
+                print("PAGES INDEXED: {}".format(pages_indexed))
+                logging.info("PAGES INDEXED: {}".format(pages_indexed))
 
-        # read crawl_queue.txt
-        try:
-            crawl_budget, final_urls, namespaces_to_ignore = build_index.process_domain(domain, True)
-        except:
-            print("Error processing domain {}".format(domain))
-            logging.info("Error processing domain {}".format(domain))
+                try:
+                    domain = url_indexed.split("/")[2]
+
+                    domains_indexed[domain] = domains_indexed.get(domain, 0) + 1
+
+                    if domains_indexed[domain] > 50:
+                        print("50 urls have been crawled on {}, skipping".format(domain))
+                        continue
+
+                    url_indexed, discovered = future.result()
+
+                    if url_indexed == None:
+                        futures = []
+                        break
+                    
+                except Exception as e:
+                    print(e)
+                    pass
+
+                futures.remove(future)
+
+def process_sitemaps():
+    r = requests.get("https://es-indieweb-search.jamesg.blog/sitemaps", headers=headers)
+
+    pages_indexed = 0
+
+    to_crawl = r.json()
+
+    domains_indexed = {}
+
+    sitemap_urls = []
+
+    for item in to_crawl:
+        sitemap_urls.append(item[0])
+
+        domain = item[0].split("/")[2]
+
+        domains_indexed[domain] = domains_indexed.get(domain, 0) + 1
+
+        if domains_indexed[domain] > 50:
+            print("50 urls have been crawled on {}, skipping".format(domain))
             continue
 
-        # get todays date
-        today = datetime.datetime.now()
-
-        # get three weeks ago
-        three_weeks_ago = today - datetime.timedelta(weeks=3)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
+        futures = [executor.submit(crawl_urls, {item: ""}, [], 0, [], [], {}, [], "https://" + item, 1, item, feeds, feed_url_list, False) for item in sitemap_urls]
         
-        # if date is older than three weeks ago, add to to_crawl
-        # if no date provided, also add to to_crawl
-        for key, value in final_urls.items():
-            if value and value != "":
+        while len(futures) > 0:
+            for future in concurrent.futures.as_completed(futures):
+                pages_indexed += 1
+
+                print("PAGES INDEXED: {}".format(pages_indexed))
+                logging.info("PAGES INDEXED: {}".format(pages_indexed))
+
                 try:
-                    # get item key string as datetime
-                    item_date = datetime.datetime.strptime(value.split("T")[0], "%Y-%m-%d")
+                    url_indexed, _ = future.result()
 
-                    if item_date < three_weeks_ago:
-                        to_crawl.append(key)
-                except:
-                    print("could not parse date for {}, skipping".format(item))
-            elif not value:
-                to_crawl.append(key)
+                    if url_indexed == None:
+                        futures = []
+                        break
+                except Exception as e:
+                    print(e)
+                    pass
 
-pages_indexed = 0
+                futures.remove(future)
 
-# next_crawl_queue.txt contains all individual urls that should be crawled
-# currently this file only contains urls found in websub
-with open("next_crawl_queue.txt", "r") as f:
-    for line in f:
-        line = line.strip()
+process_feeds()
+# process_crawl_queue_from_websub()
+# process_sitemaps()
 
-        if line not in to_crawl:
-            to_crawl.append(line)
-
-# this will remove all lines from next_crawl_queue.txt so we do not reindex the same urls in the next recrawl
-
-file = open("next_crawl_queue.txt", "w+")
-
-file.close()
-
-with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
-    futures = [executor.submit(crawl_urls, {item: ""}, [], 0, [], [], {}, [], "https://" + item, 1, item, feeds, feed_url_list, False) for item in to_crawl]
-    
-    while len(futures) > 0:
-        for future in concurrent.futures.as_completed(futures):
-            pages_indexed += 1
-
-            print("PAGES INDEXED: {}".format(pages_indexed))
-            logging.info("PAGES INDEXED: {}".format(pages_indexed))
-
-            try:
-                url_indexed, discovered = future.result()
-
-                if url_indexed == None:
-                    futures = []
-                    break
-            except Exception as e:
-                print(e)
-                pass
-
-            futures.remove(future)
+# if results.json exists, remove
+if os.path.exists("/home/james/crawler/results.json"):
+    os.remove("/home/james/crawler/results.json")

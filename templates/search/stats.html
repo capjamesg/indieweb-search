@@ -7,5 +7,13 @@
   <p>The graph below shows the growth of the IndieWeb Search Index.</p>
   <img src="https://es-indieweb-search.jamesg.blog/assets/index_size.png" alt="Index Size Graph" />
   <p><a href="/">Click here to go to back to the IndieWeb search engine.</a></p>
+  <h2>Feed Breakdown</h2>
+  <p>Below you can see a breakdown of the most popular feeds found during indexing.</p>
+  <p>This graph only counts feeds discovered during crawling and may not reflect every single feed on a site.</p>
+  <ul>
+    {% for feed in feed_breakdown %}
+    {% if feed[0] != "None" %}<li>{{ feed[0] }}: {{ feed[1] }}</li>{% endif %}
+    {% endfor %}
+  </ul>
 </section>
 {% endblock %}

@@ -17,32 +17,6 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 start_time = datetime.datetime.now()
 
-# initialize folders before logging starts to prevent an error on first run
-
-def initialize_folders():
-	dirs_to_make = ["logs", "static/images", "charts"]
-
-	for d in dirs_to_make:
-		try:
-			os.mkdir(d)
-		except:
-			print("{} already created. Skipping creation.".format(d))
-
-	files_to_create = ["static/index_stats.csv", "static/all_links.csv", "static/external_link_status.csv", "data/all_links.csv"]
-
-	header_rows_to_write = [
-		"total_pages_indexed,total_images_indexed,pages_indexed_in_last_crawl,images_indexed_in_last_crawl,html_content_length,last_index_start,last_index_end,crawl_duration,external_links_found",
-		"page_linking,link_to,datetime,link_type",
-		"url,status_code,domain_name,date",
-		"page_linking,link_to,datetime,link_type",
-	]
-
-	for f in range(0, len(files_to_create)):
-		with open(ROOT_DIRECTORY + "/" + files_to_create[f], "a") as file:
-			writer = csv.writer(file)
-
-			writer.writerow(header_rows_to_write[f])
-
 logging.basicConfig(level=logging.DEBUG, filename="{}/logs/{}.log".format(ROOT_DIRECTORY, datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
 
 broken_urls = []
@@ -151,6 +125,20 @@ def process_domain(site, reindex):
 
 		urls = list(soup.find_all("url"))
 
+		headers = {
+			"Authorization": config.ELASTICSEARCH_API_TOKEN,
+			"Content-Type": "application/json"
+		}
+
+		r = requests.post("https://es-indieweb-search.jamesg.blog/create_sitemap", json={"sitemap_url": s, "domain": site}, headers=headers)
+
+		if r.status_code == 200:
+			print("sitemaps added to database for {}".format(site))
+			logging.debug("sitemaps added to database for {}".format(site))
+		else:
+			print("ERROR: sitemap not added for {} (status code {})".format(site, r.status_code))
+			logging.error("sitemap not added for {} (status code {})".format(site, r.status_code))
+
 		for u in urls:
 			if "/tag/" in u.find("loc").text:
 				continue
@@ -170,14 +158,14 @@ def build_index(site, reindex=False):
 	with open("crawl_queue.txt", "r") as f:
 		rows = f.readlines()
 
-	# if site in rows:
-	# 	rows.remove(site)
+	if site in rows:
+		rows.remove(site)
 	
-	# if site + "\n" in rows:
-	# 	rows.remove(site  + "\n")
+	if site + "\n" in rows:
+		rows.remove(site  + "\n")
 
-	# with open("crawl_queue.txt", "w+") as f:
-	# 	f.writelines(rows)
+	with open("crawl_queue.txt", "w+") as f:
+		f.writelines(rows)
 
 	headers = {
 		"Authorization": config.ELASTICSEARCH_API_TOKEN
@@ -185,11 +173,11 @@ def build_index(site, reindex=False):
 
 	r = requests.post("https://es-indieweb-search.jamesg.blog/feeds", headers=headers, data={"website_url": site})
 
-	if r.status_code == 200 and not r.json()["message"]:
+	if r.status_code == 200 and r.json() and not r.json().get("message"):
 		print("feeds retrieved for {}".format(site))
 		logging.debug("feeds retrieved for {}".format(site))
 		feeds = r.json()
-	elif r.status_code == 200 and r.json()["message"]:
+	elif r.status_code == 200 and r.json() and r.json().get("message"):
 		print("Result from URL request to /feeds endpoint on elasticsearch server: {}".format(r.json()["message"]))
 		logging.debug("Result from URL request to /feeds endpoint on elasticsearch server: {}".format(r.json()["message"]))
 		feeds = []
@@ -198,10 +186,7 @@ def build_index(site, reindex=False):
 		logging.error("feeds not retrieved for {} (status code {})".format(site, r.status_code))
 		feeds = []
 
-	if feeds:
-		feed_urls = [item.get("url") for item in feeds]
-	else:
-		feed_urls = []
+	feed_urls = feeds
 
 	# get date
 	date = datetime.datetime.now().strftime("%Y-%m-%d")
@@ -274,8 +259,6 @@ def build_index(site, reindex=False):
 
 	r = requests.post("https://es-indieweb-search.jamesg.blog/save", json={"feeds": all_feeds}, headers=headers)
 
-	print(all_feeds)
-
 	if r.status_code == 200:
 		print("feeds updated in database for {}".format(site))
 		logging.debug("feeds updated database for {}".format(site))
@@ -283,9 +266,14 @@ def build_index(site, reindex=False):
 		print("ERROR: feeds not updated for {} (status code {})".format(site, r.status_code))
 		logging.error("feeds not updated for {} (status code {})".format(site, r.status_code))
 
-	# write to crawled.csv
-	with open("crawled.csv", "a+") as f:
-		csv.writer(f).writerow([site, date])
+	r = requests.post("https://es-indieweb-search.jamesg.blog/create_crawled", json={"url": site}, headers=headers)
+
+	if r.status_code == 200:
+		print("crawl recorded in database for {}".format(site))
+		logging.debug("crawl recorded in database for {}".format(site))
+	else:
+		print("ERROR: crawl not recorded in database for {} (status code {})".format(site, r.status_code))
+		logging.error("crawl not recorded in database for {} (status code {})".format(site, r.status_code))
 
 	for item in discovered.keys():
 		if not indexed_list.get(item):

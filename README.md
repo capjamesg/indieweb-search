@@ -85,7 +85,7 @@ To run the web application, execute these commands:
 
 You will not be able to run the web application without having a server running the `elasticsearch_server.py` that has some indexed files.
 
-## Running the Elasticsearch application
+## Running the Elasticsearch Application
 
 This project uses Elasticsearch for indexing content. To make use of the Elasticsearch back-end server provided by this project -- which is integrated into many of the ingestion and helper scripts -- please install Elasticsearch and run the `elasticsearch_server.py` file as a web server.
 
@@ -93,7 +93,16 @@ You should have a copy of your `config.py` file in the root directory of your El
 
 You will also need MySQL installed on the same server you use to run your Elasticsearch web server.
 
-Change the 
+With MySQL and Elasticsearch installed, run the following command on your Elasticsearch web server:
+
+    python3 seed.py
+
+This command will seed the MySQL database with the tables you need to run the web server.
+
+Now you are ready to run the `elasticsearch_server.py` script:
+
+    python3 elasticsearch_server.py
+
 ## Direct Answer Search Results
 
 Work is being done to support some "direct answer" search results. These are search results that aim to provide an immediate answer to your query before you click on a search result.
@@ -102,8 +111,13 @@ The main "direct answers" that are in development are:
 
 - Answering questions with an answer (triggered by `what is [your query]`). This type of direct answer currently relies on answers from the IndieWeb wiki.
 - Showing the h-card of a domain (triggered by `who is [domain-name]`).
-- Identifying names of people, places, and organizations (this is a long-term project and only source code from capjamesg's personal search engine is currently in the project).
-- Showing posts published "on this day". This feature has not yet been tested as part of indieweb-search.
+- Identifying names of people, places, and organizations.
+    - This is a long-term project and only source code from capjamesg's personal search engine is currently in the project.
+- Showing recipes marked up with h-recipe.
+- Showing reviews marked up with h-review.
+- Showing events marked up with h-event.
+- Displaying feeds associated with a page.
+- Showing all rel=me links on a site's home page.
 
 ## Image Search Results
 

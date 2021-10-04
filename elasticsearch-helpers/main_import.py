@@ -17,9 +17,6 @@ with open('results.json') as f:
         line = f.readline()
         try:
             obj = json.loads(line)
-            
-            if "tools.ietf.org" in obj["domain"] or  "linkedin.com" in obj["domain"] or "wireshell.pw" in obj["domain"] or "pixelhunter.me" in obj["domain"] or "getpop.org" in obj["domain"] or "github.com" in obj["domain"] or "codemonkey.withknown.com" in obj["domain"] or "/opensource/opensource/opensource/" in obj["domain"]:
-                continue
 
             check_if_indexed = requests.post("https://es-indieweb-search.jamesg.blog/check?url={}".format(obj["url"]), headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}, timeout=5).json()
 
