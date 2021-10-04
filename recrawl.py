@@ -12,26 +12,24 @@ import string
 import random
 import logging
 import json
+import config
+import mysql.connector
 
 # ignore insecure request warning
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
-# read feeds.txt
-# /home/james/crawler/
-with open('feeds.json', 'r') as f:
-    feeds = json.load(f)
-    feed_final = []
+database = mysql.connector.connect(
+    host="localhost",
+    user=config.MYSQL_DB_USER,
+    password=config.MYSQL_DB_PASSWORD,
+    database="feeds"
+)
 
-    feed_url_list = []
-    for item in feeds.values():
-        for i in item:
-            for k in i:
-                feed_url_list.append(k.get("url"))
-                feed_final.append(k)
-        
-    feeds = feed_final
+cursor = database.cursor()
+
+feeds = cursor.execute("SELECT * FROM feeds").fetchall()
 
 feeds_parsed = {}
 

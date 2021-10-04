@@ -69,6 +69,10 @@ The config.py file should contain the following variables:
 
     ELASTICSEARCH_API_TOKEN = "YOUR_ELASTICSEARCH_API_TOKEN"
 
+    MYSQL_DB_USER = "YOUR_MYSQL_DB_USERNAME"
+
+    MYSQL_DB_PASSWORD = "YOUR_MYSQL_DB_PASSWORD"
+
 The official indieweb-search engine uses indieweb-search as the user agent. Please choose another user agent if you use this crawler.
 
 ## Running the Web Application
@@ -81,6 +85,15 @@ To run the web application, execute these commands:
 
 You will not be able to run the web application without having a server running the `elasticsearch_server.py` that has some indexed files.
 
+## Running the Elasticsearch application
+
+This project uses Elasticsearch for indexing content. To make use of the Elasticsearch back-end server provided by this project -- which is integrated into many of the ingestion and helper scripts -- please install Elasticsearch and run the `elasticsearch_server.py` file as a web server.
+
+You should have a copy of your `config.py` file in the root directory of your Elasticsearch web server. This is important because the Elasticsearch web server provided by this application relies on many of the same configuration values in the `config.py` file that the main application uses.
+
+You will also need MySQL installed on the same server you use to run your Elasticsearch web server.
+
+Change the 
 ## Direct Answer Search Results
 
 Work is being done to support some "direct answer" search results. These are search results that aim to provide an immediate answer to your query before you click on a search result.
@@ -199,6 +212,7 @@ This project makes use of the following technologies:
 - Textblob
 - pytextrank
 - pyspellchecker
+- feedparser
 
 ## Acknowledgements
 

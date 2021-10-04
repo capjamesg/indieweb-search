@@ -164,7 +164,7 @@ def process_domain(site, reindex):
 	else:
 		return 2, final_urls, namespaces_to_ignore
 
-def build_index(site, feeds, reindex=False):
+def build_index(site, reindex=False):
 	# remove from queue before indexing starts
 	# prevents against failure to index and not being recognised in file
 	with open("crawl_queue.txt", "r") as f:
@@ -179,8 +179,24 @@ def build_index(site, feeds, reindex=False):
 	# with open("crawl_queue.txt", "w+") as f:
 	# 	f.writelines(rows)
 
-	if feeds != None:
-		feeds = feeds.get(site)
+	headers = {
+		"Authorization": config.ELASTICSEARCH_API_TOKEN
+	}
+
+	r = requests.post("https://es-indieweb-search.jamesg.blog/feeds", headers=headers, data={"website_url": site})
+
+	if r.status_code == 200 and not r.json()["message"]:
+		print("feeds retrieved for {}".format(site))
+		logging.debug("feeds retrieved for {}".format(site))
+		feeds = r.json()
+	elif r.status_code == 200 and r.json()["message"]:
+		print("Result from URL request to /feeds endpoint on elasticsearch server: {}".format(r.json()["message"]))
+		logging.debug("Result from URL request to /feeds endpoint on elasticsearch server: {}".format(r.json()["message"]))
+		feeds = []
+	else:
+		print("ERROR: feeds not retrieved for {} (status code {})".format(site, r.status_code))
+		logging.error("feeds not retrieved for {} (status code {})".format(site, r.status_code))
+		feeds = []
 
 	if feeds:
 		feed_urls = [item.get("url") for item in feeds]
@@ -228,7 +244,7 @@ def build_index(site, feeds, reindex=False):
 	discovered_feeds_dict = {}
 	
 	for url in iterate_list_of_urls:
-		url_indexed, discovered, valid, discovered_feeds = url_handling.crawl_urls(final_urls, namespaces_to_ignore, indexed, links, external_links, discovered_urls, iterate_list_of_urls, site, crawl_budget, url, [], feed_urls, True)
+		url_indexed, discovered, valid, discovered_feeds = url_handling.crawl_urls(final_urls, namespaces_to_ignore, indexed, links, external_links, discovered_urls, iterate_list_of_urls, site, crawl_budget, url, [], feed_urls, site, True)
 
 		if valid == True:
 			valid_count += 1
@@ -252,14 +268,20 @@ def build_index(site, feeds, reindex=False):
 				feed_urls.append(f.get("url"))
 				discovered_feeds_dict[f.get("url")] = True
 
-	# update feeds.json to include new feeds
-	with open("feeds.json", "r") as f:
-		feeds = json.loads(f.read())
+	# update database to list new feeds
 
-	feeds[site] = all_feeds
+	headers["Content-Type"] = "application/json"
 
-	with open("feeds.json", "w+") as f:
-		json.dump(feeds, f)
+	r = requests.post("https://es-indieweb-search.jamesg.blog/save", json={"feeds": all_feeds}, headers=headers)
+
+	print(all_feeds)
+
+	if r.status_code == 200:
+		print("feeds updated in database for {}".format(site))
+		logging.debug("feeds updated database for {}".format(site))
+	else:
+		print("ERROR: feeds not updated for {} (status code {})".format(site, r.status_code))
+		logging.error("feeds not updated for {} (status code {})".format(site, r.status_code))
 
 	# write to crawled.csv
 	with open("crawled.csv", "a+") as f:
@@ -285,13 +307,10 @@ if __name__ == "__main__":
 	with open("blocklist.txt", "r") as block_file:
 		block_list = block_file.readlines()
 
-	with open("feeds.json", "r") as feed_file:
-		feeds = json.load(feed_file)
-
 	to_crawl = [item for item in to_crawl if item not in block_list]
 
 	with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
-		futures = [executor.submit(build_index, url.replace("\n", ""), feeds) for url in to_crawl]
+		futures = [executor.submit(build_index, url.replace("\n", "")) for url in to_crawl]
 		
 		while len(futures) > 0:
 			for future in concurrent.futures.as_completed(futures):
