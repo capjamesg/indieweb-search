@@ -223,73 +223,76 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 		else:
 			links = []
 
-		# check for feed with rel alternate
-		# only support rss and atom right now
-
-		if page_desc_soup.find_all("link", {"rel": "alternate"}):
-			for feed_item in page_desc_soup.find_all("link", {"rel": "alternate"}):
-				if feed_item["href"].startswith("/"):
-					# get site domain
-					domain = full_url.split("/")[2]
-					feed_url = "https://" + domain + feed_item["href"]
-
-					canonical = feed_url.strip("/").replace("http://", "https://").split("?")[0]
-
-					if feed_url and feed_url not in feed_urls:
-						feeds.append({"website_url": site, "feed_url": feed_url, "mime_type": feed_item.get("type"), "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
-						feed_urls.append(feed_url)
-						print("found feed {}, will save to feeds.json".format(feed_url))
-						logging.info("found feed {}, will save to feeds.json".format(feed_url))
-
-		# check if page has h-feed class on it
-		# if a h-feed class is present, mark page as feed
-
-		if page_desc_soup.select(".h-feed"):
-			feeds.append({"website_url": site, "feed_url": full_url, "mime_type": "h-feed", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
-			feed_urls.append(full_url)
-			print("{} is a h-feed, will save to feeds.json".format(full_url))
-			logging.info("{} is a h-feed, will save to feeds.json".format(full_url))
-
-		# check for websub hub
-
-		if page_desc_soup.find("link", {"rel": "hub"}):
-			websub_hub = page_desc_soup.find("link", {"rel": "hub"})["href"]
-
-			feeds.append({"website_url": site, "feed_url": websub_hub, "mime_type": "websub", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
-			
-			feed_urls.append(full_url)
-
-			print("{} is a websub hub, will save to feeds.json".format(full_url))
-			logging.info("{} is a websub hub, will save to feeds.json".format(full_url))
-
-		# parse link headers
-		link_headers = page.headers.get("Link")
-
-		if link_headers:
-			link_headers = link_headers.split(",")
-
-			for link_header in link_headers:
-				if "rel=\"hub\"" in link_header:
-					websub_hub = link_header.split(";")[0].strip("<>")
-
-					feeds.append({"website_url": site, "feed_url": websub_hub, "mime_type": "websub", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
-					
-					feed_urls.append(full_url)
-
-					print("{} is a websub hub, will save to feeds.json".format(websub_hub))
-					logging.info("{} is a websub hub, will save to feeds.json".format(websub_hub))
-
-				if "rel=\"alternate\"" in link_header:
-					feed_url = link_header.split(";")[0].strip("<>")
-
-					if feed_url and feed_url not in feed_urls:
-						feeds.append({"website_url": site, "feed_url": feed_url, "mime_type": "feed", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
-						feed_urls.append(feed_url)
-
-						print("found feed {}, will save to feeds.json".format(feed_url))
-						logging.info("found feed {}, will save to feeds.json".format(feed_url))
-
+		# only discover feeds and new links if a crawl is going on
+		# this is used to ensure that the crawler doesn't discover new links or feeds when just indexing one page from a site that is already in the index
 		if link_discovery == True:
+
+			# check for feed with rel alternate
+			# only support rss and atom right now
+
+			if page_desc_soup.find_all("link", {"rel": "alternate"}):
+				for feed_item in page_desc_soup.find_all("link", {"rel": "alternate"}):
+					if feed_item["href"].startswith("/"):
+						# get site domain
+						domain = full_url.split("/")[2]
+						feed_url = "https://" + domain + feed_item["href"]
+
+						canonical = feed_url.strip("/").replace("http://", "https://").split("?")[0]
+
+						if feed_url and feed_url not in feed_urls:
+							feeds.append({"website_url": site, "feed_url": feed_url, "mime_type": feed_item.get("type"), "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
+							feed_urls.append(feed_url)
+							print("found feed {}, will save to feeds.json".format(feed_url))
+							logging.info("found feed {}, will save to feeds.json".format(feed_url))
+
+			# check if page has h-feed class on it
+			# if a h-feed class is present, mark page as feed
+
+			if page_desc_soup.select(".h-feed"):
+				feeds.append({"website_url": site, "feed_url": full_url, "mime_type": "h-feed", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
+				feed_urls.append(full_url)
+				print("{} is a h-feed, will save to feeds.json".format(full_url))
+				logging.info("{} is a h-feed, will save to feeds.json".format(full_url))
+
+			# check for websub hub
+
+			if page_desc_soup.find("link", {"rel": "hub"}):
+				websub_hub = page_desc_soup.find("link", {"rel": "hub"})["href"]
+
+				feeds.append({"website_url": site, "feed_url": websub_hub, "mime_type": "websub", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
+				
+				feed_urls.append(full_url)
+
+				print("{} is a websub hub, will save to feeds.json".format(full_url))
+				logging.info("{} is a websub hub, will save to feeds.json".format(full_url))
+
+			# parse link headers
+			link_headers = page.headers.get("Link")
+
+			if link_headers:
+				link_headers = link_headers.split(",")
+
+				for link_header in link_headers:
+					if "rel=\"hub\"" in link_header:
+						websub_hub = link_header.split(";")[0].strip("<>")
+
+						feeds.append({"website_url": site, "feed_url": websub_hub, "mime_type": "websub", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
+						
+						feed_urls.append(full_url)
+
+						print("{} is a websub hub, will save to feeds.json".format(websub_hub))
+						logging.info("{} is a websub hub, will save to feeds.json".format(websub_hub))
+
+					if "rel=\"alternate\"" in link_header:
+						feed_url = link_header.split(";")[0].strip("<>")
+
+						if feed_url and feed_url not in feed_urls:
+							feeds.append({"website_url": site, "feed_url": feed_url, "mime_type": "feed", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
+							feed_urls.append(feed_url)
+
+							print("found feed {}, will save to feeds.json".format(feed_url))
+							logging.info("found feed {}, will save to feeds.json".format(feed_url))
+
 			final_urls, iterate_list_of_urls, all_links, external_links, discovered_urls = page_link_discovery.page_link_discovery(links, final_urls, iterate_list_of_urls, full_url, all_links, external_links, discovered_urls, site_url)
 
 		if "/tags/" in full_url or "/tag/" in full_url or "/label/" in full_url or "/search/" in full_url or "/category/" in full_url or "/categories/" in full_url:
