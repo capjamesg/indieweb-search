@@ -23,6 +23,8 @@ count = 0
 
 domain_links = {}
 
+link_microformat_instances = {}
+
 # First for loop to get all links from https://simplernerd.com/elasticsearch-scroll-python/
 # Get all links on each page in the index
 # Write all links to a file
@@ -69,6 +71,26 @@ for hits in scroll(es, 'pages', body, '2m', 20):
                     else:
                         link = "https://" + h["_source"]["domain"] + "/" + l.get('href')
 
+                    mf2_attribute = ""
+
+                    if "u-in-reply-to" in link.class_:
+                        mf2_attribute = "u-in-reply-to"
+                    elif "u-like-of" in link.class_:
+                        mf2_attribute = "u-like-of"
+                    elif "u-repost-of" in link.class_:
+                        mf2_attribute = "u-repost-of"
+                    elif "u-bookmark-of" in link.class_:
+                        mf2_attribute = "u-bookmark-of"
+                    elif "u-url" in link.class_:
+                        mf2_attribute = "u-url"
+                    else:
+                        mf2_attribute = ""
+
+                    if link_microformat_instances.get(mf2_attribute):
+                        link_microformat_instances[mf2_attribute] += 1
+                    else:
+                        link_microformat_instances[mf2_attribute] = 1
+                        
                     link = link.lower()
 
                     try:
@@ -157,3 +179,22 @@ for link, link_count in links.items():
 
         count += 1
         print(count)
+
+print("calculating top linked assets")
+
+# sort URLs by number of incoming links
+links = {k: v for k, v in sorted(links.items(), key=lambda item: item[1])}
+
+link_origin = [i for i in links.keys()]
+link_value = [i for i in links.values()]
+
+top_ten = [[origin, value] for origin, value in zip(link_origin, link_value)[:10]]
+
+with open('top_ten_links.csv', 'w') as f:
+    csv.writer(f).writerows(top_ten)
+
+print("calculated top 10 linked assets")
+print("done")
+
+with open('link_microformat_instances.json', 'w') as f:
+    json.dump(link_microformat_instances, f)

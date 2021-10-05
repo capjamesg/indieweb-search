@@ -76,14 +76,14 @@ def parse_social(original_cleaned_value, soup, url, original_url):
 
             for link in rel_me_links:
                 if link.get("href"):
-                    to_show += "<li><a href='{}'>{}</li>".format(link.get("href"), link.get("href"))
+                    to_show += "<li><a href='{}'>{}</a></li>".format(link.get("href"), link.get("href"))
 
             if soup.find("h1"):
                 title = soup.find("h1").text
             else:
                 title = url
 
-            return "<h3>{} Social Links</h3><ul>{}</ul>".format(title, to_show), {"type": "direct_answer", "breadcrumb": original_url, "title": title}
+            return "<h3>{} Social Links</h3><ul>{}</ul><details><br><summary>How to show up here</summary>You can have social links show up by entering 'yourdomainname.com social' into the search engine as long as you have rel=me links set up on your home page. Learn how to do this on the <a href='https://indieweb.org/rel-me'>IndieWeb wiki</a>.</details>".format(title, to_show), {"type": "direct_answer", "breadcrumb": original_url, "title": title}
 
     return None, None
 
