@@ -208,19 +208,16 @@ def results_page():
 
 					do_i_use, special_result = search_result_features.generate_featured_snippet(full_query_with_full_stops, special_result, nlp, url, source)
 
-				if "who is" in cleaned_value or ("." in cleaned_value and len(cleaned_value.split(".")[1]) <= 4) or cleaned_value.endswith("social") or cleaned_value.endswith("get rel"):
-					get_homepage = requests.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&domain=true".format(config.ELASTICSEARCH_PASSWORD, cleaned_value_for_query.replace("who is", "").replace("get rel", "").replace("social", ""))).json()
+				if "who is" in cleaned_value or ("." in cleaned_value and len(cleaned_value.split(".")[1]) <= 4) or cleaned_value.endswith("social") or cleaned_value.endswith("get rel") or cleaned_value.endswith("inspect feed"):
+					get_homepage = requests.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&domain=true".format(config.ELASTICSEARCH_PASSWORD, cleaned_value_for_query.replace("who is", "").replace("get rel", "").replace("social", "").replace("inspect feed", ""))).json()
 
 					if len(get_homepage.get("hits").get("hits")) > 0:
 						url = get_homepage["hits"]["hits"][0]["_source"]["url"]
 						source = get_homepage["hits"]["hits"][0]["_source"]
 
-						do_i_use, special_result = search_result_features.generate_featured_snippet(full_query_with_full_stops, special_result, nlp, url, source)
+						print(full_query_with_full_stops)
 
-						# don't show h-cards from other domains
-						if not special_result.get("breadcrumb").startswith(url):
-							special_result = False
-							do_i_use = ""
+						do_i_use, special_result = search_result_features.generate_featured_snippet(full_query_with_full_stops, special_result, nlp, url, source)
 
 			if len(rows) == 0:
 				out_of_bounds_page = True
