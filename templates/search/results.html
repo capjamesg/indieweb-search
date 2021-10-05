@@ -7,13 +7,7 @@
   </form>
   <p>Returned {{ '{0:,}'.format(number_of_results) }} search results for your "{{ query }}" query.</p>
   <p>
-    {% if ordered_by == "date_asc" %}
-    Ordered by date (ascending). You can also order by <a href="{{ base_results_query }}">relevance</a> or <a href="{{ base_results_query }}&order=date_desc">date (descending)</a>.
-    {% elif ordered_by == "date_desc" %}
-    Ordered by date (descending). You can also order by <a href="{{ base_results_query }}&order=date_asc">oldest</a> or <a href="{{ base_results_query }}">relevance</a>.
-    {% else %}
-    Ordered by relevance. You can also order by <a href="{{ base_results_query }}&order=date_asc">most recent</a> or <a href="{{ base_results_query }}&order=date_desc">date (descending)</a>.
-    {% endif %}
+    Ordered by relevance.
   </p>
   {% if special_result == False %}<hr>{% endif %}
   {% include "search/special_serp_items.html" %}

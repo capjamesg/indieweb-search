@@ -111,7 +111,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 						domain = full_url.split("/")[2]
 						link["rel"] = "https://" + domain + link["rel"]
 
-					canonical = link["rel"].strip("/").replace("http://", "https://").split("?")[0]
+					canonical = link["rel"].strip("/").replace("http://", "https://").split("?")[0].lower()
 
 					if canonical and canonical != full_url.lower().strip("/").replace("http://", "https://").split("?")[0]:
 						canonical_url = link["url"]
@@ -258,6 +258,8 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 
 			if page_desc_soup.find("link", {"rel": "hub"}):
 				websub_hub = page_desc_soup.find("link", {"rel": "hub"})["href"]
+
+				websub_hub = websub_hub.strip().strip("<>")
 
 				feeds.append({"website_url": site, "feed_url": websub_hub, "mime_type": "websub", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
 				

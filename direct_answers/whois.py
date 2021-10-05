@@ -105,9 +105,8 @@ def parse_get_rel(original_cleaned_value, soup, url, original_url):
 def parse_feed(original_cleaned_value, soup, url, original_url):
     # get all feeds on a page
     if original_cleaned_value.endswith("inspect feed"):
-
         to_show = ""
-        feeds = soup.find_all("a", {"rel": "alternate"})
+        feeds = soup.find_all("link", {"rel": "alternate"})
 
         # check for h-feed
         h_feed = soup.select(".h-feed")
@@ -127,13 +126,13 @@ def parse_feed(original_cleaned_value, soup, url, original_url):
                         if link_type != None:
                             link_type = link_type[0]
 
-                            to_show += "<li><b>{} feed</b>: <a href='{}'>{}</li>".format(link_type, link.get("href"))
+                            to_show += "<li><b>{} feed</b>: <a href='{}'>{}</a></li>".format(link_type, link.get("href"), link.get("href"))
                         elif link_type == "application/json":
                             link_type = "JSON"
 
-                            to_show += "<li><b>{} feed</b>: <a href='{}'>{}</li>".format(link_type, link.get("href"))
+                            to_show += "<li><b>{} feed</b>: <a href='{}'>{}</a></li>".format(link_type, link.get("href"), link.get("href"))
                     else:
-                        to_show += "<li><b>Feed</b>: <a href='{}'>{}</li>".format(link.get("href"), link.get("href"))
+                        to_show += "<li><b>Feed</b>: <a href='{}'>{}</a></li>".format(link.get("href"), link.get("href"), link.get("href"))
 
             if soup.find("h1"):
                 title = soup.find("h1").text
