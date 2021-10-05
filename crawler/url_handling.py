@@ -192,17 +192,17 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 				domain = full_url.split("/")[2]
 				canonical_url = "https://" + domain + canonical_url
 
-			canonical = canonical_url.strip("/").replace("http://", "https://").split("?")[0]
+			canonical = canonical_url.strip("/").replace("http://", "https://").split("?")[0].lower()
 			
 			if canonical and canonical != full_url.lower().strip("/").replace("http://", "https://").split("?")[0]:
-				final_urls[canonical_url] = ""
+				final_urls[canonical] = ""
 
-				iterate_list_of_urls.append(canonical_url)
+				iterate_list_of_urls.append(canonical)
 
-				discovered_urls[canonical_url] = canonical_url
+				discovered_urls[canonical] = canonical
 
-				logging.info("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical_url))
-				print("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical_url))
+				logging.info("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical))
+				print("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical))
 
 				return url, discovered_urls, False, feeds
 
@@ -259,7 +259,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			if page_desc_soup.find("link", {"rel": "hub"}):
 				websub_hub = page_desc_soup.find("link", {"rel": "hub"})["href"]
 
-				websub_hub = websub_hub.strip().strip("<>")
+				websub_hub = websub_hub.strip().strip("<").strip(">")
 
 				feeds.append({"website_url": site, "feed_url": websub_hub, "mime_type": "websub", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
 				
@@ -276,7 +276,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 
 				for link_header in link_headers:
 					if "rel=\"hub\"" in link_header:
-						websub_hub = link_header.split(";")[0].strip("<>")
+						websub_hub = link_header.split(";")[0].strip("<").strip(">")
 
 						feeds.append({"website_url": site, "feed_url": websub_hub, "mime_type": "websub", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
 						
@@ -286,7 +286,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 						logging.info("{} is a websub hub, will save to feeds.json".format(websub_hub))
 
 					if "rel=\"alternate\"" in link_header:
-						feed_url = link_header.split(";")[0].strip().strip("<>")
+						feed_url = link_header.split(";")[0].strip().strip("<").strip(">")
 
 						if feed_url and feed_url not in feed_urls:
 							feeds.append({"website_url": site, "feed_url": feed_url, "mime_type": "feed", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
