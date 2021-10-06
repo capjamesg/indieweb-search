@@ -3,7 +3,7 @@ import requests
 import datetime
 import logging
 import config
-import hashlib
+import mf2py
 import json
 
 def add_to_database(full_url, published_on, doc_title, meta_description, heading_info, page, pages_indexed, page_content, outgoing_links, crawl_budget, nofollow_all, main_page_content):
@@ -32,16 +32,15 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 	else:
 		favicon = ""
 
-	md5_hash = hashlib.md5(str("".join([w for w in page_content.get_text().split(" ")[:200]])).encode("utf-8")).hexdigest()
+	mf2_parsed = mf2py.parse(url="https://" + full_url.split("/")[2])
 
-	# check if md5 hash in posts
+	h_card = None
 
-	r = requests.post("https://es-indieweb-search.jamesg.blog/check?hash={}".format(md5_hash), headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)})
-
-	if r.status_code == 200:
-		if r.json() and len(r.json()) > 0 and r.json()["url"] != full_url:
-			print("content duplicate of existing record, skipping")
-			return pages_indexed
+	for item in mf2_parsed['items']:
+		if item['type'] == 'h-card' or (type(item["type"]) == list and "h-card" in item['type']):
+			if item.get("properties"):
+				h_card = item["properties"]
+				break
 
 	if nofollow_all == True:
 		nofollow_all = "true"
@@ -52,6 +51,12 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 		date_to_record = published_on["datetime"].split("T")[0]
 	else:
 		date_to_record = ""
+
+	# find out if page is home page
+	if full_url.replace("https://", "").replace("http://", "").strip("/").count("/") == 0:
+		is_homepage = True
+	else:
+		is_homepage = False
 
 	record = {
 		"title": doc_title,
@@ -65,20 +70,20 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 		"h5": ", ".join(heading_info["h5"]),
 		"h6": ", ".join(heading_info["h6"]),
 		"length": length,
-		"important_phrases": "",
 		"page_content": str(page_content),
 		"incoming_links": 0,
 		"page_text": page_content.get_text(),
 		"outgoing_links": outgoing_links,
 		"domain": full_url.split("/")[2],
 		"word_count": len(main_page_content.get_text().split(" ")),
-		"md5_hash": md5_hash,
 		"last_crawled": datetime.datetime.today().strftime("%Y-%m-%d %H:%M:%S"),
 		"favicon": favicon,
 		"referring_domains_to_site": 0, # updated when index is rebuilt
 		"internal_incoming_links": 0, # not actively used
 		"http_headers": str(page.headers),
 		"page_is_nofollow": nofollow_all,
+		"h_card": json.dumps(h_card),
+		"is_homepage": is_homepage,
 	}
 
 	# results currently being saved to a file, so no need to run this code
@@ -90,9 +95,7 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 	# else:
 	# 	record["incoming_links"] = 0
 
-	# save to json file
-
-	with open("results.json".format(md5_hash), "a+") as f:
+	with open("results.json", "a+") as f:
 		f.write(json.dumps(record))
 		f.write("\n")
 

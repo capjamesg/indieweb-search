@@ -188,6 +188,12 @@ input[type="submit"]:focus {
 html {
   list-style-position: inside;
 }
+ol .serp li {
+  background-color: white;
+  border-radius: 10px;
+  border: 1px solid lightgrey;
+  padding: 10px;
+}
 .tab, ol {
   list-style-type: none;
   padding: 0;

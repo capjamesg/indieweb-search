@@ -37,8 +37,13 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 		return url, {}, False, feeds
 
 	if "javascript:" in full_url:
-		print("{} marked as follow, noindex because it is a javascript resource".format(full_url))
-		logging.info("{} marked as follow, noindex because it is a javascript resource".format(full_url))
+		print("{} marked as noindex because it is a javascript resource".format(full_url))
+		logging.info("{} marked as noindex because it is a javascript resource".format(full_url))
+		return url, {}, False, feeds
+
+	if "%" in full_url:
+		print("{} marked as noindex because it has a % in the slug".format(full_url))
+		logging.info("{} marked as follow, noindex because it has a % in the slug".format(full_url))
 		return url, {}, False, feeds
 
 	# Only get URLs that match namespace exactly
@@ -62,8 +67,15 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 
 			# get redirect url
 			if page_test.history and page_test.history[-1].url != full_url:
+				# skip redirects to external sites
+				if not page_test.history[-1].url.startswith("http://" + site_url) and not page_test.history[-1].url.startswith("https://" + site_url):
+					print("{} redirected to {}, which is on a different site, skipping".format(full_url, page_test.history[-1].url))
+					logging.info("{} redirected to {}, which is on a different site, skipping".format(full_url, page_test.history[-1].url))
+					return url, {}, False, feeds
+					
 				logging.error("{} redirected to {}".format(full_url, page_test.history[-1].url))
 				print("{} redirected to {}".format(full_url, page_test.history[-1].url))
+
 				full_url = page_test.history[-1].url
 
 			if page_test.headers.get("X-Robots-Tag"):
@@ -112,6 +124,12 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 						link["rel"] = "https://" + domain + link["rel"]
 
 					canonical = link["rel"].strip("/").replace("http://", "https://").split("?")[0].lower()
+
+					if not canonical.startswith("http://" + full_url.split("/")[2]) and not canonical.startswith("https://" + full_url.split("/")[2]):
+						print("{} has a canonical url of {}, not adding to queue because url points to a different domain".format(full_url, canonical))
+						logging.info("{} has a canonical url of {}, not adding to queue because url points to a different domain".format(full_url, canonical))
+
+						return url, {}, False, feeds
 
 					if canonical and canonical != full_url.lower().strip("/").replace("http://", "https://").split("?")[0]:
 						canonical_url = link["url"]
@@ -173,6 +191,12 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 		if page_desc_soup.find("meta", attrs={"http-equiv": "refresh"}):
 			refresh_url = page_desc_soup.find("meta", attrs={"http-equiv": "refresh"})["content"].split(";")[1].split("=")[1]
 
+			if not refresh_url.startswith("http://" + full_url.split("/")[2]) and not refresh_url.startswith("https://" + full_url.split("/")[2]):
+				print("{} has a http-equiv refresh url of {}, not adding to queue because url points to a different domain".format(full_url, refresh_url))
+				logging.info("{} has a http-equiv refresh url of {}, not adding to queue because url points to a different domain".format(full_url, refresh_url))
+
+				return url, {}, False, feeds
+				
 			if refresh_url:
 				final_urls[refresh_url] = ""
 
@@ -193,6 +217,12 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 				canonical_url = "https://" + domain + canonical_url
 
 			canonical = canonical_url.strip("/").replace("http://", "https://").split("?")[0].lower()
+
+			if not canonical.startswith("http://" + full_url.split("/")[2]) and not canonical.startswith("https://" + full_url.split("/")[2]):
+				print("{} has a canonical url of {}, not adding to queue because url points to a different domain".format(full_url, canonical))
+				logging.info("{} has a canonical url of {}, not adding to queue because url points to a different domain".format(full_url, canonical))
+
+				return url, {}, False, feeds
 			
 			if canonical and canonical != full_url.lower().strip("/").replace("http://", "https://").split("?")[0]:
 				final_urls[canonical] = ""
@@ -218,10 +248,19 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			logging.info("all links on {} marked as nofollow due to <meta> robots nofollow value".format(full_url))
 			nofollow_all = True
 
+		# filter out pages marked as adult content
+		if page_desc_soup.find("meta", {"name": "rating"}):
+			if page_desc_soup.find("meta", {"name": "rating"}).get("content") == "adult" or \
+				page_desc_soup.find("meta", {"name": "rating"}).get("content") == "RTA-5042-1996-1400-1577-RTA":
+				print("{} marked as adult content in a meta tag, skipping".format(full_url))
+				logging.info("{} marked as adult content in a meta tag, skipping".format(full_url))
+				return url, {}, False, feeds
+
 		if nofollow_all == False:
 			links = [l for l in page_desc_soup.find_all("a") if (l.get("rel") and "nofollow" not in l["rel"]) or (not l.get("rel") and l.get("href") not in ["#", "javascript:void(0);"])]
 		else:
 			links = []
+
 
 		# only discover feeds and new links if a crawl is going on
 		# this is used to ensure that the crawler doesn't discover new links or feeds when just indexing one page from a site that is already in the index
@@ -237,11 +276,11 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 						domain = full_url.split("/")[2]
 						feed_url = "https://" + domain + feed_item["href"]
 
-						canonical = feed_url.strip("/").replace("http://", "https://").split("?")[0]
+						canonical = feed_url.strip("/").replace("http://", "https://").split("?")[0].strip().strip("<").strip(">").lower()
 
 						if feed_url and feed_url not in feed_urls:
 							feeds.append({"website_url": site, "feed_url": feed_url, "mime_type": feed_item.get("type"), "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
-							feed_urls.append(feed_url)
+							feed_urls.append(feed_url.strip("/"))
 							print("found feed {}, will save to feeds.json".format(feed_url))
 							logging.info("found feed {}, will save to feeds.json".format(feed_url))
 
@@ -250,7 +289,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 
 			if page_desc_soup.select(".h-feed"):
 				feeds.append({"website_url": site, "feed_url": full_url, "mime_type": "h-feed", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
-				feed_urls.append(full_url)
+				feed_urls.append(full_url.strip("/"))
 				print("{} is a h-feed, will save to feeds.json".format(full_url))
 				logging.info("{} is a h-feed, will save to feeds.json".format(full_url))
 
@@ -263,7 +302,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 
 				feeds.append({"website_url": site, "feed_url": websub_hub, "mime_type": "websub", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
 				
-				feed_urls.append(full_url)
+				feed_urls.append(full_url.strip("/"))
 
 				print("{} is a websub hub, will save to feeds.json".format(full_url))
 				logging.info("{} is a websub hub, will save to feeds.json".format(full_url))
@@ -276,11 +315,11 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 
 				for link_header in link_headers:
 					if "rel=\"hub\"" in link_header:
-						websub_hub = link_header.split(";")[0].strip("<").strip(">")
+						websub_hub = link_header.split(";")[0].strip().strip("<").strip(">")
 
 						feeds.append({"website_url": site, "feed_url": websub_hub, "mime_type": "websub", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
 						
-						feed_urls.append(full_url)
+						feed_urls.append(full_url.strip("/"))
 
 						print("{} is a websub hub, will save to feeds.json".format(websub_hub))
 						logging.info("{} is a websub hub, will save to feeds.json".format(websub_hub))
@@ -290,7 +329,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 
 						if feed_url and feed_url not in feed_urls:
 							feeds.append({"website_url": site, "feed_url": feed_url, "mime_type": "feed", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
-							feed_urls.append(feed_url)
+							feed_urls.append(feed_url.strip("/"))
 
 							print("found feed {}, will save to feeds.json".format(feed_url))
 							logging.info("found feed {}, will save to feeds.json".format(feed_url))

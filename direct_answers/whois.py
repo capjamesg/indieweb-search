@@ -1,4 +1,5 @@
 import mf2py
+import os
 
 def parse_whois(original_cleaned_value, soup, url, original_url): 
     if "who is" in original_cleaned_value or (("." in original_cleaned_value and len(original_cleaned_value.split(".")[0]) > 3 and len(original_cleaned_value.split(".")[0]) > 1 and len(original_cleaned_value.split(" ")) == 1)):
@@ -33,13 +34,13 @@ def parse_whois(original_cleaned_value, soup, url, original_url):
             photo = h_card["properties"].get("photo")
             
             if photo and photo[0].startswith("/"):
-                photo = "https://" + url + h_card["properties"].get("photo")[0]
+                photo = url.strip("/") + "/" + h_card["properties"].get("photo")[0]
             elif photo and photo[0].startswith("http"):
                 photo = photo[0]
             elif photo and photo[0].startswith("//"):
-                photo = "https:" + photo[0]
+                photo = url.strip("/") + "/" + photo[0]
             elif photo:
-                photo = "https://" + url + "/" + h_card["properties"].get("photo")[0]
+                photo = url.strip("/") + "/" + h_card["properties"].get("photo")[0]
             else:
                 photo = ""
 
@@ -52,14 +53,15 @@ def parse_whois(original_cleaned_value, soup, url, original_url):
                     if value[0].strip() == "":
                         to_show  += "<p><b>{}</b>: <a href='{}'>{}</a></p>".format("URL", original_url, original_url)
                     else:
+                        if not value[0].startswith("http"):
+                            value[0] = url.strip("/") + "/" + value[0].strip("/")
+
                         to_show += "<p><b>{}</b>: <a href='{}'>{}</a></p>".format("URL", value[0], value[0].strip("/"))
 
             if soup.find("h1"):
                 title = soup.find("h1").text
             else:
                 title = url
-                
-            print("<img src='{}' height='100' width='100' style='float: right;'><p>{}</p>".format(photo, to_show))
                 
             return "<img src='{}' height='100' width='100' style='float: right;'><p>{}</p>".format(photo, to_show), {"type": "direct_answer", "breadcrumb": original_url, "title": title}
 
@@ -69,14 +71,22 @@ def parse_social(original_cleaned_value, soup, url, original_url):
     if original_cleaned_value.endswith("social"):
         # get all rel=me links
         rel_me_links = soup.find_all("a", {"rel": "me"})
-        print(rel_me_links)
 
         if len(rel_me_links) > 0:
             to_show = ""
 
             for link in rel_me_links:
                 if link.get("href"):
-                    to_show += "<li><a href='{}'>{}</a></li>".format(link.get("href"), link.get("href"))
+                    link_type = link.text.strip()
+
+                    # find file in static/icons
+                    if link_type and link_type != "" and os.path.isfile("static/icons/" + link_type.lower() + "-16x16" + ".png"):
+                        image = "<img src='/static/icons/" + link_type.lower() + "-16x16" + ".png' height='15' width='15' style='display: inline;'>"
+                        to_show += "<li><a href='{}'>{} {}</a></li>".format(image, link.get("href"), link_type)
+                    elif link_type and link_type != "":
+                        to_show += "<li><a href='{}'>{}</a></li>".format(link.get("href"), link_type)
+                    else:
+                        to_show += "<li><a href='{}'>{}</a></li>".format(link.get("href"), link.get("href"))
 
             if soup.find("h1"):
                 title = soup.find("h1").text
@@ -96,7 +106,7 @@ def parse_get_rel(original_cleaned_value, soup, url, original_url):
         to_show = ""
 
         for link in rel_values:
-            to_show += "<li>{}: <a href='{}'>{}</li>".format("".join(link.get("rel")), link.get("href"), link.get("href"))
+            to_show += "<li>{}: <a href='{}'>{}</a></li>".format("".join(link.get("rel")), link.get("href"), link.get("href"))
 
         return "<h3>'Rel' Attributes for {}</h3><ul>{}</ul>".format(original_url.replace("https://", "").replace("http://", "").strip("/"), to_show), {"type": "direct_answer", "breadcrumb": original_url, "title": soup.find_all("h1")[0].text}
 

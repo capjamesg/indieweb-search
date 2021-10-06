@@ -65,7 +65,7 @@ def find_robots_directives(site_url):
 
 	for processed_line in read_robots.content.decode("utf-8").split("\n"):
 		# Only read directives pointed at all user agents or my crawler user agent
-		if "User-agent: *" in processed_line or "User-agent: jamesg-search" in processed_line:
+		if "User-agent: *" in processed_line or "User-agent: indieweb-search" in processed_line:
 			next_line_is_to_be_read = True
 
 		if "Disallow:" in processed_line and next_line_is_to_be_read == True:
@@ -126,13 +126,13 @@ def process_domain(site, reindex):
 		urls = list(soup.find_all("url"))
 
 		headers = {
-			"Authorization": config.ELASTICSEARCH_API_TOKEN,
-			"Content-Type": "application/json"
+			"Authorization": config.ELASTICSEARCH_API_TOKEN
 		}
 
-		r = requests.post("https://es-indieweb-search.jamesg.blog/create_sitemap", json={"sitemap_url": s, "domain": site}, headers=headers)
+		r = requests.post("https://es-indieweb-search.jamesg.blog/create_sitemap", data={"sitemap_url": s, "domain": site}, headers=headers)
 
 		if r.status_code == 200:
+			print(r.text)
 			print("sitemaps added to database for {}".format(site))
 			logging.debug("sitemaps added to database for {}".format(site))
 		else:
@@ -248,14 +248,16 @@ def build_index(site, reindex=False):
 		indexed_list[url_indexed] = True
 
 		for f in discovered_feeds:
-			if discovered_feeds_dict.get(f.get("url")) == None:
+			if discovered_feeds_dict.get(f.get("feed_url")) == None:
 				all_feeds.append(f)
-				feed_urls.append(f.get("url"))
-				discovered_feeds_dict[f.get("url")] = True
+				feed_urls.append(f.get("feed_url"))
+				discovered_feeds_dict[f.get("feed_url")] = True
 
 	# update database to list new feeds
 
 	headers["Content-Type"] = "application/json"
+
+	print(all_feeds)
 
 	r = requests.post("https://es-indieweb-search.jamesg.blog/save", json={"feeds": all_feeds}, headers=headers)
 
@@ -266,9 +268,12 @@ def build_index(site, reindex=False):
 		print("ERROR: feeds not updated for {} (status code {})".format(site, r.status_code))
 		logging.error("feeds not updated for {} (status code {})".format(site, r.status_code))
 
-	r = requests.post("https://es-indieweb-search.jamesg.blog/create_crawled", json={"url": site}, headers=headers)
+	del headers["Content-Type"]
+
+	r = requests.post("https://es-indieweb-search.jamesg.blog/create_crawled", data={"url": site}, headers=headers)
 
 	if r.status_code == 200:
+		print(r.text)
 		print("crawl recorded in database for {}".format(site))
 		logging.debug("crawl recorded in database for {}".format(site))
 	else:

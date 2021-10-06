@@ -6,6 +6,7 @@ from flask import render_template, request, redirect, send_from_directory, jsoni
 from spellchecker import SpellChecker
 from . import search_result_features, config
 import requests
+import json
 
 main = Blueprint("main", __name__, static_folder="static", static_url_path="")
 
@@ -157,12 +158,16 @@ def results_page():
 			
 			if "site:" in request.args.get("query"):
 				rows = requests.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&sort={}&from={}&to={}&site={}".format(config.ELASTICSEARCH_PASSWORD, cleaned_value_for_query.replace("review", "").replace("who is", "").strip(), order, str(pagination), str(int(pagination)), query_values_in_list[-1].replace("%", "") )).json()
+			elif request.args.get("query").startswith("discover"):
+				rows = requests.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&sort={}&from={}&to={}&discover=true".format(config.ELASTICSEARCH_PASSWORD, cleaned_value_for_query.replace("discover", "").strip(), order, str(pagination), str(int(pagination)+10))).json()
 			else:
 				rows = requests.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&sort={}&from={}&to={}".format(config.ELASTICSEARCH_PASSWORD, cleaned_value_for_query.replace("review", "").replace("who is", "").strip(), order, str(pagination), str(int(pagination)+10))).json()
 
 			num_of_results = rows["hits"]["total"]["value"]
 			rows = rows["hits"]["hits"]
 
+			h_cards = [json.loads(row["_source"]["h_card"]) if row["_source"].get("h_card") else None for row in rows]
+			
 			if page == 1:
 				if request.args.get("type") != "image" and ("what is" in cleaned_value or "event" in cleaned_value or "review" in cleaned_value or "recipe" in cleaned_value or "what are" in cleaned_value  or "what were" in cleaned_value or "why" in cleaned_value or "how" in cleaned_value or "microformats" in cleaned_value) and "who is" not in cleaned_value:
 					# remove stopwords from query
@@ -215,8 +220,6 @@ def results_page():
 						url = get_homepage["hits"]["hits"][0]["_source"]["url"]
 						source = get_homepage["hits"]["hits"][0]["_source"]
 
-						print(full_query_with_full_stops)
-
 						do_i_use, special_result = search_result_features.generate_featured_snippet(full_query_with_full_stops, special_result, nlp, url, source)
 
 			if len(rows) == 0:
@@ -266,6 +269,7 @@ def results_page():
 					return jsonify({"text": do_i_use, "featured_serp": special_result})
 				else:
 					return jsonify({"message": "no custom serp available on this search"})
+
 			elif request.args.get("serp_as_json") and request.args.get("serp_as_json") == "results_page":
 				for r in rows:
 					del r["_source"]["page_rank"] # not in use, in some records crawled in a legacy codebase
@@ -285,9 +289,12 @@ def results_page():
 				base_results_query="/results?query={}".format(cleaned_value)
 
 			if is_json:
-				# check_if_api_key_valid = cursor.execute("SELECT * FROM user WHERE api_key = ?;", (request.args.get("api_key"),)).fetchone()
-				# if check_if_api_key_valid and len(check_if_api_key_valid) > 0:
 				return jsonify(rows)
+
+			# show one result if a featured snippet is available, even if there are no other results to show
+			if special_result != False and do_i_use != None and int(num_of_results) == 0:
+				num_of_results = 1
+				out_of_bounds_page = False
 
 			return render_template("search/results.html",
 				results=rows,
@@ -303,7 +310,8 @@ def results_page():
 				suggestion_made=suggestion,
 				special_result=special_result,
 				do_i_use=do_i_use,
-				title="Search results for '{}' query".format(cleaned_value))
+				title="Search results for '{}' query".format(cleaned_value),
+				h_cards=h_cards)
 		else:
 			return redirect("/")
 	else:

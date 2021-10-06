@@ -234,6 +234,10 @@ Thank you to [@snarfed](https://github.com/snarfed) for putting together [IndieM
 
 Thank you also to every member of the IndieWeb community. The support from community members is helping to make this search engine more effective.
 
+### Icon Set Attribution
+
+All icons used in featured snippets for "rel me" queries are from Paul Robert Lloyd's [socialmediaicons](https://github.com/paulrobertlloyd/socialmediaicons) repository. These icons are used in accordance with the Creative Commons Attribution-Share Alike 3.0 license under which the icons are licensed. Appropriate attribution is also listed on search pages where the icon set is used.
+
 ## License
 
 This project is licensed under the [MIT license](LICENSE).
