@@ -9,9 +9,24 @@
   <h2>Feed Breakdown</h2>
   <p>Below you can see a breakdown of the most popular feeds found during indexing.</p>
   <p>This graph only counts feeds discovered during crawling and may not reflect every single feed on a site.</p>
+  <i>"feed" indicates a feed whose MIME type is unknown.</i>
   <ul>
     {% for feed in feed_breakdown %}
-    {% if feed[0] != "None" %}<li>{{ feed[0] }}: {{ feed[1] }}</li>{% endif %}
+    {% if feed[0] != None %}<li>{{ feed[0] }}: {{ feed[1] }}</li>{% endif %}
+    {% endfor %}
+  </ul>
+  <h2>Top Linked Assets</h2>
+  <p>The list below shows the domains to which the most URLs pointed when the index was last built.</p>
+  <ul>
+    {% for domain in top_domains %}
+    <li>{{ domain[0] }}: {{ domain[1] }}</li>
+    {% endfor %}
+  </ul>
+  <h2>Top Microformat Link Types</h2>
+  <p>The list below shows the most popular microformats used in <code><a></a></code> links found on web pages in the index.</p>
+  <ul>
+    {% for microformat in top_microformats %}
+    <li>{{ microformat[0] }}: {{ microformat[1] }}</li>
     {% endfor %}
   </ul>
 </section>

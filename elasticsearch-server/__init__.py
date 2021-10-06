@@ -16,22 +16,17 @@ def create_app():
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///search.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-    # blueprint for non-auth parts of app
     from .main import main as main_blueprint
 
     app.register_blueprint(main_blueprint)
 
-    @app.errorhandler(404)
-    def page_not_found(e):
-        return render_template("error.html", title="Page Not Found Error"), 404
+    from .database_methods import database_methods as database_methods_blueprint
 
-    @app.errorhandler(500)
-    def server_error(e):
-        return render_template("error.html", server_error=True, title="Server Error"), 500
+    app.register_blueprint(database_methods_blueprint)
 
-    @app.errorhandler(429)
-    def rate_limit():
-        return render_template("error.html", rate_limit_error=True, title="Rate Limit Error"), 429
+    from .stats import stats as stats_blueprint
+
+    app.register_blueprint(stats_blueprint)
 
     # from werkzeug.middleware.profiler import ProfilerMiddleware
     # app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=[5], profile_dir='./profile')
