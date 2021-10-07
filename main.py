@@ -98,6 +98,9 @@ def results_page():
 
 	special_result = False
 
+	if not request.args.get("query"):
+		return redirect("/")
+
 	query_with_handled_spaces = request.args.get("query").replace("--", "").replace("  ", " ")
 
 	allowed_chars = [" ", '"', ":", "-", "/", ".", "="]

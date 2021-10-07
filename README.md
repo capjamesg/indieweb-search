@@ -228,6 +228,12 @@ This project makes use of the following technologies:
 - pyspellchecker
 - feedparser
 
+## Authorship.rocks Compliance
+
+This project complies with all five test cases in the [authorship.rocks](https://authorship.rocks/) Authorship Discovery test cases. These test cases determine whether code can successfully retrieve the representative h-card (author) of a page.
+
+This logic is used to determine which h-card, if any, to save alongside a piece of content in the index. This logic plays a critical role in the profile pictures and names that appear in search results.
+
 ## Acknowledgements
 
 Thank you to [@snarfed](https://github.com/snarfed) for putting together [IndieMap](https://github.com/snarfed/indie-map), a project that crawled many IndieWeb sites to create a social graph. IndieMap provided inspiration, motivation, and a list of domains from which this project started indexing.
