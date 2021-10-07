@@ -166,7 +166,11 @@ def results_page():
 			num_of_results = rows["hits"]["total"]["value"]
 			rows = rows["hits"]["hits"]
 
-			h_cards = [json.loads(row["_source"]["h_card"]) if row["_source"].get("h_card") else None for row in rows]
+			for r in rows:
+				if r["_source"].get("h_card"):
+					r["_source"]["h_card"] = json.loads(r["_source"]["h_card"])
+				else:
+					r["_source"]["h_card"] = None
 			
 			if page == 1:
 				if request.args.get("type") != "image" and ("what is" in cleaned_value or "event" in cleaned_value or "review" in cleaned_value or "recipe" in cleaned_value or "what are" in cleaned_value  or "what were" in cleaned_value or "why" in cleaned_value or "how" in cleaned_value or "microformats" in cleaned_value) and "who is" not in cleaned_value:
@@ -310,8 +314,7 @@ def results_page():
 				suggestion_made=suggestion,
 				special_result=special_result,
 				do_i_use=do_i_use,
-				title="Search results for '{}' query".format(cleaned_value),
-				h_cards=h_cards)
+				title="Search results for '{}' query".format(cleaned_value))
 		else:
 			return redirect("/")
 	else:

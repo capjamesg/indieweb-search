@@ -15,14 +15,26 @@
   <p>Pages in this search engine are indexed using a crawler with the user agent "indieweb-search". The crawler obeys robots.txt directives so you can block our crawler from looking at certain pages on your site (or your whole site) if you would like.</p>
   <h2>Do you obey robots.txt directives?</h2>
   <p>Yes. IndieWeb Search obeys robots.txt files. This file is fetched before a sitemap or any page on a site is retrieved so long as the robots.txt file is available.</p>
+  <p>We also do not index content with a valid <a href="https://developers.google.com/search/docs/advanced/robots/robots_meta_tag#xrobotstag">X-Robots-Tag header</a>.</p>
   <h2>Can you index my site?</h2>
   <p>We are not currently accepting individual requests to index sites outwith the IndieWeb community.</p>
   <p>If you are a member of the community, add your domain name as an issue in the <a href="https://github.com/capjamesg/indieweb-search">project GitHub repository</a> and we may add you to our crawl list.</p>
   <h2>Will you recrawl my site?</h2>
-  <p>We plan to recrawl sites on a regular basis. The logic for recrawling is being determined.</p>
+  <p>We recrawl sites and pages in our index to ensure our index is up to date.</p>
+  <p>Each day, content in certain feeds discovered by IndieWeb Search will be reindexed (once this logic is fully implemented). This helps us catch new content soon after it is published so we can serve it from our search engine.</p>
   <h2>How can I ask you to index my newest content automatically?</h2>
-  <p>Providing manual indexing requests on-demand is on our radar but has not been implemented. As a result, you will need to wait for us to crawl your site again before a new page is added.</p>
-  <p>If you would like to see an automatic indexing API endpoint, <a href="https://github.com/capjamesg/indieweb-search"> let us know on GitHub</a>.</p>
+  <p>Providing manual indexing requests is not supported by IndieWeb Search. You will need to wait for us to crawl your site again before a new page is added.</p>
+  <p>You can, however, increase the chance your content is indexed or re-indexed quickly by providing a feed on your site. A feed will help us find updated content on your site.</p>
+  <p>You can also increase the chance your content is indexed or re-indexed by adding a URL that you want to be crawled into your sitemap.</p>
+  <p>Sitemaps are parsed at the beginning of a crawl. As a result, URLs placed in a sitemap are more likely to be indexed faster.</p>
   <p><a href="/">Click here to go to back to the IndieWeb search engine.</a></p>
+  <h2>Can you remove my site or a web page on my site from your index?</h2>
+  <p>If you would like to remove your site or a page on your site from the IndieWeb Search Index, please create an issue on the <a href="https://github.com/capjamesg/indieweb-search"></a>project GitHub page</p>.</p>
+  <h2>How can I get a featured snippet on your search engine?</h2>
+  <p>Our direct answers, which resemble what you may know from other search engines as "featured snippets, rely heavily on microformats markup. If you want to improve your chance of receiving a featured snippet, we recommend investigating <a href="https://microformats.org/">microformats2</a> and adding markup that you believe is relevant to your site.</p>
+  <p>We currently parse rel=me, h-event, h-review, h-recipe, and h-card in our direct answers.</p>
+  <p>Microformats markup is not required to receive a featured snippet but aids us in finding content that may be relevant to a search query.</p>
+  <h2>Is there a crawl budget?</h2>
+  <p>We do limit how many URLs are crawled. At the moment, all URLs</p>
 </section>
 {% endblock content %}

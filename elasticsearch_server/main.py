@@ -293,10 +293,25 @@ def check():
             }
 
             lower_trailing_response = es.search(index="pages", body=search_param)
+
+            no_www = es.search(index="pages", body=search_param)
+
+            search_param = {
+                "query": {
+                    "term": {
+                        "url.keyword": {
+                            "value": url.lower().replace("www.", "")
+                        }
+                    }
+                }
+            }
+
+            no_www = es.search(index="pages", body=search_param)
         else:
             lower_response = None
             trailing_response = None
             lower_trailing_response = None
+            no_www = None
 
         if response:
             return jsonify(response["hits"]["hits"])
@@ -306,6 +321,8 @@ def check():
             return jsonify(trailing_response["hits"]["hits"])
         elif lower_trailing_response:
             return jsonify(lower_trailing_response["hits"]["hits"])
+        elif no_www:
+            return jsonify(no_www["hits"]["hits"])
         else:
             return jsonify({"status": "not found"})
     else:

@@ -21,7 +21,7 @@ def check_remove_url(full_url):
 		print("removed {} from index as it is no longer valid".format(full_url))
 		logging.info("removed {} from index as it is no longer valid".format(full_url))
 
-def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, external_links, discovered_urls, iterate_list_of_urls, site_url, crawl_budget, url, feeds, feed_urls, site, link_discovery=True):
+def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, external_links, discovered_urls, iterate_list_of_urls, site_url, crawl_budget, url, feeds, feed_urls, site, link_discovery=True, h_card=[]):
 	"""
 		Crawls URLs in list, adds URLs to index, and returns updated list
 	"""
@@ -29,7 +29,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 
 	feeds = []
 
-	full_url = url.replace("http://", "https://")
+	full_url = url
 
 	if len(full_url) > 125:
 		print("{} url too long, skipping".format(full_url))
@@ -39,11 +39,6 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 	if "javascript:" in full_url:
 		print("{} marked as noindex because it is a javascript resource".format(full_url))
 		logging.info("{} marked as noindex because it is a javascript resource".format(full_url))
-		return url, {}, False, feeds
-
-	if "%" in full_url:
-		print("{} marked as noindex because it has a % in the slug".format(full_url))
-		logging.info("{} marked as follow, noindex because it has a % in the slug".format(full_url))
 		return url, {}, False, feeds
 
 	# Only get URLs that match namespace exactly
@@ -78,16 +73,16 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 
 				full_url = page_test.history[-1].url
 
-			if page_test.headers.get("X-Robots-Tag"):
+			if page_test.headers.get("x-robots-tag"):
 				# only obey directives pointed at indieweb-search or everyone
-				if "indieweb-search:" in page_test.headers.get("X-Robots-Tag") or ":" not in page_test.headers.get("X-Robots-Tag"):
-					if "noindex" in page_test.headers.get("X-Robots-Tag") or "none" in page_test.headers.get("X-Robots-Tag"):
+				if "indieweb-search:" in page_test.headers.get("x-robots-tag") or ":" not in page_test.headers.get("x-robots-tag"):
+					if "noindex" in page_test.headers.get("x-robots-tag") or "none" in page_test.headers.get("x-robots-tag"):
 						print("{} marked as noindex".format(full_url))
 						logging.info("{} marked as noindex".format(full_url))
 						return url, {}, False, []
-					elif "nofollow" in page_test.headers.get("X-Robots-Tag"):
-						print("all links on {} marked as nofollow due to X-Robots-Tag nofollow value".format(full_url))
-						logging.info("all links on {} marked as nofollow due to X-Robots-Tag nofollow value".format(full_url))
+					elif "nofollow" in page_test.headers.get("x-robots-tag"):
+						print("all links on {} marked as nofollow due to x-robots-tag nofollow value".format(full_url))
+						logging.info("all links on {} marked as nofollow due to x-robots-tag nofollow value".format(full_url))
 						nofollow_all = True
 				
 		except requests.exceptions.Timeout:
@@ -121,7 +116,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 					if link["rel"].startswith("/"):
 						# get site domain
 						domain = full_url.split("/")[2]
-						link["rel"] = "https://" + domain + link["rel"]
+						link["rel"] = full_url.split("/")[0] + "//" + domain + link["rel"]
 
 					canonical = link["rel"].strip("/").replace("http://", "https://").split("?")[0].lower()
 
@@ -185,9 +180,9 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			return url, {}, False, feeds
 				
 		elif page.status_code != 200:
-			print("{} page failed to load.".format(full_url))
+			print("{} page returned {} status code".format(full_url, page.status_code))
 			check_remove_url(full_url)
-			logging.error("{} page failed to load.".format(full_url))
+			logging.error("{} page {} status code".format(full_url, page.status_code))
 			return url, {}, False, feeds
 
 		try:
@@ -223,7 +218,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			if canonical_url.startswith("/"):
 				# get site domain
 				domain = full_url.split("/")[2]
-				canonical_url = "https://" + domain + canonical_url
+				canonical_url = full_url.split("/")[0] + "//" + domain + canonical_url
 
 			canonical = canonical_url.strip("/").replace("http://", "https://").split("?")[0].lower()
 
@@ -282,7 +277,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 					if feed_item["href"].startswith("/"):
 						# get site domain
 						domain = full_url.split("/")[2]
-						feed_url = "https://" + domain + feed_item["href"]
+						feed_url = full_url.split("/")[0] + "//" + domain + feed_item["href"]
 
 						canonical = feed_url.strip("/").replace("http://", "https://").split("?")[0].strip().strip("<").strip(">").lower()
 
@@ -336,13 +331,25 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 						feed_url = link_header.split(";")[0].strip().strip("<").strip(">")
 
 						if feed_url and feed_url not in feed_urls:
-							feeds.append({"website_url": site, "feed_url": feed_url, "mime_type": "feed", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
+							# get feed type
+							if "type=\"" in link_header:
+								feed_type = link_header.split("type=\"")[1].split("\"")[0]
+							else:
+								feed_type = "feed"
+
+							feeds.append({"website_url": site, "feed_url": feed_url, "mime_type": feed_type, "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
 							feed_urls.append(feed_url.strip("/"))
 
 							print("found feed {}, will save to feeds.json".format(feed_url))
 							logging.info("found feed {}, will save to feeds.json".format(feed_url))
 
 			final_urls, iterate_list_of_urls, all_links, external_links, discovered_urls = page_link_discovery.page_link_discovery(links, final_urls, iterate_list_of_urls, full_url, all_links, external_links, discovered_urls, site_url)
+
+		# there are a few wikis in the crawl and special pages provide very little value to the search index
+		if "/Special:" in full_url and "MediaWiki" in page_desc_soup.find("meta", {"name": "generator"})["content"]:
+			print("{} is a mediawiki special page, will not crawl".format(full_url))
+			logging.info("{} is a mediawiki special page, will not crawl".format(full_url))
+			return url, {}, False, feeds
 
 		if "/tags/" in full_url or "/tag/" in full_url or "/label/" in full_url or "/search/" in full_url or "/category/" in full_url or "/categories/" in full_url:
 			print("{} marked as follow, noindex because it is a tag, label, or search resource".format(full_url))
@@ -414,7 +421,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			return url, discovered_urls, False, feeds
 			
 		try:
-			pages_indexed = add_to_database.add_to_database(full_url, published_on, doc_title, meta_description, heading_info, page, pages_indexed, page_desc_soup, len(links), crawl_budget, nofollow_all, page_desc_soup.find("body"))
+			pages_indexed = add_to_database.add_to_database(full_url, published_on, doc_title, meta_description, heading_info, page, pages_indexed, page_desc_soup, len(links), crawl_budget, nofollow_all, page_desc_soup.find("body"), h_card)
 		except Exception as e:
 			print("error with {}".format(full_url))
 			print(e)
