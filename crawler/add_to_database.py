@@ -42,6 +42,16 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 				h_card = item["properties"]
 				break
 
+	if not h_card:
+		domain = full_url.split("/")[2]
+		domain_parsed = mf2py.parse(url="https://" + domain)
+
+		for item in domain_parsed['items']:
+			if item['type'] == 'h-card' or (type(item["type"]) == list and "h-card" in item['type']):
+				if item.get("properties"):
+					h_card = item["properties"]
+					break
+
 	if nofollow_all == True:
 		nofollow_all = "true"
 	else:

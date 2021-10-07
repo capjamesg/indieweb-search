@@ -136,7 +136,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 
 						iterate_list_of_urls.append(canonical_url)
 
-						discovered_urls[canonical_url] = canonical_url
+						discovered_urls[canonical_url] = "CANONICAL {}".format(full_url)
 
 						logging.info("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical_url))
 						print("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical_url))
@@ -170,6 +170,15 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 				final_urls[redirected_to] = ""
 
 				iterate_list_of_urls.append(redirected_to)
+
+				# don't index a url if it was redirected from a canonical and wants to redirect again
+				if discovered_urls.get(full_url) and discovered_urls.get(full_url).startswith("CANONICAL"):
+					split_value = discovered_urls.get(full_url).split(" ")
+					redirected_from = split_value[1]
+					if redirected_from == redirected_to:
+						print("{} has already been redirected from a canonical url, will not redirect a second time, skipping".format(full_url))
+						logging.info("{} has already been redirected from a canonical url, will not redirect a second time, skipping".format(full_url))
+						return url, {}, False, feeds
 
 				discovered_urls[redirected_to] = redirected_to
 
@@ -229,7 +238,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 
 				iterate_list_of_urls.append(canonical)
 
-				discovered_urls[canonical] = canonical
+				discovered_urls[canonical] = "CANONICAL"
 
 				logging.info("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical))
 				print("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical))
@@ -260,7 +269,6 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			links = [l for l in page_desc_soup.find_all("a") if (l.get("rel") and "nofollow" not in l["rel"]) or (not l.get("rel") and l.get("href") not in ["#", "javascript:void(0);"])]
 		else:
 			links = []
-
 
 		# only discover feeds and new links if a crawl is going on
 		# this is used to ensure that the crawler doesn't discover new links or feeds when just indexing one page from a site that is already in the index
