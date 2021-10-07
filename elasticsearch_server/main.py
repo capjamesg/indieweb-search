@@ -6,9 +6,9 @@ import config
 
 es = Elasticsearch(['http://localhost:9200'])
 
-app = Blueprint('main', __name__)
+main = Blueprint('main', __name__)
 
-@app.route("/")
+@main.route("/")
 def home():
     pw = config.ELASTICSEARCH_PASSWORD
 
@@ -156,7 +156,7 @@ def home():
 
     return response
 
-@app.route("/remove-from-index", methods=["POST"])
+@main.route("/remove-from-index", methods=["POST"])
 def remove_from_index():
     if request.method == "POST":
         # check auth header
@@ -172,7 +172,7 @@ def remove_from_index():
     else:
         return abort(401)
 
-@app.route("/create", methods=["POST"])
+@main.route("/create", methods=["POST"])
 def create():
     if request.method == "POST":
         # check auth header
@@ -189,7 +189,7 @@ def create():
     else:
         return abort(401)
 
-@app.route("/update", methods=["POST"])
+@main.route("/update", methods=["POST"])
 def update():
     if request.method == "POST":
         # check auth header
@@ -215,7 +215,7 @@ def update():
     else:
         return abort(401)
 
-@app.route("/check", methods=["POST"])
+@main.route("/check", methods=["POST"])
 def check():
     if request.method == "POST":
         # check auth header
@@ -311,7 +311,7 @@ def check():
     else:
         return abort(401)
 
-@app.route("/count")
+@main.route("/count")
 def show_num_of_pages():
     count = es.count(index="pages")
 
@@ -321,7 +321,7 @@ def show_num_of_pages():
 
     return jsonify({"es_count": count, "domains": len(domains)})
 
-@app.route("/random")
+@main.route("/random")
 def random_page():
     if request.args.get("pw") != config.ELASTICSEARCH_PASSWORD:
         return abort(401)
@@ -335,12 +335,8 @@ def random_page():
 
     return jsonify({"domain": domain})
 
-@app.route("/assets/<path:path>")
-def send_assets(path):
-    return send_from_directory("static", path)
-
 # return feeds associated with URL
-@app.route("/feeds", methods=["GET", "POST"])
+@main.route("/feeds", methods=["GET", "POST"])
 def get_feeds_for_url():
     if not request.headers.get("Authorization") or request.headers.get("Authorization") != config.ELASTICSEARCH_API_TOKEN:
         abort(401)
@@ -385,7 +381,7 @@ def get_feeds_for_url():
 
     return jsonify({"message": "Method not allowed."}), 405
 
-@app.route("/save", methods=["POST"])
+@main.route("/save", methods=["POST"])
 def save_feed():
     if not request.headers.get("Authorization") or request.headers.get("Authorization") != config.ELASTICSEARCH_API_TOKEN:
         abort(401)
@@ -418,6 +414,6 @@ def save_feed():
 
     return 200
 
-@app.route("/assets/<path:path>")
+@main.route("/assets/<path:path>")
 def send_assets(path):
     return send_from_directory("static", path)
