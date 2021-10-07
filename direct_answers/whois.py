@@ -82,7 +82,7 @@ def parse_social(original_cleaned_value, soup, url, original_url):
                     # find file in static/icons
                     if link_type and link_type != "" and os.path.isfile("static/icons/" + link_type.lower() + "-16x16" + ".png"):
                         image = "<img src='/static/icons/" + link_type.lower() + "-16x16" + ".png' height='15' width='15' style='display: inline;'>"
-                        to_show += "<li><a href='{}'>{} {}</a></li>".format(image, link.get("href"), link_type)
+                        to_show += "<li>{}<a href='{}'> {}</a></li>".format(image, link.get("href"), link_type)
                     elif link_type and link_type != "":
                         to_show += "<li><a href='{}'>{}</a></li>".format(link.get("href"), link_type)
                     else:

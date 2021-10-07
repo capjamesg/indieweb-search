@@ -89,9 +89,6 @@ def home():
             },
         },
     }
-
-    if discover and discover == "true":
-        search_param["query"]["script_score"]["query"]["query_string"]["fields"] = "3<75%"
     
     # + (doc['incoming_links'].value / 100)
 
