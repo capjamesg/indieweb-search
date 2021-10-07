@@ -57,8 +57,8 @@ The config.py file should contain the following variables:
     import os
 
     HEADERS = {
-        "User-agent": "YOUR_USER_AGENT",
-        "Accept": "text/html"
+        "User-agent": "indieweb-search",
+        "Accept": "text/html, application/xhtml+xml, text/xml, */*" # used for content negotiation
     }
 
     ROOT_DIRECTORY = os.path.dirname(os.path.abspath("__init__.py"))

@@ -73,18 +73,17 @@ for hits in scroll(es, 'pages', body, '2m', 20):
 
                     mf2_attribute = ""
 
-                    if "u-in-reply-to" in link.class_:
-                        mf2_attribute = "u-in-reply-to"
-                    elif "u-like-of" in link.class_:
-                        mf2_attribute = "u-like-of"
-                    elif "u-repost-of" in link.class_:
-                        mf2_attribute = "u-repost-of"
-                    elif "u-bookmark-of" in link.class_:
-                        mf2_attribute = "u-bookmark-of"
-                    elif "u-url" in link.class_:
-                        mf2_attribute = "u-url"
-                    else:
-                        mf2_attribute = ""
+                    if l.has_attr("class"):
+                        if "u-in-reply-to" in l["class"]:
+                            mf2_attribute = "u-in-reply-to"
+                        elif "u-like-of" in l["class"]:
+                            mf2_attribute = "u-like-of"
+                        elif "u-repost-of" in l["class"]:
+                            mf2_attribute = "u-repost-of"
+                        elif "u-bookmark-of" in l["class"]:
+                            mf2_attribute = "u-bookmark-of"
+                        elif "u-url" in l["class"]:
+                            mf2_attribute = "u-url"
 
                     if link_microformat_instances.get(mf2_attribute):
                         link_microformat_instances[mf2_attribute] += 1
@@ -196,5 +195,5 @@ with open('top_ten_links.csv', 'w') as f:
 print("calculated top 10 linked assets")
 print("done")
 
-with open('link_microformat_instances.json', 'w') as f:
+with open('link_microformat_instances.json', 'w+') as f:
     json.dump(link_microformat_instances, f)

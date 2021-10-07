@@ -3,9 +3,8 @@ import requests
 import datetime
 import logging
 from config import ROOT_DIRECTORY
-import json
+import mf2py
 import csv
-import os
 import config
 import crawler.url_handling as url_handling
 import concurrent.futures
@@ -36,26 +35,50 @@ def find_robots_directives(site_url):
 		Finds the robots.txt file on a website, reads the contents, then follows directives.
 	"""
 
+	protocol = "https://"
+
+	try:
+		r = requests.get("https://" + site_url, headers=config.HEADERS, timeout=5, allow_redirects=True, verify=False)
+	except Exception as e:
+		print(e)
+		pass
+
+	try:
+		r = requests.get("http://" + site_url, headers=config.HEADERS, timeout=5, allow_redirects=True, verify=False)
+		protocol = "http://"
+	except Exception as e:
+		print(e)
+		print("error with {} url and site, skipping".format(site_url))
+		logging.debug("error with {} url and site, skipping".format(site_url))
+		return
+
+	# get accept header
+	accept = r.headers.get("accept")
+
+	if accept:
+		headers = config.HEADERS
+		headers["accept"] = accept.split(",")[0]
+
 	# allow five redirects before raising an exception
 	session = requests.Session()
 	session.max_redirects = 5
 	
 	try:
-		read_robots = session.get("https://{}/robots.txt".format(site_url), headers=config.HEADERS, timeout=5, allow_redirects=True, verify=False)
+		read_robots = session.get("{}{}/robots.txt".format(protocol, site_url), headers=config.HEADERS, timeout=5, allow_redirects=True, verify=False)
 	except requests.exceptions.RequestException as e:
 		logging.error("Error with site: {}".format(e))
-		return [], []
+		return [], [], protocol
 	except requests.exceptions.ConnectionError:
 		logging.error("Connection error with site: {}".format(site_url))
-		return [], []
+		return [], [], protocol
 	except:
 		print("Error: Could not find robots.txt file on {}".format(site_url))
 		logging.error("Error: Could not find robots.txt file on {}".format(site_url))
-		return [], []
+		return [], [], protocol
 
 	if read_robots.status_code == 404:
 		logging.warning("Robots.txt not found on {}".format(site_url))
-		return [], ["https://{}/sitemap.xml".format(site_url)]
+		return [], ["{}{}/sitemap.xml".format(protocol, site_url)], protocol
 
 	namespaces_to_ignore = []
 	
@@ -71,7 +94,7 @@ def find_robots_directives(site_url):
 		if "Disallow:" in processed_line and next_line_is_to_be_read == True:
 			if processed_line == "Disallow: /*" or processed_line == "Disallow: *":
 				print("All URLs disallowed. Crawl complete")
-				return namespaces_to_ignore, sitemap_urls
+				return namespaces_to_ignore, sitemap_urls, protocol
 			namespaces_to_ignore.append(processed_line.split(":")[1].strip())
 		elif "Sitemap:" in processed_line and next_line_is_to_be_read == True:
 			# Second : will be in the URL of the sitemap so it needs to be preserved
@@ -83,12 +106,12 @@ def find_robots_directives(site_url):
 	if sitemap_urls == []:
 		sitemap_urls.append("https://{}/sitemap.xml".format(site_url))
 
-	return namespaces_to_ignore, sitemap_urls
+	return namespaces_to_ignore, sitemap_urls, protocol
 
 def process_domain(site, reindex):
 	final_urls = {}
 	
-	namespaces_to_ignore, sitemap_urls = find_robots_directives(site)
+	namespaces_to_ignore, sitemap_urls, protocol = find_robots_directives(site)
 
 	if namespaces_to_ignore == "broken":
 		return 0, [], site
@@ -148,24 +171,15 @@ def process_domain(site, reindex):
 				final_urls[u.find("loc").text] = ""
 
 	if reindex == True:
-		return 100, final_urls, namespaces_to_ignore
+		return 100, final_urls, namespaces_to_ignore, protocol
 	else:
-		return 2, final_urls, namespaces_to_ignore
+		return 5000, final_urls, namespaces_to_ignore, protocol
 
 def build_index(site, reindex=False):
-	# remove from queue before indexing starts
-	# prevents against failure to index and not being recognised in file
-	with open("crawl_queue.txt", "r") as f:
-		rows = f.readlines()
-
-	if site in rows:
-		rows.remove(site)
-	
-	if site + "\n" in rows:
-		rows.remove(site  + "\n")
-
-	with open("crawl_queue.txt", "w+") as f:
-		f.writelines(rows)
+	# do not index IPs
+	# sites must have a domain name to qualify for inclusion in the index
+	if site.replace(".", "").isdigit():
+		return site, []
 
 	headers = {
 		"Authorization": config.ELASTICSEARCH_API_TOKEN
@@ -195,7 +209,7 @@ def build_index(site, reindex=False):
 		csv.writer(f).writerow([site, date])
 
 	# read crawl_queue.txt
-	crawl_budget, final_urls, namespaces_to_ignore = process_domain(site, reindex)
+	crawl_budget, final_urls, namespaces_to_ignore, protocol = process_domain(site, reindex)
 
 	if crawl_budget == 0:
 		return site, []
@@ -204,14 +218,6 @@ def build_index(site, reindex=False):
 		final_urls["https://{}".format(site)] = ""
 
 	iterate_list_of_urls = list(final_urls.keys())
-
-	try:
-		requests.get("https://" + site, headers=config.HEADERS, timeout=5, allow_redirects=True, verify=False)
-	except Exception as e:
-		print(e)
-		print("error with {} url and site, skipping".format(iterate_list_of_urls[0]))
-		logging.debug("error with {} url and site, skipping".format(iterate_list_of_urls[0]))
-		return
 
 	print("processing {}".format(site))
 	logging.debug("processing {}".format(site))
@@ -227,9 +233,15 @@ def build_index(site, reindex=False):
 
 	all_feeds = []
 	discovered_feeds_dict = {}
+
+	try:
+		h_card = mf2py.Parser(protocol + site, timeout=5, verify=False)
+	except:
+		h_card = []
+		print("no h-card could be found on {} home page".format(site))
 	
 	for url in iterate_list_of_urls:
-		url_indexed, discovered, valid, discovered_feeds = url_handling.crawl_urls(final_urls, namespaces_to_ignore, indexed, links, external_links, discovered_urls, iterate_list_of_urls, site, crawl_budget, url, [], feed_urls, site, True)
+		url_indexed, discovered, valid, discovered_feeds = url_handling.crawl_urls(final_urls, namespaces_to_ignore, indexed, links, external_links, discovered_urls, iterate_list_of_urls, site, crawl_budget, url, [], feed_urls, site, True, h_card)
 
 		if valid == True:
 			valid_count += 1
@@ -284,6 +296,18 @@ def build_index(site, reindex=False):
 		if not indexed_list.get(item):
 			print("{} not indexed, added".format(item))
 			iterate_list_of_urls.append(item)
+			
+	with open("crawl_queue.txt", "r") as f:
+		rows = f.readlines()
+
+	if site in rows:
+		rows.remove(site)
+	
+	if site + "\n" in rows:
+		rows.remove(site  + "\n")
+
+	with open("crawl_queue.txt", "w+") as f:
+		f.writelines(rows)
 
 	return url_indexed, discovered
 

@@ -6,7 +6,7 @@ import config
 import mf2py
 import json
 
-def add_to_database(full_url, published_on, doc_title, meta_description, heading_info, page, pages_indexed, page_content, outgoing_links, crawl_budget, nofollow_all, main_page_content):
+def add_to_database(full_url, published_on, doc_title, meta_description, heading_info, page, pages_indexed, page_content, outgoing_links, crawl_budget, nofollow_all, main_page_content, h_card):
 	# get last modified date
 
 	if page != "" and page.headers:
@@ -32,25 +32,17 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 	else:
 		favicon = ""
 
-	mf2_parsed = mf2py.parse(url="https://" + full_url.split("/")[2])
+	h_card_to_index = None
 
-	h_card = None
-
-	for item in mf2_parsed['items']:
-		if item['type'] == 'h-card' or (type(item["type"]) == list and "h-card" in item['type']):
-			if item.get("properties"):
-				h_card = item["properties"]
-				break
-
-	if not h_card:
-		domain = full_url.split("/")[2]
-		domain_parsed = mf2py.parse(url="https://" + domain)
-
-		for item in domain_parsed['items']:
+	if len(h_card) == 0:
+		mf2_parsed = mf2py.parse(url=full_url.split("/")[0] + "//" + full_url.split("/")[2])
+		for item in mf2_parsed['items']:
 			if item['type'] == 'h-card' or (type(item["type"]) == list and "h-card" in item['type']):
 				if item.get("properties"):
-					h_card = item["properties"]
+					h_card_to_index = item["properties"]
 					break
+	else:
+		h_card_to_index = h_card[0]
 
 	if nofollow_all == True:
 		nofollow_all = "true"
@@ -92,7 +84,7 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 		"internal_incoming_links": 0, # not actively used
 		"http_headers": str(page.headers),
 		"page_is_nofollow": nofollow_all,
-		"h_card": json.dumps(h_card),
+		"h_card": json.dumps(h_card_to_index),
 		"is_homepage": is_homepage,
 	}
 
