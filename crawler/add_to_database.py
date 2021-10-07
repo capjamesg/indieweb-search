@@ -6,7 +6,7 @@ import config
 import mf2py
 import json
 
-def add_to_database(full_url, published_on, doc_title, meta_description, heading_info, page, pages_indexed, page_content, outgoing_links, crawl_budget, nofollow_all, main_page_content, h_card):
+def add_to_database(full_url, published_on, doc_title, meta_description, heading_info, page, pages_indexed, page_content, outgoing_links, crawl_budget, nofollow_all, main_page_content, original_h_card):
 	# get last modified date
 
 	if page != "" and page.headers:
@@ -19,7 +19,7 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 	for script in page_content(["script", "style"]):
 		script.decompose()
 
-	# remove comments
+	# remove HTML comments
 
 	comments = page_content.findAll(text=lambda text:isinstance(text, Comment))
 	[comment.extract() for comment in comments]
@@ -32,17 +32,51 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 	else:
 		favicon = ""
 
-	h_card_to_index = None
+	h_card = []
+	h_card_url = None
 
-	if len(h_card) == 0:
-		mf2_parsed = mf2py.parse(url=full_url.split("/")[0] + "//" + full_url.split("/")[2])
-		for item in mf2_parsed['items']:
-			if item['type'] == 'h-card' or (type(item["type"]) == list and "h-card" in item['type']):
-				if item.get("properties"):
-					h_card_to_index = item["properties"]
+	h_entry = mf2py.parse(page_content)
+
+	for i in h_entry["items"]:
+		if i['type'] == ['h-entry']:
+			if i['properties'].get('author'):
+				# if author is h_card
+				if type(i['properties']['author'][0]) == dict and i['properties']['author'][0].get('type') == ['h-card']:
+					h_card = i['properties']['author'][0]
 					break
-	else:
-		h_card_to_index = h_card[0]
+
+				elif type(i['properties']['author']) == list:
+					h_card = i['properties']['author'][0]
+					break
+				
+	# if rel=author, look for h-card on the rel=author link
+	if h_card == []:
+		rel_author = h_entry['rels']['author']
+
+		if rel_author:
+			h_card_url = rel_author[0]
+
+	if h_card_url:
+		new_h_card = mf2py.parse(url=h_card_url)
+
+		if new_h_card.get("rels") and new_h_card.get("rels").get("me"):
+			rel_mes = new_h_card['rels']['me']
+		else:
+			rel_mes = []
+
+		for j in new_h_card["items"]:
+			if j.get('type') and j.get('type') == ['h-card'] and j['properties']['url'] == rel_author and j['properties'].get('uid') == j['properties']['url']:
+				h_card = j
+				break
+			elif j.get('type') and j.get('type') == ['h-card'] and j['properties'].get('url') in rel_mes:
+				h_card = j
+				break
+			elif j.get('type') and j.get('type') == ['h-card'] and j['properties']['url'] == rel_author:
+				h_card = j
+				break
+
+	if h_card == [] or h_card == None:
+		h_card = original_h_card
 
 	if nofollow_all == True:
 		nofollow_all = "true"
@@ -84,7 +118,7 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 		"internal_incoming_links": 0, # not actively used
 		"http_headers": str(page.headers),
 		"page_is_nofollow": nofollow_all,
-		"h_card": json.dumps(h_card_to_index),
+		"h_card": json.dumps(h_card),
 		"is_homepage": is_homepage,
 	}
 
