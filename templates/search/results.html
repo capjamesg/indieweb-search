@@ -19,7 +19,7 @@
         {% if r['_source']['url'] != special_result.breadcrumb %}
           <li class="h-entry">
             <p class="breadcrumbs"><a href="{{ r['_source']['url'] }}" style="border-bottom: none;">{% for item in r['_source']['url'].replace("https://", "").replace("http://", "").rstrip("/").split("/") %} {{ item.replace("%20", " ") }} {% if not loop.last %}>{% endif %}{% endfor %}</a></p>
-            {% if r['_source']['h_card'] and r['_source']['h_card']['url'] and r['_source']['h_card']['url'][0].split("/")[2] == r['_source']['url'][0].split('/')[2] %}
+            {% if r['_source']['h_card'] and r['_source']['h_card']['url'] and r['_source']['h_card']['url'][0].split("/")[2] == r['_source']['url'].split('/')[2] %}
               <div class="h-card p-author" style="float: left;">
                 {% if r["_source"]["h_card"]["photo"] %}
                 <img src="{% if r['_source']['h_card']['photo'][0].startswith('/') %}https://{{ r['_source']['url'].split('/')[2] }}{% endif %}{{ r['_source']['h_card']['photo'][0] }}" height="75" width="75" class="u-photo" style="float: left; margin-right: 10px;" />
@@ -28,7 +28,7 @@
             {% endif %}
             <div class="serp-item">
               <p class="p-name" style="font-size: 22px; margin-bottom: 0;"><a href="{{ r['_source']['url'] }}" class="u-url u-uid">{% if r['_source']['title']|length == 0 %}{{ " ".join(r['_source']['url'][0].split(" ")[:20]) }}{% if r['_source']['url'][0].split(" ")|length > 20 %}...{% endif %}{% else %}{{ " ".join(r['_source']['title'].split(" ")[:20]) }}{% if r['_source']['title'].split(" ")|length > 20 %}...{% endif %}{% endif %}</a></p>
-              {% if r['_source']['h_card'] and r['_source']['h_card']["name"] and r['_source']['h_card']["name"][0].strip() != r['_source']['title'].strip() and r['_source']['h_card']['url'] and r['_source']['h_card']['url'][0].split("/")[2] == r['_source']['url'][0].split('/')[2] %}
+              {% if r['_source']['h_card'] and r['_source']['h_card']["name"] and r['_source']['h_card']["name"][0].strip() != r['_source']['title'].strip() and r['_source']['h_card']['url'] and r['_source']['h_card']['url'][0].split("/")[2] == r['_source']['url'].split('/')[2] %}
               <p class="p-name breadcrumbs">Written by <a href="{{ r['_source']['h_card']['url'][0] }}" class="p-author">{{ r['_source']['h_card']['name'][0] }}</a></p>
               {% endif %}
               <p class="p-summary">{% if r['_source']['meta_description']|length > 0 %}{{ r['_source']['meta_description'] }}{% elif (r['_source']['h1'].split(",") and r['_source']['h1'].split(",")[0]|length > 0) or r['_source']['h1'] != "" %}{{ r['_source']['h1'].split(",")[0] }}{% else %}{{ r['_source']['h2'].split(",")[0] }}{% endif %}</p>
@@ -78,6 +78,9 @@
       </ol>
     {% endif %}
     <p>You can follow this page in any <a href="https://indieweb.org/Microsub#Clients">Microsub reader</a> that supports reading h-feeds.</p>
+    {% if "atlas.p3k.io" in do_i_use %}
+    <p>The map at the top of this search result is provided by the <a href="https://atlas.p3k.io">p3k Atlas API</a>.</p>
+    {% endif %}
     {% if base_results_query.endswith("social") %}
     <p>The icons in the direct answer at the top of this page are from Paul Robert Lloyd's <a href="https://github.com/paulrobertlloyd/socialmediaicons">socialmediaicons</a> collection.</p>
     {% endif %}

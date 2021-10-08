@@ -176,7 +176,8 @@ def results_page():
 					r["_source"]["h_card"] = None
 			
 			if page == 1:
-				if request.args.get("type") != "image" and ("what is" in cleaned_value or "event" in cleaned_value or "review" in cleaned_value or "recipe" in cleaned_value or "what are" in cleaned_value  or "what were" in cleaned_value or "why" in cleaned_value or "how" in cleaned_value or "microformats" in cleaned_value) and "who is" not in cleaned_value:
+				cleaned_value = cleaned_value.lower()
+				if request.args.get("type") != "image" and ("what is" in cleaned_value or "meetup" in cleaned_value or "event" in cleaned_value or "review" in cleaned_value or "recipe" in cleaned_value or "what are" in cleaned_value  or "what were" in cleaned_value or "why" in cleaned_value or "how" in cleaned_value or "microformats" in cleaned_value) and "who is" not in cleaned_value:
 					# remove stopwords from query
 					original = cleaned_value_for_query
 					cleaned_value_for_query = cleaned_value.replace("what is", "").replace("what are", "").replace("why", "").replace("how", "").replace("what were", "").replace("to use", "").strip()

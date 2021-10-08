@@ -60,7 +60,7 @@ for hits in scroll(es, 'pages', body, '2m', 20):
             for l in links:
                 if l.has_attr('href'):
                     # skip nofollow links
-                    if l.has_attr("rel") and l['rel'] == "nofollow":
+                    if l.has_attr("rel") and "nofollow" in l["rel"]:
                         continue
                     link = l['href'].split("?")[0].replace("#", "")
                     if l["href"].startswith("/"):
