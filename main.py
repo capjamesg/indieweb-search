@@ -355,7 +355,13 @@ def stats():
 
 	feed_breakdown_request = requests.get("https://es-indieweb-search.jamesg.blog/feed_breakdown", headers=headers).json()
 
-	return render_template("search/stats.html", count=count, domains=domains, title="IndieWeb Search Index Stats", feed_breakdown=feed_breakdown_request)
+	special_stats = requests.get("https://es-indieweb-search.jamesg.blog/special_stats", headers=headers).json()
+
+	top_linked_assets = special_stats["top_ten_links"]
+
+	link_types = special_stats["link_microformat_instances"]
+
+	return render_template("search/stats.html", count=count, domains=domains, title="IndieWeb Search Index Stats", feed_breakdown=feed_breakdown_request, top_linked_assets=top_linked_assets, link_types=link_types)
 
 @main.route("/about")
 def about():

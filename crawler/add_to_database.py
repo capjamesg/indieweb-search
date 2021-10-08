@@ -34,6 +34,7 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 
 	h_card = []
 	h_card_url = None
+	category = None
 
 	h_entry = mf2py.parse(page_content)
 
@@ -48,6 +49,10 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 				elif type(i['properties']['author']) == list:
 					h_card = i['properties']['author'][0]
 					break
+
+			# category
+			if i['properties'].get('category'):
+				category = ", ".join(i['properties']['category'])
 				
 	# if rel=author, look for h-card on the rel=author link
 	if h_card == []:
@@ -93,7 +98,7 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 		is_homepage = True
 	else:
 		is_homepage = False
-
+		
 	record = {
 		"title": doc_title,
 		"meta_description": meta_description,
@@ -120,6 +125,7 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 		"page_is_nofollow": nofollow_all,
 		"h_card": json.dumps(h_card),
 		"is_homepage": is_homepage,
+		"category": category
 	}
 
 	# results currently being saved to a file, so no need to run this code
