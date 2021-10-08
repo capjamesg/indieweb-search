@@ -56,6 +56,7 @@ for hits in scroll(es, 'pages', body, '2m', 20):
             continue
 
         with open('links.csv', 'a') as f:
+            links_on_page = {}
             for l in links:
                 if l.has_attr('href'):
                     # skip nofollow links
@@ -70,6 +71,12 @@ for hits in scroll(es, 'pages', body, '2m', 20):
                         link = l.get('href')
                     else:
                         link = "https://" + h["_source"]["domain"] + "/" + l.get('href')
+                        
+                    # don't count the same link twice
+                    if links_on_page.get(link):
+                        continue
+
+                    links_on_page[link] = link
 
                     mf2_attribute = ""
 
@@ -182,12 +189,12 @@ for link, link_count in links.items():
 print("calculating top linked assets")
 
 # sort URLs by number of incoming links
-links = {k: v for k, v in sorted(links.items(), key=lambda item: item[1])}
+links = {k: v for k, v in reversed(sorted(links.items(), key=lambda item: item[1]))}
 
 link_origin = [i for i in links.keys()]
 link_value = [i for i in links.values()]
 
-top_ten = [[origin, value] for origin, value in zip(link_origin, link_value)[:10]]
+top_ten = [[origin, value] for origin, value in zip(link_origin, link_value)][:10]
 
 with open('top_ten_links.csv', 'w') as f:
     csv.writer(f).writerows(top_ten)
@@ -195,5 +202,5 @@ with open('top_ten_links.csv', 'w') as f:
 print("calculated top 10 linked assets")
 print("done")
 
-with open('link_microformat_instances.json', 'w+') as f:
-    json.dump(link_microformat_instances, f)
+# with open('link_microformat_instances.json', 'w+') as f:
+#     json.dump(link_microformat_instances, f)

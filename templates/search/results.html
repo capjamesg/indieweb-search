@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 {% block content %}
 <section class="h-feed">
-  <h1 class="p-name p-summary">Your Search Results</h1>
+  <h1 class="p-name p-summary hide-on-mobile">Your Search Results</h1>
     <form action="/results" method="GET" role="search">
       <input type="text" id="query" name="query" placeholder="Enter your query" aria-label="Search the IndieWeb" value="{{ query }}">
       <input class="search_button" type="submit" value="Search">
     </form>
-    <p>Returned {{ '{0:,}'.format(number_of_results) }} search result{% if number_of_results != 1 %}s{% endif %} for your "{{ query }}" query.</p>
+    <p class="hide-on-mobile">Returned {{ '{0:,}'.format(number_of_results) }} search result{% if number_of_results != 1 %}s{% endif %} for your "{{ query }}" query.</p>
     <p>
       {% if query.startswith("discover ") %}Showing home pages that talk about "{{ query }}". You can also search for your query <a href="/results?query={{ query.replace('discover', '', 1) }}">on any page on any site in the index</a>. {% else %}Ordered by relevance. You can also <a href="/results?query=discover {{ query }}&page={{ page }}">discover individual sites that may write about your query</a>.{% endif %}
     </p>
@@ -19,18 +19,18 @@
         {% if r['_source']['url'] != special_result.breadcrumb %}
           <li class="h-entry">
             <p class="breadcrumbs"><a href="{{ r['_source']['url'] }}" style="border-bottom: none;">{% for item in r['_source']['url'].replace("https://", "").replace("http://", "").rstrip("/").split("/") %} {{ item.replace("%20", " ") }} {% if not loop.last %}>{% endif %}{% endfor %}</a></p>
-            <!-- {% if r['_source']['h_card'] and r['_source']['h_card']['url'] and r['_source']['h_card']['url'][0].split("/")[2] == r['_source']['url'][0].split('/')[2] %}
+            {% if r['_source']['h_card'] and r['_source']['h_card']['url'] and r['_source']['h_card']['url'][0].split("/")[2] == r['_source']['url'][0].split('/')[2] %}
               <div class="h-card p-author" style="float: left;">
                 {% if r["_source"]["h_card"]["photo"] %}
-                <img src="{% if r['_source']['h_card']['photo'][0].startswith('/') %}https://{{ r['_source']['url'][0].split('/')[2] }}{% endif %}{{ r['_source']['h_card']['photo'][0] }}" height="75" width="75" class="u-photo" style="float: left; margin-right: 10px;" />
+                <img src="{% if r['_source']['h_card']['photo'][0].startswith('/') %}https://{{ r['_source']['url'].split('/')[2] }}{% endif %}{{ r['_source']['h_card']['photo'][0] }}" height="75" width="75" class="u-photo" style="float: left; margin-right: 10px;" />
                 {% endif %}
               </div>
-            {% endif %} -->
-            <div style="width: 75%;">
+            {% endif %}
+            <div class="serp-item">
               <p class="p-name" style="font-size: 22px; margin-bottom: 0;"><a href="{{ r['_source']['url'] }}" class="u-url u-uid">{% if r['_source']['title']|length == 0 %}{{ " ".join(r['_source']['url'][0].split(" ")[:20]) }}{% if r['_source']['url'][0].split(" ")|length > 20 %}...{% endif %}{% else %}{{ " ".join(r['_source']['title'].split(" ")[:20]) }}{% if r['_source']['title'].split(" ")|length > 20 %}...{% endif %}{% endif %}</a></p>
-              <!-- {% if r['_source']['h_card'] and r['_source']['h_card']["name"] and r['_source']['h_card']["name"][0].strip() != r['_source']['title'].strip() and r['_source']['h_card']['url'] and r['_source']['h_card']['url'][0].split("/")[2] == r['_source']['url'][0].split('/')[2] %}
+              {% if r['_source']['h_card'] and r['_source']['h_card']["name"] and r['_source']['h_card']["name"][0].strip() != r['_source']['title'].strip() and r['_source']['h_card']['url'] and r['_source']['h_card']['url'][0].split("/")[2] == r['_source']['url'][0].split('/')[2] %}
               <p class="p-name breadcrumbs">Written by <a href="{{ r['_source']['h_card']['url'][0] }}" class="p-author">{{ r['_source']['h_card']['name'][0] }}</a></p>
-              {% endif %} -->
+              {% endif %}
               <p class="p-summary">{% if r['_source']['meta_description']|length > 0 %}{{ r['_source']['meta_description'] }}{% elif (r['_source']['h1'].split(",") and r['_source']['h1'].split(",")[0]|length > 0) or r['_source']['h1'] != "" %}{{ r['_source']['h1'].split(",")[0] }}{% else %}{{ r['_source']['h2'].split(",")[0] }}{% endif %}</p>
               {% if r['_source']['url'].startswith("https://indieweb.org/") or r['_source']['url'].startswith("https://microformats.org/wiki/") %}
               {% set title_count = 0 %}

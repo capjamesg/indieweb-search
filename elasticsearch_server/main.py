@@ -385,7 +385,7 @@ def get_feeds_for_url():
             )
             cursor = database.cursor(buffered=True)
 
-            cursor.execute("SELECT * FROM feeds")
+            cursor.execute("SELECT * FROM feeds WHERE")
             
             item_to_return = cursor.fetchall()
 
