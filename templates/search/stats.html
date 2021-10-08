@@ -25,8 +25,8 @@
   <h2>Top Microformat Link Types</h2>
   <p>The list below shows the most popular microformats used in <code><a></a></code> links found on web pages in the index.</p>
   <ul>
-    {% for microformat in link_types %}
-    <li>{{ microformat[0] }}: {{ microformat[1] }}</li>
+    {% for key, value in link_types.items() %}
+    {% if key == "" %}<li>Regular anchor link: {{ value }}</li>{% else %}<li>{{ key }}: {{ value }}</li>{% endif %}
     {% endfor %}
   </ul>
 </section>

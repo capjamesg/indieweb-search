@@ -29,6 +29,18 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 
 	feeds = []
 
+	# make sure urls with // are processed correctly
+	# example: https://www.test.com//text.html should become https://www.test.com/text.html
+	if "//" in url.replace("://", ""):
+		if url.startswith("http://"):
+			protocol = "http://"
+		elif url.startswith("https://"):
+			protocol = "https://"
+
+		url = url.replace("http://", "").replace("https://", "").replace("//", "/")
+
+		url = protocol + url
+
 	full_url = url
 
 	if len(full_url) > 125:
