@@ -93,6 +93,9 @@ def parse_social(original_cleaned_value, soup, url, original_url):
             else:
                 title = url
 
+            if to_show == "":
+                to_show = "No social links were found on this site's home page."
+
             return "<h3>{} Social Links</h3><ul>{}</ul><details><br><summary>How to show up here</summary>You can have social links show up by entering 'yourdomainname.com social' into the search engine as long as you have rel=me links set up on your home page. Learn how to do this on the <a href='https://indieweb.org/rel-me'>IndieWeb wiki</a>.</details>".format(title, to_show), {"type": "direct_answer", "breadcrumb": original_url, "title": title}
 
     return None, None
@@ -107,6 +110,9 @@ def parse_get_rel(original_cleaned_value, soup, url, original_url):
 
         for link in rel_values:
             to_show += "<li>{}: <a href='{}'>{}</a></li>".format("".join(link.get("rel")), link.get("href"), link.get("href"))
+
+        if to_show == "":
+            to_show = "No rel links were found on this site's home page."
 
         return "<h3>'Rel' Attributes for {}</h3><ul>{}</ul>".format(original_url.replace("https://", "").replace("http://", "").strip("/"), to_show), {"type": "direct_answer", "breadcrumb": original_url, "title": soup.find_all("h1")[0].text}
 
@@ -149,6 +155,38 @@ def parse_feed(original_cleaned_value, soup, url, original_url):
             else:
                 title = url
 
+            if to_show == "":
+                to_show = "No feeds were found on this site's home page."
+
             return "<h3>{} Feeds</h3><ul>{}</ul>".format(title, to_show), {"type": "direct_answer", "breadcrumb": original_url, "title": title}
+
+    return None, None
+
+def parse_address(original_cleaned_value, soup, url, original_url):
+    # get all addresses on a page
+    if original_cleaned_value.endswith("address"):
+        to_show = ""
+        addresses = soup.select(".h-adr")
+
+        if len(addresses) > 0:
+            address = addresses[0]
+
+            to_show = ""
+
+            supported_properties = ["p-street-address", "p-extended-address", "p-post-office-box", "p-locality", "p-region", "p-postal-code", "p-country-name"]
+
+            for i in supported_properties:
+                if address.find(i):
+                    to_show += "<li><b>{}</b>: {}</li>".format(i, address.find(i).text)
+
+            if soup.find("h1"):
+                title = soup.find("h1").text
+            else:
+                title = url
+
+            if to_show == "":
+                to_show = "No addresses were found on this site's home page."
+
+            return "<h3>{} Addresses</h3><ul>{}</ul>".format(title, to_show), {"type": "direct_answer", "breadcrumb": original_url, "title": title}
 
     return None, None

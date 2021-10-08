@@ -20,6 +20,11 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
+# move results.json to a file with a datetime stamp
+if os.path.isfile("results.json"):
+    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    os.rename("results.json", "results-{}.json".format(now))
+
 feeds = requests.post("https://es-indieweb-search.jamesg.blog/feeds", headers=HEADERS).json()
 
 # get url of all feeds
@@ -260,7 +265,3 @@ def process_sitemaps():
 process_feeds()
 # process_crawl_queue_from_websub()
 # process_sitemaps()
-
-# if results.json exists, remove
-if os.path.exists("/home/james/crawler/results.json"):
-    os.remove("/home/james/crawler/results.json")

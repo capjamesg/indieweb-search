@@ -46,6 +46,18 @@ def page_link_discovery(links, final_urls, iterate_list_of_urls, page_being_proc
 			if "./" in full_link:
 				full_link = full_link.replace("./", "")
 
+			# make sure urls with // are processed correctly
+			# example: https://www.test.com//text.html should become https://www.test.com/text.html
+			if "//" in full_link.replace("://", ""):
+				if full_link.startswith("http://"):
+					protocol = "http://"
+				elif full_link.startswith("https://"):
+					protocol = "https://"
+
+				url = full_link.replace("http://", "").replace("https://", "").replace("//", "/")
+
+				full_link = protocol + url
+
 			if full_link not in final_urls.keys() \
 			and "#" not in full_link \
 			and (full_link.startswith("https://{}".format(site_url)) or full_link.startswith("http://{}".format(site_url))) \
