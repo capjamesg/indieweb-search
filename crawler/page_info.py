@@ -95,7 +95,18 @@ def get_page_info(page_text, page_desc_soup, page_url):
 
 	if meta_description == None:
 		meta_description = ""
-	
+
+	# do not index stub descriptions from the IndieWeb wiki
+
+	if meta_description.startswith("This article is a stub."):
+		stub = [p for p in page_desc_soup.find_all('p') if "stub" in p.get_text()]
+
+		if stub:
+			stub = [0]
+
+			# get element after stub
+			meta_description = " ".join(stub.find_next_sibling().get_text().split(" ")[:50])
+
 	# Only get first 180 characters of meta description (and don't chop a word)
 
 	final_meta_description = ""

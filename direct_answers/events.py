@@ -1,7 +1,8 @@
 import datetime
+from .whereis import parse_geo
 
 def parse_event(original_cleaned_value, soup, url, post):
-    if "event" in original_cleaned_value:
+    if "event" in original_cleaned_value or soup.select(".h-event"):
         h_event = soup.select(".h-event")
 
         h_feed = soup.select(".h-feed")
@@ -54,8 +55,13 @@ def parse_event(original_cleaned_value, soup, url, post):
                 summary = h_event.select(".e-content")
             
             if summary and len(summary) > 0:
-                summary = ". ".join(summary[0].text.split(". ")[:4]) + "..."
+                summary = ". ".join(summary[0].text.split(".")[:2]) + "..."
 
-            return "<h3>{}</h3><p>Event start: {}</p><p>Event end: {}</p><p>{}</p><p>{}</p>".format(name, start_date, end_date, location, summary), {"type": "direct_answer", "breadcrumb": url, "title": post["title"]} 
+            add_image = parse_geo(soup)
+
+            if add_image != None:
+                return "<h3>{}</h3>{}<p><b>Event start:</b> {}</p><p><b>Event end:</b> {}</p><p><b>Location:</b> {}</p><p>{}</p>".format(name, add_image, start_date, end_date, location, summary), {"type": "direct_answer", "breadcrumb": url, "title": post["title"]} 
+            else:
+                return "<h3>{}</h3><p><b>Event start:</b> {}</p><p><b>Event end:</b> {}</p><p><b>Location:</b> {}</p><p>{}</p>".format(name, start_date, end_date, location, summary), {"type": "direct_answer", "breadcrumb": url, "title": post["title"]} 
 
     return None, None

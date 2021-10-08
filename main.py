@@ -176,7 +176,8 @@ def results_page():
 					r["_source"]["h_card"] = None
 			
 			if page == 1:
-				if request.args.get("type") != "image" and ("what is" in cleaned_value or "event" in cleaned_value or "review" in cleaned_value or "recipe" in cleaned_value or "what are" in cleaned_value  or "what were" in cleaned_value or "why" in cleaned_value or "how" in cleaned_value or "microformats" in cleaned_value) and "who is" not in cleaned_value:
+				cleaned_value = cleaned_value.lower()
+				if request.args.get("type") != "image" and ("what is" in cleaned_value or "meetup" in cleaned_value or "event" in cleaned_value or "review" in cleaned_value or "recipe" in cleaned_value or "what are" in cleaned_value  or "what were" in cleaned_value or "why" in cleaned_value or "how" in cleaned_value or "microformats" in cleaned_value) and "who is" not in cleaned_value:
 					# remove stopwords from query
 					original = cleaned_value_for_query
 					cleaned_value_for_query = cleaned_value.replace("what is", "").replace("what are", "").replace("why", "").replace("how", "").replace("what were", "").replace("to use", "").strip()
@@ -355,7 +356,13 @@ def stats():
 
 	feed_breakdown_request = requests.get("https://es-indieweb-search.jamesg.blog/feed_breakdown", headers=headers).json()
 
-	return render_template("search/stats.html", count=count, domains=domains, title="IndieWeb Search Index Stats", feed_breakdown=feed_breakdown_request)
+	special_stats = requests.get("https://es-indieweb-search.jamesg.blog/special_stats", headers=headers).json()
+
+	top_linked_assets = special_stats["top_ten_links"]
+
+	link_types = special_stats["link_microformat_instances"]
+
+	return render_template("search/stats.html", count=count, domains=domains, title="IndieWeb Search Index Stats", feed_breakdown=feed_breakdown_request, top_linked_assets=top_linked_assets, link_types=link_types)
 
 @main.route("/about")
 def about():

@@ -194,6 +194,20 @@ ol .serp li {
   border: 1px solid lightgrey;
   padding: 10px;
 }
+.serp-item {
+  width: 75%;
+}
+@media only screen and (max-width: 600px) {
+  .serp-item {
+    width: 100%;
+  }
+  .hide-on-mobile {
+    display: none;
+  }
+  #query {
+    margin-top: 15px;
+  }
+}
 .tab, ol {
   list-style-type: none;
   padding: 0;
