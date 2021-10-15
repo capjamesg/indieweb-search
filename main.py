@@ -280,15 +280,11 @@ def results_page():
 
 			elif request.args.get("serp_as_json") and request.args.get("serp_as_json") == "results_page":
 				for r in rows:
-					del r["_source"]["page_rank"] # not in use, in some records crawled in a legacy codebase
-					del r["_source"]["md5_hash"]
-					del r["_source"]["page_content"]
-					del r["_source"]["important_phrases"]
-					del r["_source"]["page_text"]
-					del r["_source"]["h4"]
-					del r["_source"]["h5"]
-					del r["_source"]["h6"]
-
+					values_to_remove = ["page_rank", "md5_hash", "page_content", "important_phrases", "page_text", "h4", "h5", "h6"]
+					for value in values_to_remove:
+						if r["_source"].get(value):
+							del r["_source"][value]
+							
 				return jsonify({"results": [r["_source"] for r in rows]})
 
 			if request.args.get("type") == "image":
