@@ -91,6 +91,12 @@ for hits in scroll(es, 'pages', body, '2m', 20):
                             mf2_attribute = "u-bookmark-of"
                         elif "u-url" in l["class"]:
                             mf2_attribute = "u-url"
+                        elif "u-favorite-of" in l["class"]:
+                            mf2_attribute = "u-favorite-of"
+                        elif "u-quotation-of" in l["class"]:
+                            mf2_attribute = "u-quotation-of"
+                        elif "u-invitee" in l["class"]:
+                            mf2_attribute = "u-invitee"
 
                     if link_microformat_instances.get(mf2_attribute):
                         link_microformat_instances[mf2_attribute] += 1
