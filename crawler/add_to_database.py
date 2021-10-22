@@ -56,10 +56,11 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 				
 	# if rel=author, look for h-card on the rel=author link
 	if h_card == []:
-		rel_author = h_entry['rels']['author']
+		if h_entry.get("rels") and h_entry["rels"].get("author"):
+			rel_author = h_entry['rels']['author']
 
-		if rel_author:
-			h_card_url = rel_author[0]
+			if rel_author:
+				h_card_url = rel_author[0]
 
 	if h_card_url:
 		new_h_card = mf2py.parse(url=h_card_url)
