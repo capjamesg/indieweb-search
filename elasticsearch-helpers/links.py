@@ -28,7 +28,7 @@ link_microformat_instances = {}
 # First for loop to get all links from https://simplernerd.com/elasticsearch-scroll-python/
 # Get all links on each page in the index
 # Write all links to a file
-for hits in scroll(es, 'pages', body, '2m', 20):
+for hits in scroll(es, 'pages', body, '20s', 20):
     for h in hits:
         # don't count links on pages that specified nofollow in the X-Robots-Tag header
         if h["_source"].get("page_is_nofollow") and h["_source"].get("page_is_nofollow") == "true":
@@ -71,6 +71,14 @@ for hits in scroll(es, 'pages', body, '2m', 20):
                         link = l.get('href')
                     else:
                         link = "https://" + h["_source"]["domain"] + "/" + l.get('href')
+
+                    original_link = link
+                    
+                    # all links are treated as https:// so links are grouped together
+                    link = link.replace("http://", "https://")
+
+                    # trailing slashes are removed so links are grouped together
+                    link = link.strip("/")
                         
                     # don't count the same link twice
                     if links_on_page.get(link):
@@ -123,7 +131,7 @@ for hits in scroll(es, 'pages', body, '2m', 20):
 
 # write domain_links to file
 # may be a useful metric for determining overall domain authority
-with open('domain_links.json', 'w') as f:
+with open('domain_links.json', 'w+') as f:
     json.dump(domain_links, f)
 
 links = {}
@@ -161,36 +169,67 @@ count = 0
 
 # update incoming_links attribute
 for link, link_count in links.items():
-    search_param = {
-        "query": {
-            "term": {
-                "url.keyword": {
-                    "value": link
+    found = "no"
+    while found == "no":
+        search_param = {
+            "query": {
+                "term": {
+                    "url.keyword": {
+                        "value": link.replace("http://", "https://")
+                    }
                 }
             }
         }
-    }
 
-    response = es.search(index="pages", body=search_param)
+        response = es.search(index="pages", body=search_param)
 
-    if len(response["hits"]["hits"]) == 0:
-        print("No results for " + link)
-    else:
-        try:
-            link_domain = link.split('/')[2].lower()
+        if len(response["hits"]["hits"]) > 0:
+            found = "yes"
 
-            referring_domains = domain_links.get(link_domain)
-        except:
-            referring_domains = 0
+        # look for a link in all variations
+        tests = [link.replace("https://", "http://"), link.replace("http://", "https://").strip("/"), 
+            link.replace("https://", "http://").strip("/"), link.replace("www.", ""), link.replace("www.", "").strip("/"),
+            link.replace("www.", "").strip("/").replace("https://", "http://"), link.replace("www.", "").strip("/").replace("https://", "http://")]
 
-        es.update(index="pages", id=response['hits']['hits'][0]['_id'], body={"doc": {"incoming_links": link_count, "referring_domains_to_site": referring_domains}})
+        for t in tests:
+            search_param = {
+                "query": {
+                    "term": {
+                        "url.keyword": {
+                            "value": t
+                        }
+                    }
+                }
+            }
 
-        full_link = response['hits']['hits'][0]['_source']['url']
+            response = es.search(index="pages", body=search_param)
 
-        print(full_link)
+            if len(response["hits"]["hits"]) > 0:
+                found = "yes"
+                break
+        
+        print("No results for " + link + ", skipping")
+        
+        found = "none"
+        
+    if found == "none":
+        continue
+    
+    try:
+        link_domain = link.split('/')[2].lower()
 
-        count += 1
-        print(count)
+        referring_domains = domain_links.get(link_domain)
+    except:
+        referring_domains = 0
+
+    es.update(index="pages", id=response['hits']['hits'][0]['_id'], body={"doc": {"incoming_links": link_count, "referring_domains_to_site": referring_domains}})
+
+    full_link = response['hits']['hits'][0]['_source']['url']
+
+    print(full_link)
+
+    count += 1
+    print(count)
 
 print("calculating top linked assets")
 
@@ -202,11 +241,11 @@ link_value = [i for i in links.values()]
 
 top_ten = [[origin, value] for origin, value in zip(link_origin, link_value)][:10]
 
-with open('top_ten_links.csv', 'w') as f:
+with open('top_ten_links.csv', 'w+') as f:
     csv.writer(f).writerows(top_ten)
 
 print("calculated top 10 linked assets")
 print("done")
 
-# with open('link_microformat_instances.json', 'w+') as f:
-#     json.dump(link_microformat_instances, f)
+with open('link_microformat_instances.json', 'w+') as f:
+    json.dump(link_microformat_instances, f)

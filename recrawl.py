@@ -27,8 +27,7 @@ if os.path.isfile("results.json"):
 
 feeds = requests.post("https://es-indieweb-search.jamesg.blog/feeds", headers=HEADERS).json()
 
-# get url of all feeds
-feed_url_list = [f[1] for f in feeds]
+print(len(feeds))
 
 feeds_parsed = {}
 
@@ -97,6 +96,7 @@ def poll_feeds(f):
             print("{} status code returned while modifying {}".format(modify_feed.status_code, url))
         else:
             print("updated etag for {}".format(url))
+
     elif mime_type == "h-feed":
         mf2_raw = mf2py.parse(r.text)
 
@@ -152,6 +152,35 @@ def poll_feeds(f):
         
     return url, etag, f
 
+feeds_by_page = {}
+
+for f in feeds:
+    try:
+        if feeds_by_page.get(f[1]):
+            feeds_by_page[f[1]] = feeds_by_page[f[1]].append(f)
+        else:
+            feeds_by_page[f[1]] = [f]
+    except Exception as e:
+        print(e)
+        continue
+
+feed_url_list = []
+
+for key, value in feeds_by_page.items():
+    try:
+        if len(value) > 1:
+            print(value)
+            to_add = [feed for feed in value if feed[4] == "h-feed"]
+        elif len(value) < 2:
+            to_add = value[0]
+
+        feed_url_list.append(to_add)
+    except Exception as e:
+        print(e)
+        continue
+
+print(len(feed_url_list))
+
 def process_feeds():
     feeds_indexed = 0
 
@@ -179,7 +208,7 @@ def process_feeds():
                 futures.remove(future)
 
 def process_crawl_queue_from_websub():
-    r = requests.get("https://es-indieweb-search.jamesg.blog/crawl_queue", headers=headers)
+    r = requests.get("https://es-indieweb-search.jamesg.blog/crawl_queue", headers=HEADERS)
 
     pages_indexed = 0
 
@@ -263,5 +292,5 @@ def process_sitemaps():
                 futures.remove(future)
 
 process_feeds()
-# process_crawl_queue_from_websub()
+process_crawl_queue_from_websub()
 # process_sitemaps()
