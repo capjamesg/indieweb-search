@@ -21,6 +21,14 @@ def check_remove_url(full_url):
 		print("removed {} from index as it is no longer valid".format(full_url))
 		logging.info("removed {} from index as it is no longer valid".format(full_url))
 
+def save_feed(site, full_url, feed_url, feed_type, feeds, feed_urls):
+	feeds.append({"website_url": site, "page_url": full_url, "feed_url": feed_url, "mime_type": feed_type, "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
+	feed_urls.append(feed_url.strip("/"))
+	print("found feed {}, will save to feeds.json".format(feed_url))
+	logging.info("found feed {}, will save to feeds.json".format(feed_url))
+
+	return feeds, feed_urls
+
 def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, external_links, discovered_urls, iterate_list_of_urls, site_url, crawl_budget, url, feeds, feed_urls, site, session, link_discovery=True, h_card=[]):
 	"""
 		Crawls URLs in list, adds URLs to index, and returns updated list
@@ -295,24 +303,18 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 						feed_url = full_url.split("/")[0] + "//" + domain + feed_item["href"]
 
 						if feed_url and feed_url not in feed_urls:
-							feeds.append({"website_url": site, "page_url": full_url, "feed_url": feed_url, "mime_type": feed_item.get("type"), "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
-							feed_urls.append(feed_url.strip("/"))
-							print("found feed {}, will save to feeds.json".format(feed_url))
-							logging.info("found feed {}, will save to feeds.json".format(feed_url))
+							feeds, feed_urls = save_feed(site, full_url, feed_item["href"], feed_item.get("type"), feeds, feed_urls)
+							
 					elif feed_item["href"].startswith("http"):
 						if feed_item["href"] not in feed_urls and feed_item["href"].split("/")[2] == full_url.split("/")[2]:
-							feeds.append({"website_url": site, "page_url": full_url, "feed_url": feed_item["href"], "mime_type": feed_item.get("type"), "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
-							feed_urls.append(feed_item["href"].strip("/"))
-							print("found feed {}, will save to feeds.json".format(feed_item["href"]))
-							logging.info("found feed {}, will save to feeds.json".format(feed_item["href"]))
+							feeds, feed_urls = save_feed(site, full_url, feed_item["href"], feed_item.get("type"), feeds, feed_urls)
+							
 						elif feed_item["href"] not in feed_urls and feed_item["href"].split("/")[2] != full_url.split("/")[2]:
 							print("found feed {}, but it points to a different domain, not saving".format(feed_item["href"]))
 							logging.info("found feed {}, but it points to a different domain, not saving".format(feed_item["href"]))
+
 					else:
-						feeds.append({"website_url": site, "page_url": full_url, "feed_url": full_url.strip("/") + "/" + feed_item["href"], "mime_type": feed_item.get("type"), "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
-						feed_urls.append(feed_item["href"].strip("/"))
-						print("found feed {}, will save to feeds.json".format(feed_item["href"]))
-						logging.info("found feed {}, will save to feeds.json".format(feed_item["href"]))
+						feeds, feed_urls = save_feed(site, full_url, full_url.strip("/") + "/" + feed_item["href"], feed_item.get("type"), feeds, feed_urls)
 
 			# check if page has h-feed class on it
 			# if a h-feed class is present, mark page as feed
@@ -355,20 +357,27 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 						logging.info("{} is a websub hub, will save to feeds.json".format(websub_hub))
 
 					if "rel=\"alternate\"" in link_header:
-						feed_url = link_header.split(";")[0].strip().strip("<").strip(">")
+						original_feed_url = link_header.split(";")[0].strip().strip("<").strip(">").lower()
 
-						if feed_url and feed_url not in feed_urls:
+						if original_feed_url and original_feed_url not in feed_urls:
 							# get feed type
 							if "type=\"" in link_header:
 								feed_type = link_header.split("type=\"")[1].split("\"")[0]
 							else:
 								feed_type = "feed"
 
-							feeds.append({"website_url": site, "page_url": full_url, "feed_url": feed_url, "mime_type": feed_type, "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
-							feed_urls.append(feed_url.strip("/"))
+							if original_feed_url.startswith("/"):
+								# get site domain
+								domain = full_url.split("/")[2]
+								feed_url = full_url.split("/")[0] + "//" + domain + original_feed_url
 
-							print("found feed {}, will save to feeds.json".format(feed_url))
-							logging.info("found feed {}, will save to feeds.json".format(feed_url))
+								if feed_url and feed_url not in feed_urls:
+									feeds, feed_urls = save_feed(site, full_url, original_feed_url, feed_type, feeds, feed_urls)
+							elif original_feed_url.startswith("http"):
+								if original_feed_url not in feed_urls and original_feed_url.split("/")[2] == full_url.split("/")[2]:
+									feeds, feed_urls = save_feed(site, full_url, original_feed_url, feed_type, feeds, feed_urls)
+							else:
+								feeds, feed_urls = save_feed(site, full_url, original_feed_url, feed_type, feeds, feed_urls)
 
 			final_urls, iterate_list_of_urls, all_links, external_links, discovered_urls = page_link_discovery.page_link_discovery(links, final_urls, iterate_list_of_urls, full_url, all_links, external_links, discovered_urls, site_url)
 
