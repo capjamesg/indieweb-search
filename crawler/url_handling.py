@@ -21,7 +21,7 @@ def check_remove_url(full_url):
 		print("removed {} from index as it is no longer valid".format(full_url))
 		logging.info("removed {} from index as it is no longer valid".format(full_url))
 
-def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, external_links, discovered_urls, iterate_list_of_urls, site_url, crawl_budget, url, feeds, feed_urls, site, link_discovery=True, h_card=[]):
+def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, external_links, discovered_urls, iterate_list_of_urls, site_url, crawl_budget, url, feeds, feed_urls, site, session, link_discovery=True, h_card=[]):
 	"""
 		Crawls URLs in list, adds URLs to index, and returns updated list
 	"""
@@ -65,7 +65,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 		# If URL is not relative internal link and does not start with http:// or https://
 		# Used to make sure link uses the right format
 
-		session = requests.Session()
+		# session = requests.Session()
 		session.max_redirects = 3
 
 		try:
@@ -132,7 +132,9 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 
 					canonical = link["rel"].strip("/").replace("http://", "https://").split("?")[0].lower()
 
-					if not canonical.startswith("http://" + full_url.split("/")[2]) and not canonical.startswith("https://" + full_url.split("/")[2]):
+					canonical_domain = canonical.split("/")[2]
+
+					if canonical_domain.lower().replace("www.", "") != full_url.split("/")[2].lower().replace("www.", ""):
 						print("{} has a canonical url of {}, not adding to queue because url points to a different domain".format(full_url, canonical))
 						logging.info("{} has a canonical url of {}, not adding to queue because url points to a different domain".format(full_url, canonical))
 
@@ -149,9 +151,6 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 						print("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical_url))
 
 						return url, discovered_urls, False
-
-		session = requests.Session()
-		session.max_redirects = 3
 
 		try:
 			page = session.get(full_url, timeout=10, headers=config.HEADERS, allow_redirects=True, verify=False)
@@ -198,18 +197,20 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			return url, {}, False, feeds
 
 		try:
-			page_desc_soup = BeautifulSoup(page.content, "html5lib")
+			page_desc_soup = BeautifulSoup(page.content, "lxnl")
 		except:
-			page_desc_soup = BeautifulSoup(page.content, "lxml")
+			page_desc_soup = BeautifulSoup(page.content, "html5lib")
 
 		# if http-equiv refresh redirect present
 		# not recommended by W3C but still worth checking for just in case
 		if page_desc_soup.find("meta", attrs={"http-equiv": "refresh"}):
 			refresh_url = page_desc_soup.find("meta", attrs={"http-equiv": "refresh"})["content"].split(";")[1].split("=")[1]
 
-			if not refresh_url.startswith("http://" + full_url.split("/")[2]) and not refresh_url.startswith("https://" + full_url.split("/")[2]):
-				print("{} has a http-equiv refresh url of {}, not adding to queue because url points to a different domain".format(full_url, refresh_url))
-				logging.info("{} has a http-equiv refresh url of {}, not adding to queue because url points to a different domain".format(full_url, refresh_url))
+			refresh_domain = refresh_url.split("/")[2]
+
+			if refresh_domain.lower().replace("www.", "") != full_url.split("/")[2].lower().replace("www.", ""):
+				print("{} has a refresh url of {}, not adding to queue because url points to a different domain".format(full_url, refresh_url))
+				logging.info("{} has a refresh url of {}, not adding to queue because url points to a different domain".format(full_url, refresh_url))
 
 				return url, {}, False, feeds
 				
@@ -234,7 +235,9 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 
 			canonical = canonical_url.strip("/").replace("http://", "https://").split("?")[0].lower()
 
-			if not canonical.startswith("http://" + full_url.split("/")[2]) and not canonical.startswith("https://" + full_url.split("/")[2]):
+			canonical_domain = canonical.split("/")[2]
+
+			if canonical_domain.lower().replace("www.", "") != full_url.split("/")[2].lower().replace("www.", ""):
 				print("{} has a canonical url of {}, not adding to queue because url points to a different domain".format(full_url, canonical))
 				logging.info("{} has a canonical url of {}, not adding to queue because url points to a different domain".format(full_url, canonical))
 
@@ -291,13 +294,25 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 						domain = full_url.split("/")[2]
 						feed_url = full_url.split("/")[0] + "//" + domain + feed_item["href"]
 
-						canonical = feed_url.strip("/").replace("http://", "https://").split("?")[0].strip().strip("<").strip(">").lower()
-
 						if feed_url and feed_url not in feed_urls:
 							feeds.append({"website_url": site, "page_url": full_url, "feed_url": feed_url, "mime_type": feed_item.get("type"), "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
 							feed_urls.append(feed_url.strip("/"))
 							print("found feed {}, will save to feeds.json".format(feed_url))
 							logging.info("found feed {}, will save to feeds.json".format(feed_url))
+					elif feed_item["href"].startswith("http"):
+						if feed_item["href"] not in feed_urls and feed_item["href"].split("/")[2] == full_url.split("/")[2]:
+							feeds.append({"website_url": site, "page_url": full_url, "feed_url": feed_item["href"], "mime_type": feed_item.get("type"), "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
+							feed_urls.append(feed_item["href"].strip("/"))
+							print("found feed {}, will save to feeds.json".format(feed_item["href"]))
+							logging.info("found feed {}, will save to feeds.json".format(feed_item["href"]))
+						elif feed_item["href"] not in feed_urls and feed_item["href"].split("/")[2] != full_url.split("/")[2]:
+							print("found feed {}, but it points to a different domain, not saving".format(feed_item["href"]))
+							logging.info("found feed {}, but it points to a different domain, not saving".format(feed_item["href"]))
+					else:
+						feeds.append({"website_url": site, "page_url": full_url, "feed_url": full_url.strip("/") + "/" + feed_item["href"], "mime_type": feed_item.get("type"), "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
+						feed_urls.append(feed_item["href"].strip("/"))
+						print("found feed {}, will save to feeds.json".format(feed_item["href"]))
+						logging.info("found feed {}, will save to feeds.json".format(feed_item["href"]))
 
 			# check if page has h-feed class on it
 			# if a h-feed class is present, mark page as feed
