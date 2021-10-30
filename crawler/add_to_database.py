@@ -115,9 +115,17 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 
 	if featured_image == None:
 		featured_image = ""
+
+	# use p-name in place of title tag if one is available
+	if page_content.find(".p-name"):
+		title = page_content.find(".p-name").text
+		if len(title.split(" ")) > 10:
+			title = title.split(" ", 10)[0] + "..."
+	else:
+		title = doc_title
 		
 	record = {
-		"title": doc_title,
+		"title": title,
 		"meta_description": meta_description,
 		"url": full_url,
 		"published_on": date_to_record,

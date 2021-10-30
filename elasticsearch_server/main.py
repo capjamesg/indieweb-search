@@ -117,7 +117,7 @@ def home():
                 },
                 "script": {
                     "source": """
-                        return _score + Math.log((1 + (doc['incoming_links'].value)) * 3.5) + Math.log((1 + (doc['word_count'].value)));
+                        return _score + Math.log((1 + (doc['word_count'].value))) + Math.log((1 + (doc['incoming_links'].value)) * 3.5) + Math.log((1 + (doc['word_count'].value)));
                     """
                 },
             },
@@ -149,7 +149,7 @@ def home():
             "query": {
                 "query_string": {
                     "query": query,
-                    "fields": ["title^2", "description^1.5", "url^1.3", "category^0", "published^0", "keywords^0", "text^2.8", "h1^1.7", "h2^1.5", "h3^1.2", "h4^0.5", "h5^0.75", "h6^0.25", "domain^3"],
+                    "fields": ["title^1.8", "description^1.5", "url^1.3", "category^0", "published^0", "keywords^0", "text^2.8", "h1^1.5", "h2^1.5", "h3^1.2", "h4^0.5", "h5^0.75", "h6^0.25", "domain^3"],
                     "minimum_should_match": "3<75%",
                 },
             },

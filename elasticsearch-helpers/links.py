@@ -46,7 +46,7 @@ with open('links.csv', 'a') as f:
             
             count += 1
 
-            domain = h["_source"]["url"].split('/')[2]
+            domain = h["_source"]["url"].split('/')[2].lower()
 
             if "tumblr.com" in domain:
                 # delete

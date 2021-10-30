@@ -33,8 +33,8 @@ def create_app():
     def rate_limit():
         return render_template("error.html", rate_limit_error=True, title="Rate Limit Error"), 429
 
-    from werkzeug.middleware.profiler import ProfilerMiddleware
-    app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=[5], profile_dir='./profile')
+    # from werkzeug.middleware.profiler import ProfilerMiddleware
+    # app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=[5], profile_dir='./profile')
 
     return app
 
