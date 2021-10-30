@@ -1,12 +1,13 @@
+from flask import render_template, request, redirect, send_from_directory, jsonify, Blueprint
+from .direct_answers import search_result_features
+from spellchecker import SpellChecker
+from . import config
+import requests
 import datetime
+import json
 import math
 import re
 import spacy
-from flask import render_template, request, redirect, send_from_directory, jsonify, Blueprint
-from spellchecker import SpellChecker
-from . import search_result_features, config
-import requests
-import json
 
 main = Blueprint("main", __name__, static_folder="static", static_url_path="")
 
@@ -84,6 +85,13 @@ def home():
 	q = request.args.get("q")
 	return render_template("search/submit.html", title="IndieWeb Search", query=q)
 
+@main.route("/autocomplete")
+def search_autocomplete():
+	query = request.args.get("q")
+	suggest = requests.get("https://es-indieweb-search.jamesg.blog/suggest?q={}&pw={}".format(query, config.ELASTICSEARCH_PASSWORD))
+	print(suggest.json())
+	return jsonify(suggest.json()), 200
+
 @main.route("/results", methods=["GET", "POST"])
 def results_page():
 	page = request.args.get("page")
@@ -111,11 +119,13 @@ def results_page():
 
 	cleaned_value_for_query = ''.join(e for e in query_with_handled_spaces if e.isalnum() or e == " " or e == ".")
 
+	session = requests.Session()
+
 	if cleaned_value.startswith("xray https://") or cleaned_value.startswith("xray http://"):
 		return redirect("https://xray.p3k.io/parse?url={}".format(cleaned_value.replace("xray ", "")))
 
 	if cleaned_value == "random":
-		random_site = requests.get("https://es-indieweb-search.jamesg.blog/random?pw={}".format(config.ELASTICSEARCH_PASSWORD)).json()["domain"]
+		random_site = session.get("https://es-indieweb-search.jamesg.blog/random?pw={}".format(config.ELASTICSEARCH_PASSWORD)).json()["domain"]
 
 		return redirect("https://{}/".format(random_site))
 
@@ -158,13 +168,18 @@ def results_page():
 			else:
 				# Get all text after the first AND
 				query_params = "".join(query_params.split("AND")[1:])
+
+			if request.args.get("serp_as_json") and (request.args.get("serp_as_json") == "direct" or request.args.get("serp_as_json") == "results_page"):
+				minimal = "true"
+			else:
+				minimal = "false"
 			
 			if "site:" in request.args.get("query"):
-				rows = requests.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&sort={}&from={}&to={}&site={}".format(config.ELASTICSEARCH_PASSWORD, cleaned_value_for_query.replace("review", "").replace("who is", "").strip(), order, str(pagination), str(int(pagination)), query_values_in_list[-1].replace("%", "") )).json()
+				rows = session.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&sort={}&from={}&to={}&site={}&minimal={}".format(config.ELASTICSEARCH_PASSWORD, cleaned_value_for_query.replace("review", "").replace("who is", "").strip(), order, str(pagination), str(int(pagination)), query_values_in_list[-1].replace("%", ""), minimal )).json()
 			elif request.args.get("query").startswith("discover"):
-				rows = requests.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&sort={}&from={}&to={}&discover=true".format(config.ELASTICSEARCH_PASSWORD, cleaned_value_for_query.replace("discover", "").strip(), order, str(pagination), str(int(pagination)+10))).json()
+				rows = session.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&sort={}&from={}&to={}&discover=true&minimal={}".format(config.ELASTICSEARCH_PASSWORD, cleaned_value_for_query.replace("discover", "").strip(), order, str(pagination), str(int(pagination)+10), minimal)).json()
 			else:
-				rows = requests.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&sort={}&from={}&to={}".format(config.ELASTICSEARCH_PASSWORD, cleaned_value_for_query.replace("review", "").replace("who is", "").strip(), order, str(pagination), str(int(pagination)+10))).json()
+				rows = session.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&sort={}&from={}&to={}&minimal={}".format(config.ELASTICSEARCH_PASSWORD, cleaned_value_for_query.replace("review", "").replace("who is", "").replace("code", "").strip(), order, str(pagination), str(int(pagination)+10), minimal)).json()
 
 			num_of_results = rows["hits"]["total"]["value"]
 			rows = rows["hits"]["hits"]
@@ -177,10 +192,10 @@ def results_page():
 			
 			if page == 1:
 				cleaned_value = cleaned_value.lower()
-				if request.args.get("type") != "image" and ("what is" in cleaned_value or "meetup" in cleaned_value or "event" in cleaned_value or "review" in cleaned_value or "recipe" in cleaned_value or "what are" in cleaned_value  or "what were" in cleaned_value or "why" in cleaned_value or "how" in cleaned_value or "microformats" in cleaned_value) and "who is" not in cleaned_value:
+				if ("what is" in cleaned_value or "code" in cleaned_value or "markup" in cleaned_value or "meetup" in cleaned_value or "event" in cleaned_value or "review" in cleaned_value or "recipe" in cleaned_value or "what are" in cleaned_value  or "what were" in cleaned_value or "why" in cleaned_value or "how" in cleaned_value or "microformats" in cleaned_value) and "who is" not in cleaned_value:
 					# remove stopwords from query
 					original = cleaned_value_for_query
-					cleaned_value_for_query = cleaned_value.replace("what is", "").replace("what are", "").replace("why", "").replace("how", "").replace("what were", "").replace("to use", "").strip()
+					cleaned_value_for_query = cleaned_value.replace("what is", "").replace("code", "").replace("markup", "").replace("what are", "").replace("why", "").replace("how", "").replace("what were", "").replace("to use", "").strip()
 
 					wiki_direct_result = [item for item in rows if item["_source"]["url"].startswith("https://indieweb.org") \
 						and "/" not in item["_source"]["title"] and cleaned_value_for_query.lower().strip() in item["_source"]["title"].lower()]
@@ -205,30 +220,32 @@ def results_page():
 
 					if do_i_use == "" and len(rows) > 1:
 						do_i_use, special_result = search_result_features.generate_featured_snippet(original, special_result, nlp, rows[1]["_source"]["url"], rows[1]["_source"])
-				elif request.args.get("type") != "image" and len(rows) > 0 and rows[0]["_source"]["url"].startswith("https://jamesg.blog"):
+				elif len(rows) > 0 and rows[0]["_source"]["url"].startswith("https://jamesg.blog"):
 					url = rows[0]["_source"]["url"]
 					source = rows[0]["_source"]
 
 					do_i_use, special_result = search_result_features.generate_featured_snippet(full_query_with_full_stops, special_result, nlp, url, source)
-				elif request.args.get("type") != "image" and len(rows) > 0 and rows[0]["_source"]["url"].startswith("https://microformats.org/wiki/"):
+				elif len(rows) > 0 and rows[0]["_source"]["url"].startswith("https://microformats.org/wiki/"):
 					url = rows[0]["_source"]["url"]
 					source = rows[0]["_source"]
 
 					do_i_use, special_result = search_result_features.generate_featured_snippet(full_query_with_full_stops, special_result, nlp, url, source)
-				elif request.args.get("type") != "image" and len(rows) > 0 and rows[0]["_source"]["url"].startswith("https://indieweb.org/"):
+				elif len(rows) > 0 and rows[0]["_source"]["url"].startswith("https://indieweb.org/"):
 					url = rows[0]["_source"]["url"]
 					source = rows[0]["_source"]
 
 					do_i_use, special_result = search_result_features.generate_featured_snippet(full_query_with_full_stops, special_result, nlp, url, source)
 
 				if "who is" in cleaned_value or ("." in cleaned_value and len(cleaned_value.split(".")[1]) <= 4) or cleaned_value.endswith("social") or cleaned_value.endswith("get rel") or cleaned_value.endswith("inspect feed"):
-					get_homepage = requests.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&domain=true".format(config.ELASTICSEARCH_PASSWORD, cleaned_value_for_query.replace("who is", "").replace("get rel", "").replace("social", "").replace("inspect feed", ""))).json()
+					get_homepage = session.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&domain=true".format(config.ELASTICSEARCH_PASSWORD, cleaned_value_for_query.replace("who is", "").replace("get rel", "").replace("social", "").replace("inspect feed", ""))).json()
 
 					if len(get_homepage.get("hits").get("hits")) > 0:
 						url = get_homepage["hits"]["hits"][0]["_source"]["url"]
 						source = get_homepage["hits"]["hits"][0]["_source"]
 
-						do_i_use, special_result = search_result_features.generate_featured_snippet(full_query_with_full_stops, special_result, nlp, url, source)
+						# only do this if the first result is hosted on the domain the user queried
+						if get_homepage["hits"]["hits"][0]["_source"].get("domain") and get_homepage["hits"]["hits"][0]["_source"]["domain"] == cleaned_value.split(" ")[0]:
+							do_i_use, special_result = search_result_features.generate_featured_snippet(full_query_with_full_stops, special_result, nlp, url, source)
 
 			if len(rows) == 0:
 				out_of_bounds_page = True
@@ -300,6 +317,8 @@ def results_page():
 				num_of_results = 1
 				out_of_bounds_page = False
 
+			# bloggers = requests.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&sort={}&from={}&to={}&discover=true".format(config.ELASTICSEARCH_PASSWORD, cleaned_value_for_query.replace("discover", "").strip(), order, str(pagination), str(int(pagination)+10))).json()
+
 			return render_template("search/results.html",
 				results=rows,
 				number_of_results=int(num_of_results),
@@ -315,6 +334,7 @@ def results_page():
 				special_result=special_result,
 				do_i_use=do_i_use,
 				title="Search results for '{}' query".format(cleaned_value))
+				# bloggers=bloggers["hits"]["hits"])
 		else:
 			return redirect("/")
 	else:
