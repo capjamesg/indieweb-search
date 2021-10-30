@@ -8,6 +8,7 @@ import csv
 import config
 import crawler.url_handling as url_handling
 import concurrent.futures
+import cProfile
 
 # ignore warning about http:// connections
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
@@ -173,7 +174,8 @@ def process_domain(site, reindex):
 	if reindex == True:
 		return 100, final_urls, namespaces_to_ignore, protocol
 	else:
-		return 5000, final_urls, namespaces_to_ignore, protocol
+		# crawl budget is now 15,000
+		return 15000, final_urls, namespaces_to_ignore, protocol
 
 def build_index(site, reindex=False):
 	# do not index IPs
@@ -239,9 +241,11 @@ def build_index(site, reindex=False):
 	except:
 		h_card = []
 		print("no h-card could be found on {} home page".format(site))
+
+	session = requests.Session()
 	
 	for url in iterate_list_of_urls:
-		url_indexed, discovered, valid, discovered_feeds = url_handling.crawl_urls(final_urls, namespaces_to_ignore, indexed, links, external_links, discovered_urls, iterate_list_of_urls, site, crawl_budget, url, [], feed_urls, site, True, h_card)
+		url_indexed, discovered, valid, discovered_feeds = url_handling.crawl_urls(final_urls, namespaces_to_ignore, indexed, links, external_links, discovered_urls, iterate_list_of_urls, site, crawl_budget, url, [], feed_urls, site, session, True, h_card)
 
 		if valid == True:
 			valid_count += 1
@@ -269,7 +273,8 @@ def build_index(site, reindex=False):
 
 	headers["Content-Type"] = "application/json"
 
-	print(all_feeds)
+	# exclude wordpress json feeds for now
+	feeds = [f for f in all_feeds if "wp-json" not in f]
 
 	r = requests.post("https://es-indieweb-search.jamesg.blog/save", json={"feeds": all_feeds}, headers=headers)
 
@@ -311,7 +316,7 @@ def build_index(site, reindex=False):
 
 	return url_indexed, discovered
 
-if __name__ == "__main__":
+def main():
 	futures = []
 
 	sites_indexed = 0
@@ -326,7 +331,7 @@ if __name__ == "__main__":
 
 	to_crawl = [item for item in to_crawl if item not in block_list]
 
-	with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
+	with concurrent.futures.ThreadPoolExecutor() as executor:
 		futures = [executor.submit(build_index, url.replace("\n", "")) for url in to_crawl]
 		
 		while len(futures) > 0:
@@ -337,7 +342,7 @@ if __name__ == "__main__":
 				logging.info("SITES INDEXED: {}".format(sites_indexed))
 
 				try:
-					url_indexed, discovered = future.result()
+					url_indexed, _ = future.result()
 
 					if url_indexed == None:
 						futures = []
@@ -348,3 +353,6 @@ if __name__ == "__main__":
 					pass
 
 				futures.remove(future)
+
+if __name__ == "__main__":
+	cProfile.run('main()', 'app.profile')

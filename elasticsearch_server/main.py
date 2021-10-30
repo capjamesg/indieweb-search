@@ -8,6 +8,40 @@ es = Elasticsearch(['http://localhost:9200'])
 
 main = Blueprint('main', __name__)
 
+@main.route("/suggest")
+def autosuggest():
+    pw = config.ELASTICSEARCH_PASSWORD
+
+    query = request.args.get("q")
+
+    if request.args.get("pw") != pw:
+        return abort(401)
+
+    query_for_elasticsearch = {
+        "suggest": {
+            "text": query,
+            "simple_phrase": {
+                "phrase": {
+                    "field": "title",
+                    "size": 8,
+                    "gram_size": 3,
+                    "direct_generator": [ {
+                        "field": "title",
+                        "suggest_mode": "always"
+                    } ],
+                    "highlight": {
+                        "pre_tag": "<em>",
+                        "post_tag": "</em>"
+                    }
+                }
+            }
+        }
+    }
+
+    response = es.search(index="pages", body=query_for_elasticsearch)
+
+    return jsonify({"results": response["suggest"]["simple_phrase"]}), 200
+
 @main.route("/")
 def home():
     pw = config.ELASTICSEARCH_PASSWORD
@@ -83,7 +117,7 @@ def home():
                 },
                 "script": {
                     "source": """
-                        return _score + Math.log((1 + (doc['incoming_links'].value)) * 3.5) + Math.log((1 + (doc['word_count'].value)));
+                        return _score + Math.log((1 + (doc['word_count'].value))) + Math.log((1 + (doc['incoming_links'].value)) * 3.5) + Math.log((1 + (doc['word_count'].value)));
                     """
                 },
             },
@@ -115,7 +149,7 @@ def home():
             "query": {
                 "query_string": {
                     "query": query,
-                    "fields": ["title^2", "description^1.5", "url^1.3", "category^0", "published^0", "keywords^0", "text^2.8", "h1^1.7", "h2^1.5", "h3^1.2", "h4^0.5", "h5^0.75", "h6^0.25", "domain^3"],
+                    "fields": ["title^1.8", "description^1.5", "url^1.3", "category^0", "published^0", "keywords^0", "text^2.8", "h1^1.5", "h2^1.5", "h3^1.2", "h4^0.5", "h5^0.75", "h6^0.25", "domain^3"],
                     "minimum_should_match": "3<75%",
                 },
             },
@@ -150,6 +184,15 @@ def home():
     #* saturation(doc['pagerank'].value, 10)"
 
     response = es.search(index="pages", body=search_param)
+
+    if request.args.get("minimal") and request.args.get("minimal") == "true":
+        # delete some attributes that are not necessary for a query to take place
+        # this will reduce the amount of data that needs to go over the network
+        to_delete = ["h2", "h3", "h4", "h5", "h6", "length", "page_text", "incoming_links", "outgoing_links", "last_crawled", "favicon", "http_headers", "page_is_nofollow", "h_card", "category", "page_rank", "md5_hash", "page_content", "important_phrases"]
+        for hit in response["hits"]["hits"]:
+            for key in to_delete:
+                if key in hit["_source"]:
+                    del hit["_source"][key]
 
     return response
 
