@@ -28,7 +28,8 @@ links = []
 # Write all links to a file
 for hits in scroll(es, 'pages', body, '2m', 20):
     for h in hits:
-        links.append(h['_source']['domain'])
+        # replacing www. for consistency
+        links.append(h['_source']['domain'].replace("www.", ""))
 
 links = list(set(links))
     

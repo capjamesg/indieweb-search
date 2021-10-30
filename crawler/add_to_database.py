@@ -6,7 +6,7 @@ import config
 import mf2py
 import json
 
-def add_to_database(full_url, published_on, doc_title, meta_description, heading_info, page, pages_indexed, page_content, outgoing_links, crawl_budget, nofollow_all, main_page_content, original_h_card):
+def add_to_database(full_url, published_on, doc_title, meta_description, heading_info, page, pages_indexed, page_content, outgoing_links, crawl_budget, nofollow_all, main_page_content, original_h_card, save_to_warc=False):
 	# get last modified date
 
 	if page != "" and page.headers:
@@ -99,9 +99,33 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 		is_homepage = True
 	else:
 		is_homepage = False
+
+	# get featured image if one is available
+	# may be presented in featured snippets
+	featured_image = None
+
+	if page_content.find(".u-photo"):
+		featured_image = page_content.find(".u-photo").get("src")
+
+	if featured_image == None and page_content.find("meta", property="og:image"):
+		featured_image = page_content.find("meta", property="og:image").get("src")
+
+	if featured_image == None and page_content.find("meta", property="twitter:image"):
+		featured_image = page_content.find("meta", property="twitter:image").get("src")
+
+	if featured_image == None:
+		featured_image = ""
+
+	# use p-name in place of title tag if one is available
+	if page_content.find(".p-name"):
+		title = page_content.find(".p-name").text
+		if len(title.split(" ")) > 10:
+			title = title.split(" ", 10)[0] + "..."
+	else:
+		title = doc_title
 		
 	record = {
-		"title": doc_title,
+		"title": title,
 		"meta_description": meta_description,
 		"url": full_url,
 		"published_on": date_to_record,
@@ -126,7 +150,8 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 		"page_is_nofollow": nofollow_all,
 		"h_card": json.dumps(h_card),
 		"is_homepage": is_homepage,
-		"category": category
+		"category": category,
+		"featured_image": featured_image
 	}
 
 	# results currently being saved to a file, so no need to run this code

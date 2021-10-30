@@ -18,6 +18,10 @@ main {
     margin-top: 10px;
 }
 
+.indent-result {
+  margin-left: 5%;
+}
+
 th {
   text-align: left;
 }
@@ -55,7 +59,7 @@ input[type="submit"] {
   margin-top: 15px;
 }
 
-input[type="text"], input[type="username"], input[type="password"] {
+input[type="text"], input[type="username"], input[type="password"], select {
   padding: 10px;
   border-radius: 10px;
   margin-bottom: 10px;
@@ -195,7 +199,21 @@ ol .serp li {
   padding: 10px;
 }
 .serp-item {
-  width: 75%;
+  max-width: 35em;
+}
+li {
+  list-style-type: none;
+}
+.search_box {
+  margin-bottom: 20px;
+  border-radius: 10px;
+  background-color: white;
+  border: 1px solid lightgrey;
+  padding: 10px;
+}
+.featured {
+  border: 5px dotted royalblue;
+  padding: 10px;
 }
 @media only screen and (max-width: 600px) {
   .serp-item {

@@ -25,37 +25,40 @@ domain_links = {}
 
 link_microformat_instances = {}
 
-# First for loop to get all links from https://simplernerd.com/elasticsearch-scroll-python/
 # Get all links on each page in the index
 # Write all links to a file
-for hits in scroll(es, 'pages', body, '20s', 20):
-    for h in hits:
-        # don't count links on pages that specified nofollow in the X-Robots-Tag header
-        if h["_source"].get("page_is_nofollow") and h["_source"].get("page_is_nofollow") == "true":
-            continue
 
-        soup = BeautifulSoup(h['_source']['page_content'], 'html.parser')
+with open('links.csv', 'a') as f:
+    for hits in scroll(es, 'pages', body, '3m', 40):
+        for h in hits:
+            # don't count links on pages that specified nofollow in the X-Robots-Tag header
+            if h["_source"].get("page_is_nofollow") and h["_source"].get("page_is_nofollow") == "true":
+                continue
 
-        links = soup.find_all('a')
+            try:
+                soup = BeautifulSoup(h['_source']['page_content'], 'lxml')
+            except:
+                soup = BeautifulSoup(h['_source']['page_content'], 'html5lib')
 
-        print(str(count) + " " + h["_source"]["url"])
-        
-        count += 1
+            links = soup.find_all('a')
 
-        if not h["_source"]["incoming_links"]:
-            es.update(index='pages', id=h['_id'], body={'doc': {'incoming_links': 0}})
-            print('updated url')
+            print(str(count) + " " + h["_source"]["url"])
+            
+            count += 1
 
-        domain = h["_source"]["url"].split('/')[2]
+            domain = h["_source"]["url"].split('/')[2].lower()
 
-        # check for nofollow or none meta values
-        check_if_no_index = soup.find("meta", {"name":"robots"})
+            if "tumblr.com" in domain:
+                # delete
+                es.delete(index='pages', id=h["_id"])
 
-        if check_if_no_index and check_if_no_index.get("content") and ("noindex" in check_if_no_index.get("content") or "none" in check_if_no_index.get("content")):
-            print("all links on {} marked as nofollow, skipping".format(h["_source"]["url"]))
-            continue
+            # check for nofollow or none meta values
+            check_if_no_index = soup.find("meta", {"name":"robots"})
 
-        with open('links.csv', 'a') as f:
+            if check_if_no_index and check_if_no_index.get("content") and ("noindex" in check_if_no_index.get("content") or "none" in check_if_no_index.get("content")):
+                print("all links on {} marked as nofollow, skipping".format(h["_source"]["url"]))
+                continue
+
             links_on_page = {}
             for l in links:
                 if l.has_attr('href'):
@@ -134,12 +137,16 @@ for hits in scroll(es, 'pages', body, '20s', 20):
 with open('domain_links.json', 'w+') as f:
     json.dump(domain_links, f)
 
+with open("all_domains.txt", "w+") as f:
+    for domain in domain_links.keys():
+        f.write(domain.lower() + "\n")
+
 links = {}
 count = 0
 
 # Open links file
 # Create dictionary with the number of times each domain appears
-for line in open("links.csv"):
+for line in open("links.csv", "r"):
     line = line.strip().lower()
 
     link = line.split(",")
@@ -167,9 +174,26 @@ with open('all_links_final.json', 'r') as f:
 
 count = 0 
 
+with open("all_domains.txt", "r") as file:
+    domain_list = file.read().splitlines()
+
+domains = {k: "" for k in domain_list}
+
 # update incoming_links attribute
 for link, link_count in links.items():
     found = "no"
+    link_domain = link.split("/")
+
+    if link_domain:
+        link_domain = link_domain[2].replace("www.", "").lower()
+    else:
+        continue
+
+    # do not search elasticsearch if a domain is not in the index
+    # checking if each link in the "links.csv" file is in the index is inefficient and slow
+    if domains.get(link_domain) == None:
+        continue
+    
     while found == "no":
         search_param = {
             "query": {
