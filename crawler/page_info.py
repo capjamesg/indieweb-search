@@ -59,7 +59,8 @@ def get_page_info(page_text, page_desc_soup, page_url):
 		if summary:
 			meta_description = summary[0].text
 
-	if meta_description == "":
+	# try to retrieve a larger meta description
+	if meta_description == "" or len(meta_description) < 75:
 		# Use first paragraph as meta description if one can be found
 		# get paragraph after h1
 
@@ -72,7 +73,7 @@ def get_page_info(page_text, page_desc_soup, page_url):
 				if len(meta_description) < 50:
 					meta_description = ""
 
-	if meta_description == "" or meta_description == None:
+	if meta_description == "" or meta_description == None or len(meta_description) < 75:
 		h1 = page_desc_soup.find("h1")
 		
 		if h1:
@@ -110,15 +111,15 @@ def get_page_info(page_text, page_desc_soup, page_url):
 	# get list items as a last resort
 	# useful for pages that are lists of links that do not have a meta description specified
 
-	if meta_description == "" or meta_description == None:
-		# get ul after h1
-		h1 = page_desc_soup.find("h1")
-		ul_after_h1 = h1.find_next("ul")
+	# if meta_description == "" or meta_description == None or len(meta_description) < 75:
+	# 	# get ul after h1
+	# 	h1 = page_desc_soup.find("h1")
+	# 	ul_after_h1 = h1.find_next("ul")
 
-		# get first three items in ul
-		if ul_after_h1:
-			meta_description = ", ".join([li.text for li in ul_after_h1.find_all("li")[:3]])
-			meta_description.strip(",")
+	# 	# get first three items in ul
+	# 	if ul_after_h1:
+	# 		meta_description = ", ".join([li.get_text().strip("/").strip() for li in ul_after_h1.find_all("li")[:3]])
+	# 		meta_description.strip(",")
 
 	# Only get first 180 characters of meta description (and don't chop a word)
 

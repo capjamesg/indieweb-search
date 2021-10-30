@@ -49,12 +49,16 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
                 # if paragraph before mentions term
                 tag_before = tag.find_previous_sibling("p")
                 # get tag before the last one
-                tag_before_last = tag_before.find_previous_sibling("p")
-                heading_before = tag.find_previous_sibling("h2")
+                if tag_before and tag_before.text:
+                    tag_before_last = tag_before.find_previous_sibling("p")
+                    heading_before = tag.find_previous_sibling("h2")
+                    context = "<h2>" + heading_before.text + "</h2>" + "<p>" + tag_before_last.text + "</p>" + "<p>" + tag_before.text + "</p>"
+                elif tag.text:
+                    context = "<p>" + tag.text + "</p>"
 
                 if tag_before != None and original_cleaned_value.replace("code", "").replace("markup", "") in tag_before.text.lower():
                     return tag.text, {"url": original_url, "title": post["title"], "type": "code", "breadcrumb": url, 
-                    "context": "<h2>" + heading_before.text + "</h2>" + "<p>" + tag_before_last.text + "</p>" + "<p>" + tag_before.text + "</p>"}
+                    "context": context}
 
     all_locations = []
 

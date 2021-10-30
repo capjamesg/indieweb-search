@@ -174,7 +174,8 @@ def process_domain(site, reindex):
 	if reindex == True:
 		return 100, final_urls, namespaces_to_ignore, protocol
 	else:
-		return 5000, final_urls, namespaces_to_ignore, protocol
+		# crawl budget is now 15,000
+		return 15000, final_urls, namespaces_to_ignore, protocol
 
 def build_index(site, reindex=False):
 	# do not index IPs
