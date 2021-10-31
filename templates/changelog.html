@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="text-box main_content_box">
+  <img src="/static/indieweb.png" alt="IndieWeb logo" class="logo_image" />
+  <h1 style="text-align: center;">IndieWeb Search Changelog</h1>
+  <p>This page lists the main changes made to the search engine by month.</p>
+  <h2>October 2021</h2>
+  <ul>
+      <li>Crawler can now retrieve and process sites faster.</li>
+      <li>Link index was rebuilt.</li>
+      <li>Work towards preventing canonical loops was added to the crawler.</li>
+      <li>Search UI now nests results from the same page that appear consecutively in a search result.</li>
+      <li>IndieWeb Search has limited support for extracting code snippets from IndieWeb wiki pages. This feature is still experimental and more work needs to be done to test and finish code snippet support.</li>
+      <li>Crawler uses SHA hashes to identify duplicate content.</li>
+      <li>New sites were added to the index.</li>
+  </ul>
+</section>
+{% endblock content %}

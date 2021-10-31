@@ -15,7 +15,7 @@ spell = SpellChecker()
 
 nlp = spacy.load('en_core_web_sm')
 
-def parse_advanced_search(advanced_filter_to_search, query_with_handled_spaces, query_params, query_values_in_list, operand, inverted=False):
+def parse_advanced_search(advanced_filter_to_search, query_with_handled_spaces, query_values_in_list):
 	# Advanced search term to look for (i.e. before:")
 	look_for = query_with_handled_spaces.find(advanced_filter_to_search)
 	if look_for != -1:
@@ -24,13 +24,6 @@ def parse_advanced_search(advanced_filter_to_search, query_with_handled_spaces, 
 
 		if advanced_filter_to_search == "site:":
 			get_value[0] = get_value[0].replace("https://", "").replace("http://", "").split("/")[0]
-
-		# Write query param that will be used in final query, add to list of query params
-
-		if inverted == True:
-			query_params += "AND NOT {}".format(operand)
-		else:
-			query_params += "AND {}".format(operand)
 			
 		query_with_handled_spaces = query_with_handled_spaces.replace('{}{}"'.format(advanced_filter_to_search, get_value[0]), "")
 
@@ -42,12 +35,10 @@ def parse_advanced_search(advanced_filter_to_search, query_with_handled_spaces, 
 		else:
 			query_values_in_list.append(get_value[0].replace('"', ""))
 
-	return query_params, query_values_in_list, query_with_handled_spaces
+	return query_values_in_list, query_with_handled_spaces
 
 # Process category search and defer dates to parse_advanced_search function
 def handle_advanced_search(query_with_handled_spaces):
-	query_params = ""
-
 	query_values_in_list = []
 
 	if 'not category:"' in query_with_handled_spaces or 'not inurl:' in query_with_handled_spaces:
@@ -55,30 +46,21 @@ def handle_advanced_search(query_with_handled_spaces):
 	else:
 		operand = ""
 
-	query_params, query_values_in_list, query_with_handled_spaces = parse_advanced_search('before:"', query_with_handled_spaces, query_params, query_values_in_list, "published <= date(?)")
-	query_params, query_values_in_list, query_with_handled_spaces = parse_advanced_search('after:"', query_with_handled_spaces, query_params, query_values_in_list, "published >= date(?)")
+	query_values_in_list, query_with_handled_spaces = parse_advanced_search('before:"', query_with_handled_spaces, query_values_in_list)
+	query_values_in_list, query_with_handled_spaces = parse_advanced_search('after:"', query_with_handled_spaces, query_values_in_list)
+	query_values_in_list, query_with_handled_spaces = parse_advanced_search('js:"', query_with_handled_spaces, query_values_in_list)
 
 	if 'inurl:"' in query_with_handled_spaces:
-		if request.args.get("type") == "image":
-			query_params += "AND Image.image_src {} LIKE ?".format(operand)
-		else:
-			query_params += "AND url {} LIKE ?".format(operand)
-
 		value_to_add = "%" + re.findall(r'{}([^"]*)"'.format('inurl:"'), query_with_handled_spaces)[0] + "%"
 		query_values_in_list.append(value_to_add)
 		query_with_handled_spaces = query_with_handled_spaces.replace('{}{}"'.format('inurl:"', re.findall(r'{}([^"]*)"'.format('inurl:"'), query_with_handled_spaces)[0]), "")
 
 	if "site:" in query_with_handled_spaces:
-		if request.args.get("type") == "image":
-			query_params += "AND Image.image_src {} LIKE ?".format(operand)
-		else:
-			query_params += "AND url {} LIKE ?".format(operand)
-
 		value_to_add = "%" + re.findall(r'{}([^"]*)"'.format('site:"'), query_with_handled_spaces)[0] + "%"
 		query_values_in_list.append(value_to_add)
 		query_with_handled_spaces = query_with_handled_spaces.replace('{}{}"'.format('site:"', re.findall(r'{}([^"]*)"'.format('site:"'), query_with_handled_spaces)[0]), "")
 	
-	return query_params, query_values_in_list, query_with_handled_spaces
+	return query_values_in_list, query_with_handled_spaces
 
 @main.route("/")
 def home():
@@ -89,7 +71,7 @@ def home():
 def search_autocomplete():
 	query = request.args.get("q")
 	suggest = requests.get("https://es-indieweb-search.jamesg.blog/suggest?q={}&pw={}".format(query, config.ELASTICSEARCH_PASSWORD))
-	print(suggest.json())
+
 	return jsonify(suggest.json()), 200
 
 @main.route("/results", methods=["GET", "POST"])
@@ -115,7 +97,7 @@ def results_page():
 
 	cleaned_value = ''.join(e for e in query_with_handled_spaces if e.isalnum() or e in allowed_chars)
 
-	query_params, query_values_in_list, query_with_handled_spaces = handle_advanced_search(query_with_handled_spaces)
+	query_values_in_list, query_with_handled_spaces = handle_advanced_search(query_with_handled_spaces)
 
 	cleaned_value_for_query = ''.join(e for e in query_with_handled_spaces if e.isalnum() or e == " " or e == ".")
 
@@ -132,7 +114,7 @@ def results_page():
 	if request.args.get("query"):
 		full_query_with_full_stops = ''.join(e for e in query_with_handled_spaces if e.isalnum() or e == " " or e == ".")
 
-		if len(cleaned_value_for_query) > 0 or len(query_params) > 0:
+		if len(cleaned_value_for_query) > 0:
 			do_i_use = ""
 
 			pagination = "0"
@@ -157,29 +139,23 @@ def results_page():
 
 			cleaned_value_for_query = cleaned_value_for_query.replace("what is", "")
 
-			if len(cleaned_value_for_query) > 0 and request.args.get("type") != "image":
-				query_params = "posts MATCH ? " + query_params
-			
-				query_values_in_list.insert(0, cleaned_value_for_query)
-			elif len(cleaned_value_for_query) > 0 and request.args.get("type") == "image":
-				query_params = "images MATCH ? " + query_params
-			
-				query_values_in_list.insert(0, cleaned_value_for_query)
-			else:
-				# Get all text after the first AND
-				query_params = "".join(query_params.split("AND")[1:])
-
 			if request.args.get("serp_as_json") and (request.args.get("serp_as_json") == "direct" or request.args.get("serp_as_json") == "results_page"):
 				minimal = "true"
 			else:
 				minimal = "false"
+
+			query_params = ""
 			
 			if "site:" in request.args.get("query"):
-				rows = session.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&sort={}&from={}&to={}&site={}&minimal={}".format(config.ELASTICSEARCH_PASSWORD, cleaned_value_for_query.replace("review", "").replace("who is", "").strip(), order, str(pagination), str(int(pagination)), query_values_in_list[-1].replace("%", ""), minimal )).json()
-			elif request.args.get("query").startswith("discover"):
-				rows = session.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&sort={}&from={}&to={}&discover=true&minimal={}".format(config.ELASTICSEARCH_PASSWORD, cleaned_value_for_query.replace("discover", "").strip(), order, str(pagination), str(int(pagination)+10), minimal)).json()
-			else:
-				rows = session.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&sort={}&from={}&to={}&minimal={}".format(config.ELASTICSEARCH_PASSWORD, cleaned_value_for_query.replace("review", "").replace("who is", "").replace("code", "").strip(), order, str(pagination), str(int(pagination)+10), minimal)).json()
+				query_params += "&site={}".format(query_values_in_list[-1].replace("%", ""))
+
+			if request.args.get("query").startswith("discover"):
+				query_params += "&discover=true"
+
+			if "js:none" in request.args.get("query"):
+				query_params += "&js=false"
+			
+			rows = session.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&sort={}&from={}&to={}&minimal={}{}".format(config.ELASTICSEARCH_PASSWORD, cleaned_value_for_query.replace("review", "").replace("who is", "").replace("code", "").strip(), order, str(pagination), str(int(pagination)+10), minimal, query_params)).json()
 
 			num_of_results = rows["hits"]["total"]["value"]
 			rows = rows["hits"]["hits"]
@@ -341,6 +317,10 @@ def robots():
 @main.route('/images/<path:path>')
 def send_static_images(path):
 	return send_from_directory("static/images", path)
+
+@main.route("/changelog")
+def changelog():
+	return render_template("changelog.html", title="IndieWeb Search Changelog")
 
 @main.route("/advanced")
 def advanced_search():
