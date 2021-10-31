@@ -1,12 +1,13 @@
 from bs4 import Comment
-import requests
+import hashlib
 import datetime
 import logging
-import config
 import mf2py
 import json
 
-def add_to_database(full_url, published_on, doc_title, meta_description, heading_info, page, pages_indexed, page_content, outgoing_links, crawl_budget, nofollow_all, main_page_content, original_h_card, thin_content=False):
+def add_to_database(full_url, published_on, doc_title, meta_description, heading_info, page, 
+	pages_indexed, page_content, outgoing_links, crawl_budget, nofollow_all, main_page_content, 
+	original_h_card, hash, thin_content=False):
 	# get last modified date
 
 	if page != "" and page.headers:
@@ -159,7 +160,8 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 		"category": category,
 		"featured_image": featured_image,
 		"thin_content": thin_content,
-		"contains_javascript": contains_javascript
+		"contains_javascript": contains_javascript,
+		"page_hash": hash
 	}
 
 	# results currently being saved to a file, so no need to run this code

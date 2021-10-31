@@ -6,6 +6,7 @@ import config
 import crawler.page_info
 import crawler.add_to_database as add_to_database
 import crawler.discovery as page_link_discovery
+import hashlib
 
 yesterday = datetime.datetime.today() - datetime.timedelta(days=1)
 
@@ -39,11 +40,13 @@ def save_feed(site, full_url, feed_url, feed_type, feeds, feed_urls):
 
 	return feeds, feed_urls
 
-def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, external_links, discovered_urls, iterate_list_of_urls, site_url, crawl_budget, url, feeds, feed_urls, site, session, link_discovery=True, h_card=[]):
+def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, external_links, discovered_urls, iterate_list_of_urls, site_url, crawl_budget, url, feeds, feed_urls, site, session, web_page_hashes, average_crawl_speed, link_discovery=True, h_card=[], crawl_depth=0):
 	"""
 		Crawls URLs in list, adds URLs to index, and returns updated list
 	"""
 	count = 0
+
+	print(url)
 
 	feeds = []
 
@@ -64,17 +67,17 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 	if len(full_url) > 125:
 		print("{} url too long, skipping".format(full_url))
 		logging.info("{} url too long, skipping".format(full_url))
-		return url, {}, False, feeds
+		return url, {}, False, feeds, None, crawl_depth, average_crawl_speed
 
 	if "javascript:" in full_url:
 		print("{} marked as noindex because it is a javascript resource".format(full_url))
 		logging.info("{} marked as noindex because it is a javascript resource".format(full_url))
-		return url, {}, False, feeds
+		return url, {}, False, feeds, None, crawl_depth, average_crawl_speed
 
 	if "/wp-json/" in full_url:
 		print("{} marked as noindex because it is a wordpress api resource".format(full_url))
 		logging.info("{} marked as noindex because it is a wordpress api resource".format(full_url))
-		return url, {}, False, feeds
+		return url, {}, False, feeds, None, crawl_depth, average_crawl_speed
 
 	# Only get URLs that match namespace exactly
 	in_matching_namespace = [s for s in namespaces_to_ignore if s.startswith(full_url.replace("http://", "").replace("https://", "").replace(site_url, "")) == full_url]
@@ -101,7 +104,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 				if not page_test.history[-1].url.startswith("http://" + site_url) and not page_test.history[-1].url.startswith("https://" + site_url):
 					print("{} redirected to {}, which is on a different site, skipping".format(full_url, page_test.history[-1].url))
 					logging.info("{} redirected to {}, which is on a different site, skipping".format(full_url, page_test.history[-1].url))
-					return url, {}, False, feeds
+					return url, {}, False, feeds, None, crawl_depth, average_crawl_speed
 					
 				logging.error("{} redirected to {}".format(full_url, page_test.history[-1].url))
 				print("{} redirected to {}".format(full_url, page_test.history[-1].url))
@@ -114,7 +117,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 					if "noindex" in page_test.headers.get("x-robots-tag") or "none" in page_test.headers.get("x-robots-tag"):
 						print("{} marked as noindex".format(full_url))
 						logging.info("{} marked as noindex".format(full_url))
-						return url, {}, False, []
+						return url, {}, False, feeds, None, crawl_depth, average_crawl_speed
 					elif "nofollow" in page_test.headers.get("x-robots-tag"):
 						print("all links on {} marked as nofollow due to x-robots-tag nofollow value".format(full_url))
 						logging.info("all links on {} marked as nofollow due to x-robots-tag nofollow value".format(full_url))
@@ -124,16 +127,16 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			logging.error("{} timed out, skipping".format(full_url))
 			print("{} timed out, skipping".format(full_url))
 			check_remove_url(full_url)
-			return url, {}, False, feeds
+			return url, {}, False, feeds, None, crawl_depth, average_crawl_speed
 		except requests.exceptions.TooManyRedirects:
 			logging.error("{} too many redirects, skipping".format(full_url))
 			print("{} too many redirects, skipping".format(full_url))
 			check_remove_url(full_url)
-			return url, {}, False, feeds
+			return url, {}, False, feeds, None, crawl_depth, average_crawl_speed
 		except:
 			logging.error("{} failed to connect, skipping".format(full_url))
 			print("{} failed to connect, skipping".format(full_url))
-			return url, {}, False, feeds
+			return url, {}, False, feeds, None, crawl_depth, average_crawl_speed
 
 		# only index html documents
 
@@ -141,7 +144,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			print("{} is not a html resource, skipping".format(full_url))
 			check_remove_url(full_url)
 			logging.info("{} is not a html resource, skipping".format(full_url))
-			return url, {}, False, feeds
+			return url, {}, False, feeds, None, crawl_depth, average_crawl_speed
 
 		if page_test.headers.get("link"):
 			header_links = requests.utils.parse_header_links(page_test.headers.get("link").rstrip('>').replace('>,<', ',<'))
@@ -161,7 +164,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 						print("{} has a canonical url of {}, not adding to queue because url points to a different domain".format(full_url, canonical))
 						logging.info("{} has a canonical url of {}, not adding to queue because url points to a different domain".format(full_url, canonical))
 
-						return url, {}, False, feeds
+						return url, {}, False, feeds, None, crawl_depth, average_crawl_speed
 
 					if canonical and canonical != full_url.lower().strip("/").replace("http://", "https://").split("?")[0]:
 						if discovered_urls.get(full_url).startswith("CANONICAL"):
@@ -177,24 +180,24 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 							logging.info("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical_url))
 							print("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical_url))
 
-							return url, discovered_urls, False
+							return url, discovered_urls, False, None, crawl_depth, average_crawl_speed
 
 		try:
 			page = session.get(full_url, timeout=10, headers=config.HEADERS, allow_redirects=True, verify=False)
 		except requests.exceptions.Timeout:
 			logging.error("{} timed out, skipping".format(full_url))
-			return url, {}, False, feeds
+			return url, {}, False, feeds, None, crawl_depth, average_crawl_speed
 		except requests.exceptions.TooManyRedirects:
 			logging.error("{} too many redirects, skipping".format(full_url))
 			check_remove_url(full_url)
-			return url, {}, False, feeds
+			return url, {}, False, feeds, None, crawl_depth, average_crawl_speed
 		except:
 			logging.error("{} failed to connect, skipping".format(full_url))
-			return url, {}, False, feeds
+			return url, {}, False, feeds, None, crawl_depth, average_crawl_speed
 
 		# 404 = not found, 410 = gone
 		if page.status_code == 404 or page.status_code == 410:
-			return url, {}, False, feeds
+			return url, {}, False, feeds, None, crawl_depth, average_crawl_speed
 
 		elif page.status_code == 301 or page.status_code == 302 or page.status_code == 308:
 			redirected_to = page.headers["Location"]
@@ -211,7 +214,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 					if redirected_from == redirected_to:
 						print("{} has already been redirected from a canonical url, will not redirect a second time, skipping".format(full_url))
 						logging.info("{} has already been redirected from a canonical url, will not redirect a second time, skipping".format(full_url))
-						return url, {}, False, feeds
+						return url, {}, False, feeds, None, crawl_depth, average_crawl_speed
 
 				discovered_urls[redirected_to] = redirected_to
 
@@ -221,12 +224,33 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			print("{} page returned {} status code".format(full_url, page.status_code))
 			check_remove_url(full_url)
 			logging.error("{} page {} status code".format(full_url, page.status_code))
-			return url, {}, False, feeds
+			return url, {}, False, feeds, None, crawl_depth, average_crawl_speed
+
+		if len(average_crawl_speed) > 10 and page.elapsed.total_seconds() > 2:
+			print("WARNING: {} took {} seconds to load, server slow".format(full_url, page.elapsed.total_seconds()))
+			logging.info("WARNING: {} took {} seconds to load, server slow".format(full_url, page.elapsed.total_seconds()))
+		
+		print(page.elapsed.total_seconds())
+		average_crawl_speed.append(page.elapsed.total_seconds())
+		# only store the most recent 100 times
+		average_crawl_speed = average_crawl_speed[:100]
 
 		try:
 			page_desc_soup = BeautifulSoup(page.content, "lxnl")
 		except:
 			page_desc_soup = BeautifulSoup(page.content, "html5lib")
+
+		# get body of page
+		# don't include head tag
+		body = page_desc_soup.find("body")
+
+		# get hash of web page
+		hash = hashlib.sha256(str(body).encode('utf-8')).hexdigest()
+
+		if web_page_hashes.get(hash):
+			print("{} has already been indexed (hash the same as {}), skipping".format(full_url, web_page_hashes.get(hash)))
+			logging.info("{} has already been indexed (hash the same as {}), skipping".format(full_url, web_page_hashes.get(hash)))
+			return url, {}, False, feeds, hash, crawl_depth, average_crawl_speed
 
 		# if http-equiv refresh redirect present
 		# not recommended by W3C but still worth checking for just in case
@@ -239,7 +263,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 				print("{} has a refresh url of {}, not adding to queue because url points to a different domain".format(full_url, refresh_url))
 				logging.info("{} has a refresh url of {}, not adding to queue because url points to a different domain".format(full_url, refresh_url))
 
-				return url, {}, False, feeds
+				return url, {}, False, feeds, hash, crawl_depth, average_crawl_speed
 				
 			if refresh_url:
 				final_urls[refresh_url] = ""
@@ -249,7 +273,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 				discovered_urls[refresh_url] = refresh_url
 
 			# add new page to crawl queue so that previous validation can happen again (i.e. checking for canonical header)
-			return url, {}, False, feeds
+			return url, {}, False, feeds, hash, crawl_depth, average_crawl_speed
 
 		# check for canonical url
 
@@ -268,7 +292,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 				print("{} has a canonical url of {}, not adding to queue because url points to a different domain".format(full_url, canonical))
 				logging.info("{} has a canonical url of {}, not adding to queue because url points to a different domain".format(full_url, canonical))
 
-				return url, {}, False, feeds
+				return url, {}, False, feeds, hash, crawl_depth, average_crawl_speed
 			
 			if canonical and canonical != full_url.lower().strip("/").replace("http://", "https://").split("?")[0]:
 				if discovered_urls.get(full_url).startswith("CANONICAL"):
@@ -284,7 +308,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 					logging.info("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical))
 					print("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical))
 
-					return url, discovered_urls, False, feeds
+					return url, discovered_urls, False, feeds, hash, crawl_depth, average_crawl_speed
 
 		check_if_no_index = page_desc_soup.find("meta", {"name":"robots"})
 
@@ -304,7 +328,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 				page_desc_soup.find("meta", {"name": "rating"}).get("content") == "RTA-5042-1996-1400-1577-RTA":
 				print("{} marked as adult content in a meta tag, skipping".format(full_url))
 				logging.info("{} marked as adult content in a meta tag, skipping".format(full_url))
-				return url, {}, False, feeds
+				return url, {}, False, feeds, hash, crawl_depth, average_crawl_speed
 
 		if nofollow_all == False:
 			links = [l for l in page_desc_soup.find_all("a") if (l.get("rel") and "nofollow" not in l["rel"]) or (not l.get("rel") and l.get("href") not in ["#", "javascript:void(0);"])]
@@ -402,29 +426,29 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 							else:
 								feeds, feed_urls = save_feed(site, full_url, original_feed_url, feed_type, feeds, feed_urls)
 
-			final_urls, iterate_list_of_urls, all_links, external_links, discovered_urls = page_link_discovery.page_link_discovery(links, final_urls, iterate_list_of_urls, full_url, all_links, external_links, discovered_urls, site_url)
+			final_urls, iterate_list_of_urls, all_links, external_links, discovered_urls = page_link_discovery.page_link_discovery(links, final_urls, iterate_list_of_urls, full_url, all_links, external_links, discovered_urls, site_url, crawl_depth)
 
 		# there are a few wikis in the crawl and special pages provide very little value to the search index
 		if "/Special:" in full_url and "MediaWiki" in page_desc_soup.find("meta", {"name": "generator"})["content"]:
 			print("{} is a mediawiki special page, will not crawl".format(full_url))
 			logging.info("{} is a mediawiki special page, will not crawl".format(full_url))
-			return url, {}, False, feeds
+			return url, {}, False, feeds, hash, crawl_depth, average_crawl_speed
 
 		if "/tags/" in full_url or "/tag/" in full_url or "/label/" in full_url or "/search/" in full_url or "/category/" in full_url or "/categories/" in full_url:
 			print("{} marked as follow, noindex because it is a tag, label, or search resource".format(full_url))
 			logging.info("{} marked as follow, noindex because it is a tag, label, or search resource".format(full_url))
-			return url, {}, False, feeds
+			return url, {}, False, feeds, hash, crawl_depth, average_crawl_speed
 
 		elif "/page/" in full_url and full_url.split("/")[-1].isdigit():
 			print("{} marked as follow, noindex because it is a page archive".format(full_url))
 			logging.info("{} marked as follow, noindex because it is a page archive".format(full_url))
-			return url, {}, False, feeds
+			return url, {}, False, feeds, hash, crawl_depth, average_crawl_speed
 
 		thin_content = False
 
 		# 20 word minimum will prevent against short notes
 		if page_desc_soup.select(".e-content"):
-			page_text = page_desc_soup.find(".e-content")
+			page_text = page_desc_soup.select(".e-content")[0]
 			# print(page_text)
 			# if len(page_text.get_text().split(" ")) < 75:
 			# 	print("content on {} is thin (under 75 words in e-content), marking as thin_content".format(full_url))
@@ -432,7 +456,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			# 	thin_content = True
 
 		elif page_desc_soup.select(".h-entry"):
-			page_text = page_desc_soup.find(".h-entry")
+			page_text = page_desc_soup.select(".h-entry")[0]
 			# print(page_text)
 			# if len(page_text.get_text().split(" ")) < 75:
 			# 	print("content on {} is thin (under 75 words in h-entry), marking as thin_content".format(full_url))
@@ -455,11 +479,11 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			page_text = page_desc_soup.find("body")
 
 		if page_text == None:
-			return url, discovered_urls, False, feeds
+			return url, discovered_urls, False, feeds, hash, crawl_depth, average_crawl_speed
 
 		# word count is slightly higher if e-content or h-entry could not be found because this count will consider other parts of a page
 		if page_text.text and len(page_text.text.split(" ")) < 100:
-			print("content on {} is thin (under 100 words), marking as thin_content")
+			print("content on {} is thin (under 100 words), marking as thin_content".format(full_url))
 			logging.info("content on {} is thin (under 100 words), marking as thin_content".format(full_url))
 			thin_content = True
 
@@ -479,20 +503,21 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 					v.append(h.text)
 
 		# Only index if noindex attribute is not present
+
 		page_text, page_desc_soup, published_on, meta_description, doc_title, noindex = crawler.page_info.get_page_info(page_text, page_desc_soup, full_url)
 
 		if noindex == True:
-			return url, discovered_urls, False, feeds
+			return url, discovered_urls, False, feeds, hash, crawl_depth, average_crawl_speed
 			
 		count += 1
 
 		if check_if_no_index and check_if_no_index.get("content") and "noindex" in check_if_no_index.get("content"):
 			print("{} marked as noindex, skipping".format(full_url))
 			logging.info("{} marked as noindex, skipping".format(full_url))
-			return url, discovered_urls, False, feeds
+			return url, discovered_urls, False, feeds, hash, crawl_depth, average_crawl_speed
 			
 		try:
-			pages_indexed = add_to_database.add_to_database(full_url, published_on, doc_title, meta_description, heading_info, page, pages_indexed, page_desc_soup, len(links), crawl_budget, nofollow_all, page_desc_soup.find("body"), h_card, thin_content)
+			pages_indexed = add_to_database.add_to_database(full_url, published_on, doc_title, meta_description, heading_info, page, pages_indexed, page_desc_soup, len(links), crawl_budget, nofollow_all, page_desc_soup.find("body"), h_card, hash, thin_content)
 		except Exception as e:
 			print("error with {}".format(full_url))
 			print(e)
@@ -501,4 +526,4 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 
 	print('finished {}'.format(full_url))
 
-	return url, discovered_urls, True, feeds
+	return url, discovered_urls, True, feeds, hash, crawl_depth, average_crawl_speed

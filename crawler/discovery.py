@@ -1,7 +1,7 @@
 import datetime
 import logging
 
-def page_link_discovery(links, final_urls, iterate_list_of_urls, page_being_processed, all_links, external_links, discovered_urls, site_url):
+def page_link_discovery(links, final_urls, iterate_list_of_urls, page_being_processed, all_links, external_links, discovered_urls, site_url, crawl_depth):
 	"""
 		Finds all the links on the page and adds them to the list of links to crawl.
 	"""
@@ -10,6 +10,8 @@ def page_link_discovery(links, final_urls, iterate_list_of_urls, page_being_proc
 
 	for link in links:
 		if link.get("href"):
+			link["href"] = link["href"].lower()
+
 			supported_protocols = ["http", "https"]
 
 			if not link["href"].startswith("/") and ("://" in link.get("href") and link.get("href").split("://")[0] not in supported_protocols) or (":" in link.get("href") \
@@ -79,6 +81,8 @@ def page_link_discovery(links, final_urls, iterate_list_of_urls, page_being_proc
 
 				iterate_list_of_urls.append(full_link)
 
-				discovered_urls[full_link] = page_being_processed
+				# add 1 to crawl depth
+				print(crawl_depth)
+				discovered_urls[full_link] = crawl_depth + 1
 
 	return final_urls, iterate_list_of_urls, all_links, external_links, discovered_urls
