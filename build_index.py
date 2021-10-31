@@ -251,12 +251,34 @@ def build_index(site, reindex=False):
 		print("no h-card could be found on {} home page".format(site))
 
 	session = requests.Session()
+
+	web_page_hashes = {}
+
+	crawl_depths = {}
+
+	average_crawl_speed = []
 	
 	for url in iterate_list_of_urls:
-		url_indexed, discovered, valid, discovered_feeds = url_handling.crawl_urls(final_urls, namespaces_to_ignore, indexed, links, external_links, discovered_urls, iterate_list_of_urls, site, crawl_budget, url, [], feed_urls, site, session, True, h_card)
+		if crawl_depths.get("url"):
+			crawl_depth = crawl_depths.get("url")
+			if crawl_depth > 5:
+				print("crawl depth for {} is {}".format(url, crawl_depth))
+				logging.debug("crawl depth for {} is {}".format(url, crawl_depth))
+		else:
+			crawl_depth = 0
+
+		url_indexed, discovered, valid, discovered_feeds, web_page_hash, crawl_depth, average_crawl_speed = url_handling.crawl_urls(final_urls, namespaces_to_ignore, indexed, links, external_links, discovered_urls, iterate_list_of_urls, site, crawl_budget, url, [], feed_urls, site, session, web_page_hashes, average_crawl_speed, True, h_card, crawl_depth)
 
 		if valid == True:
 			valid_count += 1
+
+		if web_page_hash != None:
+			web_page_hashes[web_page_hash] = url
+	
+		average_crawl_speed.extend(average_crawl_speed)
+
+		if len(average_crawl_speed) > 100:
+			average_crawl_speed = average_crawl_speed[:100]
 		
 		indexed += 1
 
@@ -267,12 +289,20 @@ def build_index(site, reindex=False):
 			break
 
 		indexed_list[url_indexed] = True
+		web_page_hashes[web_page_hash] = url
 
 		for f in discovered_feeds:
 			if discovered_feeds_dict.get(f.get("feed_url")) == None:
 				all_feeds.append(f)
 				feed_urls.append(f.get("feed_url"))
 				discovered_feeds_dict[f.get("feed_url")] = True
+
+		for key, value in discovered.items():
+			if not indexed_list.get(key):
+				print("{} not indexed, added".format(key))
+				iterate_list_of_urls.append(key)
+
+			crawl_depths[key] = value
 
 	# update database to list new feeds
 
@@ -302,11 +332,6 @@ def build_index(site, reindex=False):
 	else:
 		print("ERROR: crawl not recorded in database for {} (status code {})".format(site, r.status_code))
 		logging.error("crawl not recorded in database for {} (status code {})".format(site, r.status_code))
-
-	for item in discovered.keys():
-		if not indexed_list.get(item):
-			print("{} not indexed, added".format(item))
-			iterate_list_of_urls.append(item)
 			
 	with open("crawl_queue.txt", "r") as f:
 		rows = f.readlines()
