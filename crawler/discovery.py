@@ -14,7 +14,7 @@ def page_link_discovery(links, final_urls, iterate_list_of_urls, page_being_proc
 
 			supported_protocols = ["http", "https"]
 
-			if not link["href"].startswith("/") and ("://" in link.get("href") and link.get("href").split("://")[0] not in supported_protocols) or (":" in link.get("href") \
+			if link["href"] and not link["href"].startswith("/") and ("://" in link.get("href") and link.get("href").split("://")[0] not in supported_protocols) or (":" in link.get("href") \
 				and (not link.get("href").startswith("/") and not link.get("href").startswith("//") and not link.get("href").startswith("#") \
 				and not link.get("href").split(":")[0] in supported_protocols)):
 				# url is wrong protocol, continue
@@ -40,11 +40,10 @@ def page_link_discovery(links, final_urls, iterate_list_of_urls, page_being_proc
 				full_link = "https://{}".format(site_url) + link["href"]
 			elif link["href"].startswith("http"):
 				full_link = link["href"]
-			elif "//" in link["href"] and "http" not in link["href"]:
-				continue
 			else:
 				if ".." not in link["href"]:
-					full_link = "{}/{}".format("/".join(page_being_processed.split("/")[:-1]), link["href"])
+					protocol = page_being_processed.split("://")[0]
+					full_link = "{}://{}/{}".format(protocol, site_url, link["href"])
 				else:
 					continue
 
@@ -82,7 +81,6 @@ def page_link_discovery(links, final_urls, iterate_list_of_urls, page_being_proc
 				iterate_list_of_urls.append(full_link)
 
 				# add 1 to crawl depth
-				print(crawl_depth)
 				discovered_urls[full_link] = crawl_depth + 1
 
 	return final_urls, iterate_list_of_urls, all_links, external_links, discovered_urls

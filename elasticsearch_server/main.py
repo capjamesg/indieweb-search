@@ -50,6 +50,7 @@ def home():
     domain_param = request.args.get("domain")
     discover = request.args.get("discover")
     from_num = request.args.get("from")
+    contains_js = request.args.get("js")
 
     if not from_num:
         from_num = 1
@@ -96,11 +97,14 @@ def home():
         elif inurl and len(inurl) == 0:
             query = "(url:{})".format(inurl)
 
+    if contains_js and contains_js == "false":
+        query = query + " AND (js:false)"
+
     if discover and discover == "true":
         query = query + " AND (is_homepage:true)"
         fields = ["h_card"]
     else:
-        fields = ["title^2", "description^1.5", "url^1.3", "category^0", "published^0", "keywords^0", "text^2.8", "h1^1.7", "h2^1.5", "h3^1.2", "h4^0.5", "h5^0.75", "h6^0.25", "domain^3"]
+        fields = ["title^2", "description^1.5", "url^1.3", "category^0", "published^0", "keywords^0", "text^2.5", "h1^1.7", "h2^1.5", "h3^1.2", "h4^0.5", "h5^0.75", "h6^0.25", "domain^3"]
 
     search_param = {
         "from": int(from_num),
@@ -117,7 +121,7 @@ def home():
                 },
                 "script": {
                     "source": """
-                        return _score + Math.log((1 + (doc['incoming_links'].value)) * 4.5) + Math.log((1 + (doc['word_count'].value)));
+                        return _score + Math.log((1 + (doc['incoming_links'].value)) * 6) + Math.log((1 + (doc['word_count'].value) * 2));
                     """
                 },
             },

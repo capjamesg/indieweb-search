@@ -25,7 +25,7 @@ def check_remove_url(full_url):
 def save_feed(site, full_url, feed_url, feed_type, feeds, feed_urls):
 	supported_protocols = ["http", "https"]
 
-	if feed_url and ("://" in feed_url and feed_url.split("://")[0] not in supported_protocols) or (":" in feed_url \
+	if feed_url != None and ("://" in feed_url and feed_url.split("://")[0] not in supported_protocols) or (":" in feed_url \
 		and (not feed_url.startswith("/") and not feed_url.startswith("//") and not feed_url.startswith("#") \
 		and not feed_url.split(":")[0] in supported_protocols)):
 		# url is wrong protocol, continue
@@ -230,8 +230,8 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			print("WARNING: {} took {} seconds to load, server slow".format(full_url, page.elapsed.total_seconds()))
 			logging.info("WARNING: {} took {} seconds to load, server slow".format(full_url, page.elapsed.total_seconds()))
 		
-		print(page.elapsed.total_seconds())
 		average_crawl_speed.append(page.elapsed.total_seconds())
+		logging.info("{} took {} seconds to load".format(full_url, page.elapsed.total_seconds()))
 		# only store the most recent 100 times
 		average_crawl_speed = average_crawl_speed[:100]
 
@@ -508,6 +508,17 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 
 		if noindex == True:
 			return url, discovered_urls, False, feeds, hash, crawl_depth, average_crawl_speed
+
+		# get number of links
+		
+		links = page_desc_soup.find_all("a")
+		number_of_links = len(links)
+		word_count = len(page_desc_soup.get_text().split())
+
+		# if the ratio of words to links < 3:1, do not index
+		# these pages may be spam or other non-content pages that will not be useful to those using the search engine
+		if (word_count and word_count > 0 and number_of_links and number_of_links > 0) and word_count > 200 and word_count / number_of_links < 3:
+			thin_content = True
 			
 		count += 1
 
