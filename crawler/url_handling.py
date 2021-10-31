@@ -22,13 +22,13 @@ def check_remove_url(full_url):
 		logging.info("removed {} from index as it is no longer valid".format(full_url))
 
 def save_feed(site, full_url, feed_url, feed_type, feeds, feed_urls):
-
 	supported_protocols = ["http", "https"]
 
-	if feed_url.split(":") and feed_url.split(":")[0] not in supported_protocols:
+	if feed_url.split(":") and len(feed_url.split(":")) > 0 and \
+		 feed_url.split(":")[0] not in supported_protocols:
 		print("Unsupported protocol for discovered feed: " + feed_url + ", not adding to feed list")
 		logging.info("Unsupported protocol for discovered feed: " + feed_url + ", not adding to feed list")
-		return feeds, feed, url
+		return feeds, feed_urls
 
 	feeds.append({"website_url": site, "page_url": full_url, "feed_url": feed_url, "mime_type": feed_type, "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
 	feed_urls.append(feed_url.strip("/"))
@@ -422,14 +422,14 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 
 		# 20 word minimum will prevent against short notes
 		if page_desc_soup.select(".e-content"):
-			page_text = page_desc_soup.select(".e-content")[0]
+			page_text = page_desc_soup.find(".e-content")
 			if len(page_text.get_text().split(" ")) < 75:
 				print("content on {} is thin (under 75 words in e-content), marking as thin_content".format(full_url))
 				logging.info("content on {} is thin (under 75 words in e-content), marking as thin_content".format(full_url))
 				thin_content = True
 
 		elif page_desc_soup.select(".h-entry"):
-			page_text = page_desc_soup.select(".h-entry")
+			page_text = page_desc_soup.find(".h-entry")
 			if len(page_text.get_text().split(" ")) < 75:
 				print("content on {} is thin (under 75 words in h-entry), marking as thin_content".format(full_url))
 				logging.info("content on {} is thin (under 75 words in h-entry), marking as thin_content".format(full_url))

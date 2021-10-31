@@ -117,7 +117,7 @@ def home():
                 },
                 "script": {
                     "source": """
-                        return _score + Math.log((1 + (doc['word_count'].value))) + Math.log((1 + (doc['incoming_links'].value)) * 3.5) + Math.log((1 + (doc['word_count'].value)));
+                        return _score + Math.log((1 + (doc['incoming_links'].value)) * 4.5) + Math.log((1 + (doc['word_count'].value)));
                     """
                 },
             },
@@ -188,7 +188,7 @@ def home():
     if request.args.get("minimal") and request.args.get("minimal") == "true":
         # delete some attributes that are not necessary for a query to take place
         # this will reduce the amount of data that needs to go over the network
-        to_delete = ["h2", "h3", "h4", "h5", "h6", "length", "page_text", "incoming_links", "outgoing_links", "last_crawled", "favicon", "http_headers", "page_is_nofollow", "h_card", "category", "page_rank", "md5_hash", "page_content", "important_phrases"]
+        to_delete = ["h2", "h3", "h4", "h5", "h6", "length", "page_text", "outgoing_links", "last_crawled", "favicon", "http_headers", "page_is_nofollow", "h_card", "category", "page_rank", "md5_hash", "page_content", "important_phrases"]
         for hit in response["hits"]["hits"]:
             for key in to_delete:
                 if key in hit["_source"]:
