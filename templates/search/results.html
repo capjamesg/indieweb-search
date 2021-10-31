@@ -3,7 +3,7 @@
 <section class="h-feed">
   <h1 class="p-name p-summary hide-on-mobile">Your Search Results</h1>
     <form action="/results" method="GET" role="search">
-      <input type="text" id="query" name="query" placeholder="Enter your query" aria-label="Search the IndieWeb" value="{{ query }}">
+      <input type="text" id="query" name="query" placeholder="Enter your query" aria-label="Search the IndieWeb" value="{{ query }}" autocomplete="off">
       <input class="search_button" type="submit" value="Search">
     </form>
     <p class="hide-on-mobile">Returned {{ '{0:,}'.format(number_of_results) }} search result{% if number_of_results != 1 %}s{% endif %} for your "{{ query }}" query.</p>
@@ -15,7 +15,7 @@
       <ol class="serp">
         {% for r in range(0, results | length) %}
         {% if results[r]['_source']['url'] != special_result.breadcrumb %}
-        {% if results[r]['_source']['domain'] != results[r-1]['_source']['domain'] or (special_result and results[r]['_source']['domain'] == special_result.breadcrumb.split("/")[2]) %}
+        {% if results[r]['_source']['domain'] != results[r-1]['_source']['domain'] or (special_result and results[r]['_source']['domain'] == special_result.breadcrumb.split("/")[2]) or r == 0 %}
           <li class="h-entry" style="margin-bottom: 20px; border-radius: 10px; background-color: white; border: 1px solid lightgrey; padding: 10px;">
             <p class="breadcrumbs"><a href="{{ results[r]['_source']['url'] }}" style="border-bottom: none;">
               {% for item in results[r]['_source']['url'].replace("https://", "").replace("http://", "").rstrip("/").split("/") %}
@@ -63,7 +63,7 @@
             {% elif not results[r+1] %}
               </div>
               </li>
-            {% elif results[r-1] and results[r-1]['_source']['domain'] == results[r]['_source']['domain'] %}
+            {% elif r - 1 != -1 and results[r-1] and results[r-1]['_source']['domain'] == results[r]['_source']['domain'] %}
               </div>
             {% endif %}
         {% endif %}
