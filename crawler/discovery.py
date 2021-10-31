@@ -16,6 +16,13 @@ def page_link_discovery(links, final_urls, iterate_list_of_urls, page_being_proc
 
 			link["href"] = link["href"].split("?")[0]
 
+			supported_protocols = ["http", "https"]
+
+			if link.get("href").split(":") and link.get("href").split(":")[0] not in supported_protocols:
+				print("Unsupported protocol for discovered url: " + link.get("href").split(":")[0] + ", not adding to index queue")
+				logging.info("Unsupported protocol for discovered url: " + link.get("href").split(":")[0] + ", not adding to index queue")
+				continue
+
 			if link["href"].startswith("//"):
 				all_links.append([page_being_processed, link.get("href"), datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "external"])
 				external_links["https://" + link["href"]] = page_being_processed

@@ -22,6 +22,14 @@ def check_remove_url(full_url):
 		logging.info("removed {} from index as it is no longer valid".format(full_url))
 
 def save_feed(site, full_url, feed_url, feed_type, feeds, feed_urls):
+
+	supported_protocols = ["http", "https"]
+
+	if feed_url.split(":") and feed_url.split(":")[0] not in supported_protocols:
+		print("Unsupported protocol for discovered feed: " + feed_url + ", not adding to feed list")
+		logging.info("Unsupported protocol for discovered feed: " + feed_url + ", not adding to feed list")
+		return feeds, feed, url
+
 	feeds.append({"website_url": site, "page_url": full_url, "feed_url": feed_url, "mime_type": feed_type, "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
 	feed_urls.append(feed_url.strip("/"))
 	print("found feed {}, will save to feeds.json".format(feed_url))
@@ -59,6 +67,11 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 	if "javascript:" in full_url:
 		print("{} marked as noindex because it is a javascript resource".format(full_url))
 		logging.info("{} marked as noindex because it is a javascript resource".format(full_url))
+		return url, {}, False, feeds
+
+	if "/wp-json/" in full_url:
+		print("{} marked as noindex because it is a wordpress api resource".format(full_url))
+		logging.info("{} marked as noindex because it is a wordpress api resource".format(full_url))
 		return url, {}, False, feeds
 
 	# Only get URLs that match namespace exactly
@@ -149,16 +162,20 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 						return url, {}, False, feeds
 
 					if canonical and canonical != full_url.lower().strip("/").replace("http://", "https://").split("?")[0]:
-						canonical_url = link["url"]
+						if discovered_urls.get(full_url).startswith("CANONICAL"):
+							logging.info("{} has a canonical url of {}, not adding to index because the page was already identified as canonical".format(full_url, canonical))
+							print("{} has a canonical url of {}, not adding to index because the page was already identified as canonicale".format(full_url, canonical))
+						else:
+							canonical_url = link["url"]
 
-						iterate_list_of_urls.append(canonical_url)
+							iterate_list_of_urls.append(canonical_url)
 
-						discovered_urls[canonical_url] = "CANONICAL {}".format(full_url)
+							discovered_urls[canonical_url] = "CANONICAL {}".format(full_url)
 
-						logging.info("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical_url))
-						print("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical_url))
+							logging.info("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical_url))
+							print("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical_url))
 
-						return url, discovered_urls, False
+							return url, discovered_urls, False
 
 		try:
 			page = session.get(full_url, timeout=10, headers=config.HEADERS, allow_redirects=True, verify=False)
@@ -252,16 +269,20 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 				return url, {}, False, feeds
 			
 			if canonical and canonical != full_url.lower().strip("/").replace("http://", "https://").split("?")[0]:
-				final_urls[canonical] = ""
+				if discovered_urls.get(full_url).startswith("CANONICAL"):
+					logging.info("{} has a canonical url of {}, not adding to index because the page was already identified as canonical".format(full_url, canonical))
+					print("{} has a canonical url of {}, not adding to index because the page was already identified as canonicale".format(full_url, canonical))
+				else:
+					final_urls[canonical] = ""
 
-				iterate_list_of_urls.append(canonical)
+					iterate_list_of_urls.append(canonical)
 
-				discovered_urls[canonical] = "CANONICAL"
+					discovered_urls[canonical] = "CANONICAL"
 
-				logging.info("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical))
-				print("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical))
+					logging.info("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical))
+					print("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical))
 
-				return url, discovered_urls, False, feeds
+					return url, discovered_urls, False, feeds
 
 		check_if_no_index = page_desc_soup.find("meta", {"name":"robots"})
 
@@ -319,7 +340,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			# check if page has h-feed class on it
 			# if a h-feed class is present, mark page as feed
 
-			if page_desc_soup.select(".h-feed"):
+			if page_desc_soup.select(".h-feed") and len(feeds) < 25:
 				feeds.append({"website_url": site, "page_url": full_url, "feed_url": full_url, "mime_type": "h-feed", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
 				feed_urls.append(full_url.strip("/"))
 				print("{} is a h-feed, will save to feeds.json".format(full_url))
@@ -327,7 +348,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 
 			# check for websub hub
 
-			if page_desc_soup.find("link", {"rel": "hub"}):
+			if page_desc_soup.find("link", {"rel": "hub"}) and len(feeds) < 25:
 				websub_hub = page_desc_soup.find("link", {"rel": "hub"})["href"]
 
 				websub_hub = websub_hub.strip().strip("<").strip(">")
@@ -346,7 +367,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 				link_headers = link_headers.split(",")
 
 				for link_header in link_headers:
-					if "rel=\"hub\"" in link_header:
+					if "rel=\"hub\"" in link_header and len(feeds) < 25:
 						websub_hub = link_header.split(";")[0].strip().strip("<").strip(">")
 
 						feeds.append({"website_url": site, "page_url": full_url, "feed_url": websub_hub, "mime_type": "websub", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
@@ -356,7 +377,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 						print("{} is a websub hub, will save to feeds.json".format(websub_hub))
 						logging.info("{} is a websub hub, will save to feeds.json".format(websub_hub))
 
-					if "rel=\"alternate\"" in link_header:
+					if "rel=\"alternate\"" in link_header and len(feeds) < 25:
 						original_feed_url = link_header.split(";")[0].strip().strip("<").strip(">").lower()
 
 						if original_feed_url and original_feed_url not in feed_urls:
@@ -397,20 +418,23 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			logging.info("{} marked as follow, noindex because it is a page archive".format(full_url))
 			return url, {}, False, feeds
 
-		# 20 word minimum will prevent against short notes
-		if page_desc_soup.select("e-content"):
-			page_text = page_desc_soup.select("e-content")[0]
-			if len(page_text.get_text().split(" ")) < 10:
-				print("content on {} is thin (under 10 words in e-content), skipping")
-				logging.info("content on {} is thin (under 10 words in e-content), skipping".format(full_url))
-				return url, {}, False, feeds
+		thin_content = False
 
-		elif page_desc_soup.select("h-entry"):
-			page_text = page_desc_soup.select("h-entry")
-			if len(page_text.get_text().split(" ")) < 10:
-				print("content on {} is thin (under 10 words in h-entry), skipping")
-				logging.info("content on {} is thin (under 10 words in h-entry), skipping".format(full_url))
-				return url, {}, False, feeds
+		# 20 word minimum will prevent against short notes
+		if page_desc_soup.select(".e-content"):
+			page_text = page_desc_soup.select(".e-content")[0]
+			if len(page_text.get_text().split(" ")) < 75:
+				print("content on {} is thin (under 75 words in e-content), marking as thin_content".format(full_url))
+				logging.info("content on {} is thin (under 75 words in e-content), marking as thin_content".format(full_url))
+				thin_content = True
+
+		elif page_desc_soup.select(".h-entry"):
+			page_text = page_desc_soup.select(".h-entry")
+			if len(page_text.get_text().split(" ")) < 75:
+				print("content on {} is thin (under 75 words in h-entry), marking as thin_content".format(full_url))
+				logging.info("content on {} is thin (under 75 words in h-entry), marking as thin_content".format(full_url))
+				thin_content = True
+
 		elif page_desc_soup.find("main"):
 			page_text = page_desc_soup.find("main")
 		elif page_desc_soup.find("div", {"id": "main"}):
@@ -425,6 +449,12 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			page_text = page_desc_soup.find("div", {"id": "application-main"})
 		else:
 			page_text = page_desc_soup.find("body")
+
+		# word count is slightly higher if e-content or h-entry could not be found because this count will consider other parts of a page
+		if len(page_text.get_text().split(" ")) < 100:
+			print("content on {} is thin (under 100 words), marking as thin_content")
+			logging.info("content on {} is thin (under 100 words), marking as thin_content".format(full_url))
+			thin_content = True
 
 		if page_text == None:
 			return url, discovered_urls, False, feeds
@@ -457,7 +487,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			return url, discovered_urls, False, feeds
 			
 		try:
-			pages_indexed = add_to_database.add_to_database(full_url, published_on, doc_title, meta_description, heading_info, page, pages_indexed, page_desc_soup, len(links), crawl_budget, nofollow_all, page_desc_soup.find("body"), h_card)
+			pages_indexed = add_to_database.add_to_database(full_url, published_on, doc_title, meta_description, heading_info, page, pages_indexed, page_desc_soup, len(links), crawl_budget, nofollow_all, page_desc_soup.find("body"), h_card, thin_content)
 		except Exception as e:
 			print("error with {}".format(full_url))
 			print(e)
