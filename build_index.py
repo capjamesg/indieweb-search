@@ -20,7 +20,7 @@ start_time = datetime.datetime.now()
 logging.basicConfig(
 	level=logging.DEBUG, 
 	filename="{}/logs/{}.log".format(ROOT_DIRECTORY, datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
-	level=logging.INFO,datefmt='%Y-%m-%d %H:%M:%S'
+	datefmt='%Y-%m-%d %H:%M:%S'
 )
 
 broken_urls = []

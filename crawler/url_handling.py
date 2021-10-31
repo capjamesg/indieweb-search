@@ -24,10 +24,12 @@ def check_remove_url(full_url):
 def save_feed(site, full_url, feed_url, feed_type, feeds, feed_urls):
 	supported_protocols = ["http", "https"]
 
-	if feed_url.split(":") and len(feed_url.split(":")) > 0 and \
-		 feed_url.split(":")[0] not in supported_protocols:
-		print("Unsupported protocol for discovered feed: " + feed_url + ", not adding to feed list")
-		logging.info("Unsupported protocol for discovered feed: " + feed_url + ", not adding to feed list")
+	if ("://" in feed_url and feed_url.split("://")[0] not in supported_protocols) or (":" in feed_url \
+		and (not feed_url.startswith("/") and not feed_url.startswith("//") and not feed_url.startswith("#") \
+		and not feed_url.split(":")[0] in supported_protocols)):
+		# url is wrong protocol, continue
+		print("Unsupported protocol for discovered feed: " + feed_url + ", not adding to feed queue")
+		logging.info("Unsupported protocol for discovered feed: " + feed_url + ", not adding to fef queue")
 		return feeds, feed_urls
 
 	feeds.append({"website_url": site, "page_url": full_url, "feed_url": feed_url, "mime_type": feed_type, "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
