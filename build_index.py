@@ -17,7 +17,11 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 start_time = datetime.datetime.now()
 
-logging.basicConfig(level=logging.DEBUG, filename="{}/logs/{}.log".format(ROOT_DIRECTORY, datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+logging.basicConfig(
+	level=logging.DEBUG, 
+	filename="{}/logs/{}.log".format(ROOT_DIRECTORY, datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
+	level=logging.INFO,datefmt='%Y-%m-%d %H:%M:%S'
+)
 
 broken_urls = []
 
@@ -274,7 +278,8 @@ def build_index(site, reindex=False):
 	headers["Content-Type"] = "application/json"
 
 	# exclude wordpress json feeds for now
-	feeds = [f for f in all_feeds if "wp-json" not in f]
+	# only save first 25 feeds
+	feeds = [f for f in all_feeds[:25] if "wp-json" not in f]
 
 	r = requests.post("https://es-indieweb-search.jamesg.blog/save", json={"feeds": all_feeds}, headers=headers)
 
@@ -329,7 +334,7 @@ def main():
 	with open("blocklist.txt", "r") as block_file:
 		block_list = block_file.readlines()
 
-	to_crawl = [item for item in to_crawl if item not in block_list]
+	to_crawl = [item.lower() for item in to_crawl if item not in block_list]
 
 	with concurrent.futures.ThreadPoolExecutor() as executor:
 		futures = [executor.submit(build_index, url.replace("\n", "")) for url in to_crawl]

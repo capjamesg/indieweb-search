@@ -27,7 +27,7 @@
 {% elif special_result and special_result.type == "code" %}
     <div class="serp search_box featured">
         {% if special_result.featured_image %}<img src="{{ special_result.featured_image }}" alt="{{ special_result.title }} featured image">{% endif %}
-        <p>{{ special_result.context | safe }}</p>
+        {{ special_result.context | safe }}
         {% if do_i_use %}<p><pre><code>{{ do_i_use }}</code></pre></p>{% endif %}
         <p><a href="{{ special_result.breadcrumb }}">{{ special_result.title }}</a></p>
         {% if special_result.breadcrumb %}<p class="breadcrumbs"><a href="{{ special_result.breadcrumb }}" style="border-bottom: none;">{% for item in special_result.breadcrumb.replace("https://", "").rstrip("/").split("/") %} {{ item }} {% if not loop.last %}>{% endif %}{% endfor %}</a></p>{% endif %}
