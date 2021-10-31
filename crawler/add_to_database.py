@@ -6,7 +6,7 @@ import config
 import mf2py
 import json
 
-def add_to_database(full_url, published_on, doc_title, meta_description, heading_info, page, pages_indexed, page_content, outgoing_links, crawl_budget, nofollow_all, main_page_content, original_h_card, save_to_warc=False):
+def add_to_database(full_url, published_on, doc_title, meta_description, heading_info, page, pages_indexed, page_content, outgoing_links, crawl_budget, nofollow_all, main_page_content, original_h_card, thin_content=False):
 	# get last modified date
 
 	if page != "" and page.headers:
@@ -123,6 +123,12 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 			title = title.split(" ", 10)[0] + "..."
 	else:
 		title = doc_title
+
+	contains_javascript = False
+
+	# page contains javascript
+	if page_content.find("script"):
+		contains_javascript = True
 		
 	record = {
 		"title": title,
@@ -151,7 +157,9 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 		"h_card": json.dumps(h_card),
 		"is_homepage": is_homepage,
 		"category": category,
-		"featured_image": featured_image
+		"featured_image": featured_image,
+		"thin_content": thin_content,
+		"contains_javascript": contains_javascript
 	}
 
 	# results currently being saved to a file, so no need to run this code
