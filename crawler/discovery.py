@@ -12,12 +12,15 @@ def page_link_discovery(links, final_urls, iterate_list_of_urls, page_being_proc
 		if link.get("href"):
 			supported_protocols = ["http", "https"]
 
-			if ("://" in link.get("href") and link.get("href").split("://")[0] not in supported_protocols) or (":" in link.get("href") \
+			if not link["href"].startswith("/") and ("://" in link.get("href") and link.get("href").split("://")[0] not in supported_protocols) or (":" in link.get("href") \
 				and (not link.get("href").startswith("/") and not link.get("href").startswith("//") and not link.get("href").startswith("#") \
-				and not link.get("href").split(":")[0] in supported_protocols)) or full_link.startswith("#"):
+				and not link.get("href").split(":")[0] in supported_protocols)):
 				# url is wrong protocol, continue
 				print("Unsupported protocol for discovered url: " + link.get("href") + ", not adding to index queue")
 				logging.info("Unsupported protocol for discovered url: " + link.get("href") + ", not adding to index queue")
+				continue
+
+			if link.get("href").startswith("#"):
 				continue
 
 			link["href"] = link["href"].split("?")[0]
@@ -30,7 +33,6 @@ def page_link_discovery(links, final_urls, iterate_list_of_urls, page_being_proc
 			# skip email addresses
 			if "@" in link["href"]:
 				continue
-
 			# Add start of URL to end of any links that don't have it
 			elif link["href"].startswith("/"):
 				full_link = "https://{}".format(site_url) + link["href"]

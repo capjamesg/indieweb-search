@@ -201,6 +201,10 @@ def build_index(site, reindex=False):
 		print("Result from URL request to /feeds endpoint on elasticsearch server: {}".format(r.json()["message"]))
 		logging.debug("Result from URL request to /feeds endpoint on elasticsearch server: {}".format(r.json()["message"]))
 		feeds = []
+	elif r.status_code == 200 and not r.json():
+		print("No feeds retrieved for {} but still 200 response".format(site))
+		logging.debug("No feeds retrieved for {} but still 200 response".format(site))
+		feeds = []
 	else:
 		print("ERROR: feeds not retrieved for {} (status code {})".format(site, r.status_code))
 		logging.error("feeds not retrieved for {} (status code {})".format(site, r.status_code))
@@ -253,9 +257,6 @@ def build_index(site, reindex=False):
 
 		if valid == True:
 			valid_count += 1
-
-		if valid_count == 0 and indexed == 25:
-			break
 		
 		indexed += 1
 

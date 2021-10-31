@@ -24,7 +24,7 @@ def check_remove_url(full_url):
 def save_feed(site, full_url, feed_url, feed_type, feeds, feed_urls):
 	supported_protocols = ["http", "https"]
 
-	if ("://" in feed_url and feed_url.split("://")[0] not in supported_protocols) or (":" in feed_url \
+	if feed_url and ("://" in feed_url and feed_url.split("://")[0] not in supported_protocols) or (":" in feed_url \
 		and (not feed_url.startswith("/") and not feed_url.startswith("//") and not feed_url.startswith("#") \
 		and not feed_url.split(":")[0] in supported_protocols)):
 		# url is wrong protocol, continue
@@ -34,8 +34,8 @@ def save_feed(site, full_url, feed_url, feed_type, feeds, feed_urls):
 
 	feeds.append({"website_url": site, "page_url": full_url, "feed_url": feed_url, "mime_type": feed_type, "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
 	feed_urls.append(feed_url.strip("/"))
-	print("found feed {}, will save to feeds.json".format(feed_url))
-	logging.info("found feed {}, will save to feeds.json".format(feed_url))
+	# print("found feed {}, will save".format(feed_url))
+	logging.info("found feed {}, will save".format(feed_url))
 
 	return feeds, feed_urls
 
@@ -345,7 +345,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			if page_desc_soup.select(".h-feed") and len(feeds) < 25:
 				feeds.append({"website_url": site, "page_url": full_url, "feed_url": full_url, "mime_type": "h-feed", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
 				feed_urls.append(full_url.strip("/"))
-				print("{} is a h-feed, will save to feeds.json".format(full_url))
+				# print("{} is a h-feed, will save to feeds.json".format(full_url))
 				logging.info("{} is a h-feed, will save to feeds.json".format(full_url))
 
 			# check for websub hub
@@ -359,7 +359,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 				
 				feed_urls.append(full_url.strip("/"))
 
-				print("{} is a websub hub, will save to feeds.json".format(full_url))
+				# print("{} is a websub hub, will save to feeds.json".format(full_url))
 				logging.info("{} is a websub hub, will save to feeds.json".format(full_url))
 
 			# parse link headers
@@ -425,17 +425,19 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 		# 20 word minimum will prevent against short notes
 		if page_desc_soup.select(".e-content"):
 			page_text = page_desc_soup.find(".e-content")
-			if len(page_text.get_text().split(" ")) < 75:
-				print("content on {} is thin (under 75 words in e-content), marking as thin_content".format(full_url))
-				logging.info("content on {} is thin (under 75 words in e-content), marking as thin_content".format(full_url))
-				thin_content = True
+			# print(page_text)
+			# if len(page_text.get_text().split(" ")) < 75:
+			# 	print("content on {} is thin (under 75 words in e-content), marking as thin_content".format(full_url))
+			# 	logging.info("content on {} is thin (under 75 words in e-content), marking as thin_content".format(full_url))
+			# 	thin_content = True
 
 		elif page_desc_soup.select(".h-entry"):
 			page_text = page_desc_soup.find(".h-entry")
-			if len(page_text.get_text().split(" ")) < 75:
-				print("content on {} is thin (under 75 words in h-entry), marking as thin_content".format(full_url))
-				logging.info("content on {} is thin (under 75 words in h-entry), marking as thin_content".format(full_url))
-				thin_content = True
+			# print(page_text)
+			# if len(page_text.get_text().split(" ")) < 75:
+			# 	print("content on {} is thin (under 75 words in h-entry), marking as thin_content".format(full_url))
+			# 	logging.info("content on {} is thin (under 75 words in h-entry), marking as thin_content".format(full_url))
+			# 	thin_content = True
 
 		elif page_desc_soup.find("main"):
 			page_text = page_desc_soup.find("main")
@@ -452,14 +454,15 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 		else:
 			page_text = page_desc_soup.find("body")
 
+		if page_text == None:
+			return url, discovered_urls, False, feeds
+
 		# word count is slightly higher if e-content or h-entry could not be found because this count will consider other parts of a page
-		if len(page_text.get_text().split(" ")) < 100:
+		if page_text.text and len(page_text.text.split(" ")) < 100:
 			print("content on {} is thin (under 100 words), marking as thin_content")
 			logging.info("content on {} is thin (under 100 words), marking as thin_content".format(full_url))
 			thin_content = True
 
-		if page_text == None:
-			return url, discovered_urls, False, feeds
 
 		heading_info = {
 			"h1": [],
