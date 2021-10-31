@@ -10,24 +10,24 @@ def page_link_discovery(links, final_urls, iterate_list_of_urls, page_being_proc
 
 	for link in links:
 		if link.get("href"):
-			if "://" in link.get("href") and len(link.get("href").split("://")) > 0 and link.get("href").split("://")[0] != "https" and link.get("href").split(":")[0] != "http":
+			supported_protocols = ["http", "https"]
+
+			if ("://" in link.get("href") and link.get("href").split("://")[0] not in supported_protocols) or (":" in link.get("href") \
+				and (not link.get("href").startswith("/") and not link.get("href").startswith("//") and not link.get("href").startswith("#") \
+				and not link.get("href").split(":")[0] in supported_protocols)) or full_link.startswith("#"):
 				# url is wrong protocol, continue
+				print("Unsupported protocol for discovered url: " + link.get("href") + ", not adding to index queue")
+				logging.info("Unsupported protocol for discovered url: " + link.get("href") + ", not adding to index queue")
 				continue
 
 			link["href"] = link["href"].split("?")[0]
-
-			supported_protocols = ["http", "https"]
-
-			if link.get("href").split(":") and link.get("href").split(":")[0] not in supported_protocols:
-				print("Unsupported protocol for discovered url: " + link.get("href").split(":")[0] + ", not adding to index queue")
-				logging.info("Unsupported protocol for discovered url: " + link.get("href").split(":")[0] + ", not adding to index queue")
-				continue
 
 			if link["href"].startswith("//"):
 				all_links.append([page_being_processed, link.get("href"), datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "external"])
 				external_links["https://" + link["href"]] = page_being_processed
 				continue
 
+			# skip email addresses
 			if "@" in link["href"]:
 				continue
 
@@ -66,10 +66,7 @@ def page_link_discovery(links, final_urls, iterate_list_of_urls, page_being_proc
 				full_link = protocol + url
 
 			if full_link not in final_urls.keys() \
-			and "#" not in full_link \
 			and (full_link.startswith("https://{}".format(site_url)) or full_link.startswith("http://{}".format(site_url))) \
-			and ".xml" not in full_link \
-			and ".pdf" not in full_link \
 			and not full_link.startswith("//") \
 			and len(final_urls) < 1000:
 			# and ((reindex == True and len(page_being_processed.replace("https://").strip("/").split("/")) == 0) or reindex == False):
