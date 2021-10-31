@@ -296,12 +296,6 @@ def results_page():
 					return jsonify({"message": "no custom serp available on this search"})
 
 			elif request.args.get("serp_as_json") and request.args.get("serp_as_json") == "results_page":
-				for r in rows:
-					values_to_remove = ["page_rank", "md5_hash", "page_content", "important_phrases", "page_text", "h4", "h5", "h6", "http_headers"]
-					for value in values_to_remove:
-						if r["_source"].get(value):
-							del r["_source"][value]
-
 				return jsonify({"results": [r["_source"] for r in rows]})
 
 			if request.args.get("type") == "image":
