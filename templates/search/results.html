@@ -70,12 +70,14 @@
         {% endfor %}
       </ol>
     {% elif out_of_bounds_page == True %}
+    <section class="main_content_box">
       <p>There are no results matching your query.</p>
       {% if suggestion_made and corrected_text.strip() != query.strip() %}
         <p>Did you mean <a href="/results?query={{ corrected_text.strip() }}">{{ corrected_text.strip() }}</a>?</p>
       {% else %}
-        <p>Please make sure your spelling is correct and if it is, try searching for another term.</p>
+        <p>If you cannot find what you are looking for, first check the spelling of your query. If your spelling is correct, consider searching for similar words or phrases that relate to your query.</p>
       {% endif %}
+    </section>
     {% endif %}
     {% if page_count > 1 %}
       <ol class="tab">
