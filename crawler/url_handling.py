@@ -40,7 +40,9 @@ def save_feed(site, full_url, feed_url, feed_type, feeds, feed_urls):
 
 	return feeds, feed_urls
 
-def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, external_links, discovered_urls, iterate_list_of_urls, site_url, crawl_budget, url, feeds, feed_urls, site, session, web_page_hashes, average_crawl_speed, link_discovery=True, h_card=[], crawl_depth=0):
+def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, external_links, discovered_urls, iterate_list_of_urls, site_url, 
+	crawl_budget, url, feeds, feed_urls, site, session, web_page_hashes, average_crawl_speed, homepage_meta_description, 
+	link_discovery=True, h_card=[], crawl_depth=0):
 	"""
 		Crawls URLs in list, adds URLs to index, and returns updated list
 	"""
@@ -79,6 +81,11 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 		logging.info("{} marked as noindex because it is a wordpress api resource".format(full_url))
 		return url, {}, False, feeds, None, crawl_depth, average_crawl_speed
 
+	if "?s=" in full_url:
+		print("{} marked as noindex because it is a search result".format(full_url))
+		logging.info("{} marked as noindex because it is a search result".format(full_url))
+		return url, {}, False, feeds, None, crawl_depth, average_crawl_speed
+
 	# Only get URLs that match namespace exactly
 	in_matching_namespace = [s for s in namespaces_to_ignore if s.startswith(full_url.replace("http://", "").replace("https://", "").replace(site_url, "")) == full_url]
 
@@ -99,7 +106,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			page_test = session.head(full_url, headers=config.HEADERS, allow_redirects=True, verify=False)
 
 			# get redirect url
-			if page_test.history and page_test.history[-1].url != full_url:
+			if page_test.history and page_test.history[-1].url and page_test.history[-1].url != full_url:
 				# skip redirects to external sites
 				if not page_test.history[-1].url.startswith("http://" + site_url) and not page_test.history[-1].url.startswith("https://" + site_url):
 					print("{} redirected to {}, which is on a different site, skipping".format(full_url, page_test.history[-1].url))
@@ -181,7 +188,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 							print("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical_url))
 
 							return url, discovered_urls, False, None, crawl_depth, average_crawl_speed
-
+		
 		try:
 			page = session.get(full_url, timeout=10, headers=config.HEADERS, allow_redirects=True, verify=False)
 		except requests.exceptions.Timeout:
@@ -279,43 +286,46 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 
 		if page_desc_soup.find("link", {"rel": "canonical"}):
 			canonical_url = page_desc_soup.find("link", {"rel": "canonical"})["href"]
-			if canonical_url.startswith("/"):
+
+			if canonical_url and canonical_url.startswith("/"):
 				# get site domain
 				domain = full_url.split("/")[2]
 				canonical_url = full_url.split("/")[0] + "//" + domain + canonical_url
 
-			canonical = canonical_url.strip("/").replace("http://", "https://").split("?")[0].lower()
 
-			canonical_domain = canonical.split("/")[2]
+			if canonical_url:
+				canonical = canonical_url.strip("/").replace("http://", "https://").split("?")[0].lower()
 
-			if canonical_domain.lower().replace("www.", "") != full_url.split("/")[2].lower().replace("www.", ""):
-				print("{} has a canonical url of {}, not adding to queue because url points to a different domain".format(full_url, canonical))
-				logging.info("{} has a canonical url of {}, not adding to queue because url points to a different domain".format(full_url, canonical))
+				canonical_domain = canonical.split("/")[2]
 
-				return url, {}, False, feeds, hash, crawl_depth, average_crawl_speed
-			
-			if canonical and canonical != full_url.lower().strip("/").replace("http://", "https://").split("?")[0]:
-				if discovered_urls.get(full_url).startswith("CANONICAL"):
-					logging.info("{} has a canonical url of {}, not adding to index because the page was already identified as canonical".format(full_url, canonical))
-					print("{} has a canonical url of {}, not adding to index because the page was already identified as canonicale".format(full_url, canonical))
-				else:
-					final_urls[canonical] = ""
+				if canonical_domain.lower().replace("www.", "") != full_url.split("/")[2].lower().replace("www.", ""):
+					print("{} has a canonical url of {}, not adding to queue because url points to a different domain".format(full_url, canonical))
+					logging.info("{} has a canonical url of {}, not adding to queue because url points to a different domain".format(full_url, canonical))
 
-					iterate_list_of_urls.append(canonical)
+					return url, {}, False, feeds, hash, crawl_depth, average_crawl_speed
+				
+				if canonical and canonical != full_url.lower().strip("/").replace("http://", "https://").split("?")[0]:
+					if discovered_urls.get(full_url) and discovered_urls.get(full_url).startswith("CANONICAL"):
+						logging.info("{} has a canonical url of {}, not adding to index because the page was already identified as canonical".format(full_url, canonical))
+						print("{} has a canonical url of {}, not adding to index because the page was already identified as canonicale".format(full_url, canonical))
+					else:
+						final_urls[canonical] = ""
 
-					discovered_urls[canonical] = "CANONICAL"
+						iterate_list_of_urls.append(canonical)
 
-					logging.info("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical))
-					print("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical))
+						discovered_urls[canonical] = "CANONICAL"
 
-					return url, discovered_urls, False, feeds, hash, crawl_depth, average_crawl_speed
+						logging.info("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical))
+						print("{} has a canonical url of {}, skipping and added canonical URL to queue".format(full_url, canonical))
+
+						return url, discovered_urls, False, feeds, hash, crawl_depth, average_crawl_speed
 
 		check_if_no_index = page_desc_soup.find("meta", {"name":"robots"})
 
 		if check_if_no_index and check_if_no_index.get("content") and ("noindex" in check_if_no_index.get("content") or "none" in check_if_no_index.get("content")):
 			print("{} marked as noindex, skipping".format(full_url))
 			logging.info("{} marked as noindex, skipping".format(full_url))
-			return url, {}, False, feeds
+			return url, discovered_urls, False, feeds, hash, crawl_depth, average_crawl_speed
 
 		elif check_if_no_index and check_if_no_index.get("content") and "nofollow" in check_if_no_index.get("content"):
 			print("all links on {} marked as nofollow due to <meta> robots nofollow value".format(full_url))
@@ -328,7 +338,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 				page_desc_soup.find("meta", {"name": "rating"}).get("content") == "RTA-5042-1996-1400-1577-RTA":
 				print("{} marked as adult content in a meta tag, skipping".format(full_url))
 				logging.info("{} marked as adult content in a meta tag, skipping".format(full_url))
-				return url, {}, False, feeds, hash, crawl_depth, average_crawl_speed
+				return url, discovered_urls, False, feeds, hash, crawl_depth, average_crawl_speed
 
 		if nofollow_all == False:
 			links = [l for l in page_desc_soup.find_all("a") if (l.get("rel") and "nofollow" not in l["rel"]) or (not l.get("rel") and l.get("href") not in ["#", "javascript:void(0);"])]
@@ -344,7 +354,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 
 			if page_desc_soup.find_all("link", {"rel": "alternate"}):
 				for feed_item in page_desc_soup.find_all("link", {"rel": "alternate"}):
-					if feed_item["href"].startswith("/"):
+					if feed_item and feed_item["href"].startswith("/"):
 						# get site domain
 						domain = full_url.split("/")[2]
 						feed_url = full_url.split("/")[0] + "//" + domain + feed_item["href"]
@@ -352,7 +362,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 						if feed_url and feed_url not in feed_urls:
 							feeds, feed_urls = save_feed(site, full_url, feed_item["href"], feed_item.get("type"), feeds, feed_urls)
 							
-					elif feed_item["href"].startswith("http"):
+					elif feed_item and feed_item["href"].startswith("http"):
 						if feed_item["href"] not in feed_urls and feed_item["href"].split("/")[2] == full_url.split("/")[2]:
 							feeds, feed_urls = save_feed(site, full_url, feed_item["href"], feed_item.get("type"), feeds, feed_urls)
 							
@@ -487,7 +497,6 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			logging.info("content on {} is thin (under 100 words), marking as thin_content".format(full_url))
 			thin_content = True
 
-
 		heading_info = {
 			"h1": [],
 			"h2": [],
@@ -504,7 +513,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 
 		# Only index if noindex attribute is not present
 
-		page_text, page_desc_soup, published_on, meta_description, doc_title, noindex = crawler.page_info.get_page_info(page_text, page_desc_soup, full_url)
+		page_text, page_desc_soup, published_on, meta_description, doc_title, noindex = crawler.page_info.get_page_info(page_text, page_desc_soup, full_url, homepage_meta_description)
 
 		if noindex == True:
 			return url, discovered_urls, False, feeds, hash, crawl_depth, average_crawl_speed
@@ -517,7 +526,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 
 		# if the ratio of words to links < 3:1, do not index
 		# these pages may be spam or other non-content pages that will not be useful to those using the search engine
-		if (word_count and word_count > 0 and number_of_links and number_of_links > 0) and word_count > 200 and word_count / number_of_links < 3:
+		if word_count and (word_count > 0 and number_of_links and number_of_links > 0) and word_count > 200 and word_count / number_of_links < 3:
 			thin_content = True
 			
 		count += 1

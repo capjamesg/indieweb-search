@@ -142,7 +142,7 @@ def process_domain(site, reindex):
 
 	# Added just to make sure the homepage is in the initial crawl queue
 	if len(sitemap_urls) > 2:
-		final_urls["https://{}".format(site)] = ""
+		final_urls["http://{}".format(site)] = ""
 
 	for s in sitemap_urls:
 		# Only URLs not already discovered will be added by this code
@@ -225,7 +225,7 @@ def build_index(site, reindex=False):
 		return site, []
 
 	if len(final_urls) == 0:
-		final_urls["https://{}".format(site)] = ""
+		final_urls["{}{}".format(protocol, site)] = ""
 
 	iterate_list_of_urls = list(final_urls.keys())
 
@@ -257,6 +257,8 @@ def build_index(site, reindex=False):
 	crawl_depths = {}
 
 	average_crawl_speed = []
+
+	homepage_meta_description = ""
 	
 	for url in iterate_list_of_urls:
 		if crawl_depths.get("url"):
@@ -267,7 +269,10 @@ def build_index(site, reindex=False):
 		else:
 			crawl_depth = 0
 
-		url_indexed, discovered, valid, discovered_feeds, web_page_hash, crawl_depth, average_crawl_speed = url_handling.crawl_urls(final_urls, namespaces_to_ignore, indexed, links, external_links, discovered_urls, iterate_list_of_urls, site, crawl_budget, url, [], feed_urls, site, session, web_page_hashes, average_crawl_speed, True, h_card, crawl_depth)
+		if indexed_list.get(url):
+			continue
+
+		url_indexed, discovered, valid, discovered_feeds, web_page_hash, crawl_depth, average_crawl_speed = url_handling.crawl_urls(final_urls, namespaces_to_ignore, indexed, links, external_links, discovered_urls, iterate_list_of_urls, site, crawl_budget, url, [], feed_urls, site, session, web_page_hashes, average_crawl_speed, homepage_meta_description, True, h_card, crawl_depth)
 
 		if valid == True:
 			valid_count += 1
@@ -279,6 +284,13 @@ def build_index(site, reindex=False):
 
 		if len(average_crawl_speed) > 100:
 			average_crawl_speed = average_crawl_speed[:100]
+
+		if average_crawl_speed and len(average_crawl_speed) and (len(average_crawl_speed) / len(average_crawl_speed) > 4):
+			print("average crawl speed is {}, stopping crawl".format(len(average_crawl_speed) / len(average_crawl_speed)))
+			logging.debug("average crawl speed is {}, stopping crawl".format(len(average_crawl_speed) / len(average_crawl_speed)))
+			with open("failed.txt", "a") as f:
+				f.write("{} average crawl speed is {}, stopping crawl \n".format(site, len(average_crawl_speed) / len(average_crawl_speed)))
+			iterate_list_of_urls = []
 		
 		indexed += 1
 
