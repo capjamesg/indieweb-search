@@ -131,11 +131,6 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 	# page contains javascript
 	if page_content.find("script"):
 		contains_javascript = True
-
-	if sys.argv[1] == "--site-type" and sys.argv[2] != "IndieWeb":
-		page_type = sys.argv[2]
-	else:
-		page_type = "IndieWeb"
 		
 	record = {
 		"title": title,
@@ -168,7 +163,7 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 		"thin_content": thin_content,
 		"contains_javascript": contains_javascript,
 		"page_hash": hash,
-		"site_type": site_type
+		"search_category": "blog"
 	}
 
 	# results currently being saved to a file, so no need to run this code
