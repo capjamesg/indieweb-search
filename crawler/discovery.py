@@ -8,8 +8,10 @@ def page_link_discovery(links, final_urls, iterate_list_of_urls, page_being_proc
 
 	discovered_urls = {}
 
+	print('sd')
+
 	for link in links:
-		if link.get("href"):
+		if link != None and link.get("href") and link.get("href") != None:
 			link["href"] = link["href"].lower()
 
 			supported_protocols = ["http", "https"]

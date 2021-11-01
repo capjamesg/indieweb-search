@@ -36,13 +36,16 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
     cleaned_value = " ".join([w for w in cleaned_value.split(" ") if "james" not in w.lower() and w.lower() not in proper_nouns and w.lower() not in post["title"].lower().split() and w.lower() not in post["url"].lower().split("/")[-1]])
 
     # read post with bs4
-    soup = BeautifulSoup(post["page_content"], "lxml")
-
-    print('sd')
+    if post.get("page_content"):
+        soup = BeautifulSoup(post["page_content"], "lxml")
+    else:
+        return "", special_result
 
     if "code" in original_cleaned_value or "markup" in original_cleaned_value:
+        print('sd')
         if "<pre>" or "<em>" in post["page_content"]:
             # get all pre tags
+            print('x')
             pre_tags = soup.find_all("pre")
 
             for tag in pre_tags:
@@ -56,9 +59,8 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
                 elif tag.text:
                     context = "<p>" + tag.text + "</p>"
 
-                if tag_before != None and original_cleaned_value.replace("code", "").replace("markup", "") in tag_before.text.lower():
-                    return tag.text, {"url": original_url, "title": post["title"], "type": "code", "breadcrumb": url, 
-                    "context": context}
+                return tag.text, {"url": original_url, "title": post["title"], "type": "code", "breadcrumb": url, 
+                "context": context}
 
     all_locations = []
 
