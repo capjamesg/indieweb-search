@@ -4,6 +4,7 @@ import datetime
 import logging
 import mf2py
 import json
+import sys
 
 def add_to_database(full_url, published_on, doc_title, meta_description, heading_info, page, 
 	pages_indexed, page_content, outgoing_links, crawl_budget, nofollow_all, main_page_content, 
@@ -130,6 +131,11 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 	# page contains javascript
 	if page_content.find("script"):
 		contains_javascript = True
+
+	if sys.argv[1] == "--site-type" and sys.argv[2] != "IndieWeb":
+		page_type = sys.argv[2]
+	else:
+		page_type = "IndieWeb"
 		
 	record = {
 		"title": title,
@@ -161,7 +167,8 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 		"featured_image": featured_image,
 		"thin_content": thin_content,
 		"contains_javascript": contains_javascript,
-		"page_hash": hash
+		"page_hash": hash,
+		"site_type": site_type
 	}
 
 	# results currently being saved to a file, so no need to run this code
