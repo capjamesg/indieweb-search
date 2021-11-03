@@ -36,7 +36,6 @@ def get_page_info(page_text, page_desc_soup, page_url, homepage_meta_description
 			if first_hentry_date and first_hentry_date.get("datetime"):
 				# if published before 3 weeks ago
 				if first_hentry_date.get("datetime") < (datetime.datetime.now() - datetime.timedelta(weeks=3)).isoformat() and page_url.count("/") > 3:
-					print("{} marked as follow, noindex as it is a feed".format(page_url))
 					return page_text, page_desc_soup, first_hentry_date.get("datetime"), "", "", True
 
 	published_on = page_desc_soup.find("time", attrs={"class":"dt-published"})

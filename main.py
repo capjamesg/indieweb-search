@@ -91,7 +91,7 @@ def results_page():
 	if not request.args.get("query"):
 		return redirect("/")
 
-	query_with_handled_spaces = request.args.get("query").replace("--", "").replace("  ", " ")
+	query_with_handled_spaces = request.args.get("query").replace("--", "").replace("  ", " ").strip()
 
 	allowed_chars = [" ", '"', ":", "-", "/", ".", "="]
 
@@ -99,7 +99,7 @@ def results_page():
 
 	query_values_in_list, query_with_handled_spaces = handle_advanced_search(query_with_handled_spaces)
 
-	cleaned_value_for_query = ''.join(e for e in query_with_handled_spaces if e.isalnum() or e == " " or e == ".")
+	cleaned_value_for_query = ''.join(e for e in query_with_handled_spaces if e.isalnum() or e == " " or e == ".").strip()
 
 	session = requests.Session()
 
@@ -155,7 +155,7 @@ def results_page():
 			if "js:none" in request.args.get("query"):
 				query_params += "&js=false"
 			
-			rows = session.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&sort={}&from={}&to={}&minimal={}{}".format(config.ELASTICSEARCH_PASSWORD, cleaned_value_for_query.replace("review", "").replace("who is", "").replace("code", "").strip(), order, str(pagination), str(int(pagination)+10), minimal, query_params)).json()
+			rows = session.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&sort={}&from={}&to={}&minimal={}{}".format(config.ELASTICSEARCH_PASSWORD, cleaned_value_for_query.replace("who is", "").replace("code", "").strip(), order, str(pagination), str(int(pagination)+10), minimal, query_params)).json()
 
 			num_of_results = rows["hits"]["total"]["value"]
 			rows = rows["hits"]["hits"]

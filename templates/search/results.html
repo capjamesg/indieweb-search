@@ -15,15 +15,9 @@
       <ol class="serp">
         {% for r in range(0, results | length) %}
         {% if results[r]['_source']['url'] != special_result.breadcrumb %}
-        {% if results[r]['_source']['domain'] != results[r-1]['_source']['domain'] or (special_result and results[r]['_source']['domain'] == special_result.breadcrumb.split("/")[2]) or r == 0 %}
+        {% if (results[r]['_source']['domain'] != results[r-1]['_source']['domain'] or (special_result and results[r]['_source']['domain'] == special_result.breadcrumb.split("/")[2]) or r == 0) or (results[r]['_source']["special_snippet"] and results[r]['_source']["special_snippet"] != {}) %}
           <li class="h-entry" style="margin-bottom: 20px; border-radius: 10px; background-color: white; border: 1px solid lightgrey; padding: 10px;">
-            <p class="breadcrumbs"><a href="{{ results[r]['_source']['url'] }}" style="border-bottom: none;">
-              {% for item in results[r]['_source']['url'].replace("https://", "").replace("http://", "").rstrip("/").split("/") %}
-                {% if (loop.last and item|length < 25) or not loop.last %}
-                  {{ item.replace("%20", " ") }}
-                  {% if not loop.last %}{% if item|length < 25 %}>{% endif %}{% endif %}
-                {% endif %}
-              {% endfor %}</a></p>
+            {% include "search/breadcrumbs.html" %}
           {% else %}
           <div class="indent-result">
         {% endif %}
@@ -41,7 +35,18 @@
               {% if results[r]['_source']['h_card'] and results[r]['_source']['h_card']["name"] and results[r]['_source']['h_card']["name"][0].strip() != results[r]['_source']['title'].strip() and results[r]['_source']['h_card']['url'] and results[r]['_source']['h_card']['url'][0].split("/")[2] == results[r]['_source']['url'].split('/')[2] %}
               <p class="breadcrumbs">Written by <a href="{{ results[r]['_source']['h_card']['url'][0] }}" class="p-author">{{ results[r]['_source']['h_card']['name'][0] }}</a></p>
               {% endif %}
+              {% if results[r]['_source']["special_snippet"] and results[r]['_source']["special_snippet"]["type"][0] == 'h-review' %}
+              {% if results[r]['_source']["special_snippet"]["properties"]["rating"] and results[r]['_source']["special_snippet"]["properties"]["rating"][0] | int <= 5 %}
+                <p>
+                {% for i in range(results[r]['_source']["special_snippet"]["properties"]["rating"][0] | int) %}
+                  ⭐
+                {% endfor %}
+                </p>
+              {% endif %}
+              {% endif %}
+              {{ results[r]['_source']['published_on'] }}
               <p class="p-summary">{% if results[r]['_source']['meta_description']|length > 0 %}{{ results[r]['_source']['meta_description'] }}{% elif (results[r]['_source']['h1'].split(",") and results[r]['_source']['h1'].split(",")[0]|length > 0) or results[r]['_source']['h1'] != "" %}{{ results[r]['_source']['h1'].split(",")[0] }}{% else %}{{ results[r]['_source']['h2'].split(",")[0] }}{% endif %}</p>
+              {% include "search/special_result_markup.html" %}
               {% if results[r]['_source']['url'].startswith("https://indieweb.org/") or results[r]['_source']['url'].startswith("https://microformats.org/wiki/") %}
               {% set title_count = 0 %}
               <p>
@@ -58,6 +63,9 @@
               {% endif %}
             </div>
             {% if results[r+1] and results[r]['_source']['domain'] != results[r+1]['_source']['domain'] %}
+              </div>
+              </li>
+            {% elif results[r]['_source']["special_snippet"] and results[r]['_source']["special_snippet"] != {} %}
               </div>
               </li>
             {% elif not results[r+1] %}
