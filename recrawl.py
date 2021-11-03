@@ -27,8 +27,6 @@ if os.path.isfile("results.json"):
 
 feeds = requests.post("https://es-indieweb-search.jamesg.blog/feeds", headers=HEADERS).json()
 
-print(len(feeds))
-
 feeds_parsed = {}
 
 def poll_feeds(f):
@@ -83,7 +81,9 @@ def poll_feeds(f):
 
         for entry in feed.entries:
             site_url = "https://" + entry.link.split("/")[2]
-            crawl_urls({entry.link: ""}, [], 0, [], [], {}, [], site_url, 1, entry.link, False, feeds, feed_url_list, False)
+            session = requests.Session()
+
+            crawl_urls({entry.link: ""}, [], 0, [], [], {}, [entry.link], site_url, 10, entry.link, feeds, feed_url_list, entry.link.split("/")[2], session, {}, [], "", False, [], 0)
 
             print("crawled {} url".format(entry.link))
 
@@ -110,7 +110,9 @@ def poll_feeds(f):
                         if jf2["url"].startswith("/"):
                             jf2["url"] = site_url + jf2["url"]
 
-                        crawl_urls({jf2["url"]: ""}, [], 0, [], [], {}, [], site_url, 1, jf2["url"], False, feeds, feed_url_list, False)
+                        session = requests.Session()
+
+                        crawl_urls({jf2["url"]: ""}, [], 0, [], [], {}, [jf2["url"]], site_url, 10, jf2["url"], feeds, feed_url_list, jf2["url"].split("/")[2], session, {}, [], "", False, [], 0)
 
                         print("crawled {} url".format(jf2["url"]))
 
@@ -122,7 +124,8 @@ def poll_feeds(f):
         if items and len(items) > 0:
             for item in items:
                 if item.get("url"):
-                    crawl_urls({item["url"]: ""}, [], 0, [], [], {}, [], "https://" + site_url, 1, item["url"], False, feeds, feed_url_list, False)
+                    session = requests.Session()
+                    crawl_urls({item["url"]: ""}, [], 0, [], [], {}, [item["url"]], site_url, 10, item["url"], feeds, feed_url_list, item["url"].split("/")[2], session, {}, [], "", False, [], 0)
 
                     print("crawled {} url".format(item["url"]))
 
@@ -292,5 +295,5 @@ def process_sitemaps():
                 futures.remove(future)
 
 process_feeds()
-process_crawl_queue_from_websub()
+# process_crawl_queue_from_websub()
 # process_sitemaps()

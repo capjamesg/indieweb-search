@@ -68,6 +68,13 @@ input[type="text"], input[type="username"], input[type="password"], select {
   min-width: 50%;
   font-size: 1.0625rem;
 }
+.main_content_box {
+  background-color: white;
+  border-radius: 10px;
+  border: 1px solid lightgray;
+  padding: 20px;
+  margin: auto;
+}
 
 button {
   background-color: royalblue;

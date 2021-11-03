@@ -8,19 +8,20 @@ def page_link_discovery(links, final_urls, iterate_list_of_urls, page_being_proc
 
 	discovered_urls = {}
 
-	print('sd')
-
 	for link in links:
 		if link != None and link.get("href") and link.get("href") != None:
-			link["href"] = link["href"].lower()
+			link["href"] = link["href"].lower().strip()
 
 			supported_protocols = ["http", "https"]
+
+			if link["href"].startswith("/"):
+				full_link = "https://{}".format(site_url) + link["href"]
 
 			if link["href"] and not link["href"].startswith("/") and ("://" in link.get("href") and link.get("href").split("://")[0] not in supported_protocols) or (":" in link.get("href") \
 				and (not link.get("href").startswith("/") and not link.get("href").startswith("//") and not link.get("href").startswith("#") \
 				and not link.get("href").split(":")[0] in supported_protocols)):
 				# url is wrong protocol, continue
-				print("Unsupported protocol for discovered url: " + link.get("href") + ", not adding to index queue")
+				
 				logging.info("Unsupported protocol for discovered url: " + link.get("href") + ", not adding to index queue")
 				continue
 
@@ -38,9 +39,7 @@ def page_link_discovery(links, final_urls, iterate_list_of_urls, page_being_proc
 			if "@" in link["href"]:
 				continue
 			# Add start of URL to end of any links that don't have it
-			elif link["href"].startswith("/"):
-				full_link = "https://{}".format(site_url) + link["href"]
-			elif link["href"].startswith("http"):
+			if link["href"].startswith("http"):
 				full_link = link["href"]
 			else:
 				if ".." not in link["href"]:
@@ -74,9 +73,9 @@ def page_link_discovery(links, final_urls, iterate_list_of_urls, page_being_proc
 			and (full_link.startswith("https://{}".format(site_url)) or full_link.startswith("http://{}".format(site_url))) \
 			and not full_link.startswith("//") \
 			and len(final_urls) < 1000:
-			# and ((reindex == True and len(page_being_processed.replace("https://").strip("/").split("/")) == 0) or reindex == False):
 				all_links.append([page_being_processed, link.get("href"), datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "internal", link.text])
-				print("indexing queue now contains " + full_link)
+				logging.info("about page found")
+
 				logging.debug("indexing queue now contains " + full_link)
 				final_urls[full_link] = ""
 
