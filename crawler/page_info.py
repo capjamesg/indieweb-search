@@ -106,21 +106,6 @@ def get_page_info(page_text, page_desc_soup, page_url, homepage_meta_description
 			# get element after stub
 			meta_description = " ".join(stub.find_next_sibling().text.split(" ")[:50])
 
-	# get list items as a last resort
-	# useful for pages that are lists of links that do not have a meta description specified
-
-	# if meta_description == "" or meta_description == None or len(meta_description) < 75:
-	# 	# get ul after h1
-	# 	h1 = page_desc_soup.find("h1")
-	# 	ul_after_h1 = h1.find_next("ul")
-
-	# 	# get first three items in ul
-	# 	if ul_after_h1:
-	# 		meta_description = ", ".join([li.text.strip("/").strip() for li in ul_after_h1.find_all("li")[:3]])
-	# 		meta_description.strip(",")
-
-	# Only get first 180 characters of meta description (and don't chop a word)
-
 	final_meta_description = ""
 	char_count = 0
 
