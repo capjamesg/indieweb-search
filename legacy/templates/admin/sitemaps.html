@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<section>
+  <h1 class="p-name p-summary">James' Index Log - Test Queries</h1>
+  <h2>About the crawl</h2>
+  <p>{{ index_stats["total_pages_indexed"] }} pages and {{ index_stats["total_images_indexed"] }} images have been indexed in total.</p>
+  <p>{{ index_stats["pages_indexed_in_last_crawl"] }} pages and {{ index_stats["images_indexed_in_last_crawl"] }} images were indexed in the last crawl.</p>
+  <p>{{ index_stats["errors_found"] }} issues were found in the last crawl.</p>
+  <p>jamesg.blog was last crawled at {{ index_stats["last_index_end"] }}. The last crawl lasted {{ index_stats["crawl_duration"] }}.</p>
+</section>
+<section>
+  <h2>Sitemaps crawled</h2>
+  {% if sitemaps | length > 0 %}
+    <p>Here are the sitemaps that have been crawled in the latest crawl:</p>
+    <ul>
+        {% for s in sitemaps %}
+        <li><a href="{{ s[0] }}">{{ s[0] }}</a></li>
+        {% endfor %}
+    </ul>
+  {% else %}
+    <p>No sitemaps have been crawled yet.</p>
+  {% endif %}
+</section>
+{% endblock %}
