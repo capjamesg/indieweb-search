@@ -9,12 +9,22 @@ import json
 def add_to_database(full_url, published_on, doc_title, meta_description, heading_info, page, 
 	pages_indexed, page_content, outgoing_links, crawl_budget, nofollow_all, main_page_content, 
 	original_h_card, hash, thin_content=False):
+
+	# the program will try to populate all of these values before indexing a document
+	category = None
+	special_snippet = {}
+	h_card = None
+	favicon = ""
+	length = len(page_content)
+	is_homepage = False
+	nofollow_all = "false"
+	date_to_record = ""
+	contains_javascript = False
+
 	# get last modified date
 
 	if page != "" and page.headers:
 		length = page.headers.get("content-length")
-	else:
-		length = len(page_content)
 
 	# remove script and style tags from page_content
 
@@ -22,6 +32,7 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 		script.decompose()
 
 	# remove HTML comments
+	# we don't want to include these in rankings
 
 	comments = page_content.findAll(text=lambda text:isinstance(text, Comment))
 	[comment.extract() for comment in comments]
@@ -31,16 +42,8 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 
 	if favicon:
 		favicon = favicon.get("href")
-	else:
-		favicon = ""
-
-	category = None
 
 	h_entry = mf2py.parse(page_content)
-
-	special_snippet = {}
-
-	h_card = None
 
 	special_snippet, h_card = identify_special_snippet.find_snippet(page_content, h_card)
 
@@ -49,19 +52,13 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 
 	if nofollow_all == True:
 		nofollow_all = "true"
-	else:
-		nofollow_all = "false"
 
 	if type(published_on) == dict and published_on.get("datetime") != None:
 		date_to_record = published_on["datetime"].split("T")[0]
-	else:
-		date_to_record = ""
 
 	# find out if page is home page
 	if full_url.replace("https://", "").replace("http://", "").strip("/").count("/") == 0:
 		is_homepage = True
-	else:
-		is_homepage = False
 
 	# get featured image if one is available
 	# may be presented in featured snippets
@@ -87,8 +84,6 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 				title = title.split(" ", 10)[0] + "..."
 	else:
 		title = doc_title
-
-	contains_javascript = False
 
 	# page contains javascript
 	if page_content.find("script"):
@@ -132,7 +127,6 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 		f.write(json.dumps(record))
 		f.write("\n")
 
-	#print("indexed new page {} ({}/{})".format(full_url, pages_indexed, crawl_budget))
 	logging.info("indexed new page {} ({}/{})".format(full_url, pages_indexed, crawl_budget))
 
 	pages_indexed += 1

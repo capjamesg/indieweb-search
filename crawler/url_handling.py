@@ -17,9 +17,8 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 	"""
 		Crawls URLs in list, adds URLs to index, and returns updated list
 	"""
-	count = 0
 
-	# print(url)
+	count = 0
 
 	feeds = []
 
@@ -38,17 +37,14 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 	full_url = url.lower()
 
 	if len(full_url) > 125:
-		# print("{} url too long, skipping".format(full_url))
 		logging.info("{} url too long, skipping".format(full_url))
 		return url, {}, False, feeds, None, crawl_depth, average_crawl_speed
 
 	if "javascript:" in full_url:
-		# print("{} marked as noindex because it is a javascript resource".format(full_url))
 		logging.info("{} marked as noindex because it is a javascript resource".format(full_url))
 		return url, {}, False, feeds, None, crawl_depth, average_crawl_speed
 
 	if "/wp-json/" in full_url:
-		# print("{} marked as noindex because it is a wordpress api resource".format(full_url))
 		logging.info("{} marked as noindex because it is a wordpress api resource".format(full_url))
 		return url, {}, False, feeds, None, crawl_depth, average_crawl_speed
 
@@ -269,87 +265,54 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			# check for feed with rel alternate
 			# only support rss and atom right now
 
-			if page_desc_soup.find_all("link", {"rel": "alternate"}):
-				for feed_item in page_desc_soup.find_all("link", {"rel": "alternate"}):
-					if feed_item and feed_item["href"].startswith("/"):
-						# get site domain
-						domain = full_url.split("/")[2]
-						feed_url = full_url.split("/")[0] + "//" + domain + feed_item["href"]
-
-						if feed_url and feed_url not in feed_urls:
-							feeds, feed_urls = url_handling_helpers.save_feed(site, full_url, feed_item["href"], feed_item.get("type"), feeds, feed_urls)
-							
-					elif feed_item and feed_item["href"].startswith("http"):
-						if feed_item["href"] not in feed_urls and feed_item["href"].split("/")[2] == full_url.split("/")[2]:
-							feeds, feed_urls = url_handling_helpers.save_feed(site, full_url, feed_item["href"], feed_item.get("type"), feeds, feed_urls)
-							
-						elif feed_item["href"] not in feed_urls and feed_item["href"].split("/")[2] != full_url.split("/")[2]:
-							print("found feed {}, but it points to a different domain, not saving".format(feed_item["href"]))
-							logging.info("found feed {}, but it points to a different domain, not saving".format(feed_item["href"]))
-
-					else:
-						feeds, feed_urls = url_handling_helpers.save_feed(site, full_url, full_url.strip("/") + "/" + feed_item["href"], feed_item.get("type"), feeds, feed_urls)
-
-			# check if page has h-feed class on it
-			# if a h-feed class is present, mark page as feed
-
-			if page_desc_soup.select(".h-feed") and len(feeds) < 25:
-				feeds.append({"website_url": site, "page_url": full_url, "feed_url": full_url, "mime_type": "h-feed", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
-				feed_urls.append(full_url.strip("/"))
-
-				logging.info("{} is a h-feed, will save to feeds.json".format(full_url))
-
-			# check for websub hub
-
-			if page_desc_soup.find("link", {"rel": "hub"}) and len(feeds) < 25:
-				websub_hub = page_desc_soup.find("link", {"rel": "hub"})["href"]
-
-				websub_hub = websub_hub.strip().strip("<").strip(">")
-
-				feeds.append({"website_url": site, "page_url": full_url, "feed_url": websub_hub, "mime_type": "websub", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
-				
-				feed_urls.append(full_url.strip("/"))
-
-				logging.info("{} is a websub hub, will save to feeds.json".format(full_url))
+			feeds, feed_urls = url_handling_helpers.find_feeds(page_desc_soup, full_url, site)
 
 			# parse link headers
 			link_headers = page.headers.get("Link")
 
-			if link_headers:
-				link_headers = link_headers.split(",")
+			link_headers = link_headers.split(",")
 
-				for link_header in link_headers:
-					if "rel=\"hub\"" in link_header and len(feeds) < 25:
-						websub_hub = link_header.split(";")[0].strip().strip("<").strip(">")
+			for link_header in link_headers:
+				if "rel=\"hub\"" in link_header and len(feeds) < 25:
+					websub_hub = link_header.split(";")[0].strip().strip("<").strip(">")
 
-						feeds.append({"website_url": site, "page_url": full_url, "feed_url": websub_hub, "mime_type": "websub", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
-						
-						feed_urls.append(full_url.strip("/"))
+					feeds.append(
+						{
+							"website_url": site,
+							"page_url": full_url,
+							"feed_url": websub_hub,
+							"mime_type": "websub",
+							"etag": "NOETAG",
+							"discovered": datetime.datetime.now().strftime("%Y-%m-%d")
+						}
+					)
+					
+					feed_urls.append(full_url.strip("/"))
 
-						logging.info("{} is a websub hub, will save to feeds.json".format(websub_hub))
+					logging.info("{} is a websub hub, will save to feeds.json".format(websub_hub))
 
-					if "rel=\"alternate\"" in link_header and len(feeds) < 25:
-						original_feed_url = link_header.split(";")[0].strip().strip("<").strip(">").lower()
+				if "rel=\"alternate\"" in link_header and len(feeds) < 25:
+					original_feed_url = link_header.split(";")[0].strip().strip("<").strip(">").lower()
 
-						if original_feed_url and original_feed_url not in feed_urls:
-							# get feed type
-							if "type=\"" in link_header:
-								feed_type = link_header.split("type=\"")[1].split("\"")[0]
-							else:
-								feed_type = "feed"
+					if original_feed_url and original_feed_url not in feed_urls:
+						# get feed type
+						if "type=\"" in link_header:
+							feed_type = link_header.split("type=\"")[1].split("\"")[0]
+						else:
+							feed_type = "feed"
 
-							if original_feed_url.startswith("/"):
-								# get site domain
-								domain = full_url.split("/")[2]
-								feed_url = full_url.split("/")[0] + "//" + domain + original_feed_url
+						if original_feed_url.startswith("/"):
+							# get site domain
+							domain = full_url.split("/")[2]
+							feed_url = full_url.split("/")[0] + "//" + domain + original_feed_url
 
-								if feed_url and feed_url not in feed_urls:
-									feeds, feed_urls = url_handling_helpers.save_feed(site, full_url, original_feed_url, feed_type, feeds, feed_urls)
-							elif original_feed_url.startswith("http"):
-								if original_feed_url not in feed_urls and original_feed_url.split("/")[2] == full_url.split("/")[2]:
-									feeds, feed_urls = url_handling_helpers.save_feed(site, full_url, original_feed_url, feed_type, feeds, feed_urls)
-							else:
+							if feed_url and feed_url not in feed_urls:
 								feeds, feed_urls = url_handling_helpers.save_feed(site, full_url, original_feed_url, feed_type, feeds, feed_urls)
+						elif original_feed_url.startswith("http"):
+							if original_feed_url not in feed_urls and original_feed_url.split("/")[2] == full_url.split("/")[2]:
+								feeds, feed_urls = url_handling_helpers.save_feed(site, full_url, original_feed_url, feed_type, feeds, feed_urls)
+						else:
+							feeds, feed_urls = url_handling_helpers.save_feed(site, full_url, original_feed_url, feed_type, feeds, feed_urls)
 
 			final_urls, iterate_list_of_urls, all_links, external_links, discovered_urls = page_link_discovery.page_link_discovery(links, final_urls, iterate_list_of_urls, full_url, all_links, external_links, discovered_urls, site_url, crawl_depth)
 
@@ -395,8 +358,10 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			page_text = page_desc_soup.find("div", {"id": "page"})
 		elif page_desc_soup.find("div", {"id": "site-container"}):
 			page_text = page_desc_soup.find("div", {"id": "main"})
-		elif page_desc_soup.find("div", {"id": "site-container"}):
+		elif page_desc_soup.find("div", {"id": "application-main"}):
 			page_text = page_desc_soup.find("div", {"id": "application-main"})
+		elif page_desc_soup.find("div", {"id": "site-container"}):
+			page_text = page_desc_soup.find("div", {"id": "site-container"})
 		else:
 			page_text = page_desc_soup.find("body")
 
@@ -457,7 +422,23 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			return url, discovered_urls, False, feeds, hash, crawl_depth, average_crawl_speed
 			
 		try:
-			pages_indexed = add_to_database.add_to_database(full_url, published_on, doc_title, meta_description, heading_info, page, pages_indexed, page_desc_soup, len(links), crawl_budget, nofollow_all, page_desc_soup.find("body"), h_card, hash, thin_content)
+			pages_indexed = add_to_database.add_to_database(
+				full_url,
+				published_on,
+				doc_title,
+				meta_description,
+				heading_info,
+				page,
+				pages_indexed,
+				page_desc_soup,
+				len(links),
+				crawl_budget,
+				nofollow_all,
+				page_desc_soup.find("body"),
+				h_card,
+				hash,
+				thin_content
+			)
 		except Exception as e:
 			logging.warning("error with {}".format(full_url))
 			logging.warning(e)
