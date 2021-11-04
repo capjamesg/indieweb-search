@@ -1,0 +1,11 @@
+<p class="breadcrumbs"><a href="{{ results[r]['_source']['url'] }}" style="border-bottom: none;">
+{% for item in results[r]['_source']['url'].replace("https://", "").replace("http://", "").rstrip("/").split("/") %}
+{% if results[r]['_source']['url'].replace("https://", "").replace("http://", "").rstrip("/").split("/") | length == 1 %}
+    {{ item }}
+{% else %}
+    {% if (loop.last and item|length < 25) or not loop.last %}
+    {{ item.replace("%20", " ") }}
+    {% if not loop.last %}{% if item|length < 25 %}>{% endif %}{% endif %}
+    {% endif %}
+{% endif %}
+{% endfor %}</a></p>
