@@ -313,4 +313,17 @@ def aeropress_recipe():
 
     stirring = random.choice(stirring_options)
 
-    return dose, grind_size, time, filters, water, stirring, stir_times, dose_is_point_five, inverted
+    special_result = {
+        "type": "aeropress_recipe",
+        "dose": dose,
+        "grind_size": grind_size,
+        "time": time,
+        "filters": filters,
+        "water": water,
+        "stirring": stirring,
+        "stir_times": stir_times,
+        "dose_is_point_five": dose_is_point_five,
+        "inverted": inverted
+    }
+
+    return special_result
