@@ -13,14 +13,24 @@ for hits in scroll(es, 'pages', body, '2m', 20):
     for hit in hits:
         soup = BeautifulSoup(hit['_source']['page_content'], 'html.parser')
 
+        is_canonical = False
+
+        if len(soup.find_all('link', rel='canonical')) == 0:
+            continue
+
         for link in soup.find_all('link', rel='canonical'):
             canonical = link.get("href")
+
             if canonical and canonical.startswith("/"):
                 canonical = "https://" + hit['_source']['domain'] + canonical
                 
-            if canonical and canonical.strip("/").replace("http://", "https://").split("?")[0] != hit['_source']['url'].strip("/").replace("http://", "https://").split("?")[0]:
-                print(hit['_source']['page_url'], canonical)
-                # es.delete(index='pages', doc_type='page', id=hit['_id'])
-                count += 1
+            if canonical and canonical.strip("/").replace("http://", "https://").split("?")[0] == hit['_source']['url'].strip("/").replace("http://", "https://").split("?")[0]:
+                is_canonical = True
+
+        if is_canonical == False:
+            # es.delete(index='pages', id=hit['_id'])
+            print(count)
+            print(hit['_source']['url'])
+            count += 1
 
 print("records removed: " + str(count))

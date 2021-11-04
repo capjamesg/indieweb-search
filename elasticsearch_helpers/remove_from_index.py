@@ -9,7 +9,7 @@ count = 0
 
 domain_links = {}
 
-remove_domains = ["www.jorgee.net", "linkedin.com", "vuild.com", "tyson.vanoverhill.com"]
+remove_domains = []
 
 # Remove domains
 for hits in scroll(es, 'pages', body, '2m', 20):

@@ -22,10 +22,6 @@ main {
   margin-left: 5%;
 }
 
-th {
-  text-align: left;
-}
-
 nav ul li {
   display: inline-block;
   padding-left: 10px;
@@ -33,12 +29,6 @@ nav ul li {
 
 p, code, li {
   font-size: 1.0625rem;
-}
-
-.text-box {
-  max-width: 35em;
-  margin: auto;
-  margin-bottom: 50px;
 }
 
 li p {
@@ -67,6 +57,13 @@ input[type="text"], input[type="username"], input[type="password"], select {
   text-align: left;
   min-width: 50%;
   font-size: 1.0625rem;
+}
+.main_content_box {
+  background-color: white;
+  border-radius: 10px;
+  border: 1px solid lightgray;
+  padding: 20px;
+  margin: auto;
 }
 
 button {
@@ -116,10 +113,6 @@ input {
   min-width: 50%;
 }
 
-.advanced-p {
-  padding-top: 10px;
-}
-
 h1 {
     font-size: 2rem;
     line-height: 1.5em !important;
@@ -132,13 +125,6 @@ h2, h1, h3 {
 a {
     color: #006BD6;
     border-bottom: 2px dotted #006BD6;
-}
-
-.logo_image img {
-    width: 50% !important;
-    border-radius: 10px;
-    margin: auto;
-    display: block;
 }
 
 p, li, h2, h3 {

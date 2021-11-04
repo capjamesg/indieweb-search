@@ -1,14 +1,10 @@
 # IndieWeb Search Engine
 
-This repository contains the source code for the indieweb-search crawler and web application.
-
-All files in the `crawler/` directory relate to the web crawler. All files in the main directory relate to the web application.
+This repository contains the source code for the IndieWeb Search crawler, web application, and back-end server.
 
 The search engine is available at [indieweb-search.jamesg.blog](https://indieweb-search.jamesg.blog).
 
 Further documentation on the search engine is available on the [IndieWeb wiki](https://indieweb.org/IndieWeb_Search).
-
-*Please note that this project is still in active development and there may be many bugs present. This project is a fork of my personal website search engine and is currently being tweaked to meet the needs of indexing other sites.*
 
 ## Screenshot
 
@@ -102,6 +98,32 @@ This command will seed the MySQL database with the tables you need to run the we
 Now you are ready to run the `elasticsearch_server.py` script:
 
     python3 elasticsearch_server.py
+
+## Project Architecture
+
+This project is divided into a few different folders. Each folder corresponds to a separate part of the IndieWeb Search engine.
+
+Here is a list of all the folders in this project that are relevant to running this project:
+
+- crawler/: This folder contains the modules that handle crawling web pages. The code in this folder is invoked by build_index.py in the main folder.
+- direct_answers/: Code that handles direct answers to questions at the top of search results.
+- elasticsearch_server/: The back-end code that runs the project Elasticsearch server. This server MUST be deployed on the same server on which your Elasticsearch cluster is running.
+- elasticsearch_helpers/: Helper scripts used to interact with Elasticsearch. Most of these scripts relate to cleaning up the search index, deriving insights from the content in the index, and past experiments. The most used file in this folder is links.py which builds the project link index.
+- legacy/: Code from the previous iteration of this project. Preserved just in case it is needed again in the future.
+- logs/: Where all crawl logs are kept. This folder is not committed. You should create a logs folder before you run the crawler for the first time.
+- static/: Static assets to be served by the front-end web application.
+- templates/: HTML templates for the front-end of the web application.
+- Main folder (root): This folder contains the main code for the project.
+
+### Main Folder Key Files
+
+The main folder contains root files that are relevant to running the project. These are:
+
+- recrawl.py: Start a recrawl.
+- main.py: Run the web application.
+- build_index.py: The program that starts the web crawler.
+
+## Crawler Performance and Scalability
 
 ## Direct Answer Search Results
 
@@ -205,6 +227,8 @@ The following feed types can be read by the recrawl script:
 - Atom feeds
 - Microformats h-feeds (see [h-feed](https://microformats.org/wiki/h-feed) for more information)
 
+Contributions related to recrawling are greatly appreciated as this is an active part of the project that has not yet been solved.
+
 ## Contributing
 
 Feel free to contribute to this project no matter how much background you have in search.
@@ -228,9 +252,9 @@ This project makes use of the following technologies:
 - pyspellchecker
 - feedparser
 
-## Authorship.rocks Compliance
+## Authorship Discovery Compliance
 
-This project complies with all five test cases in the [authorship.rocks](https://authorship.rocks/) Authorship Discovery test cases. These test cases determine whether code can successfully retrieve the representative h-card (author) of a page.
+This project complies with all five test cases in the [authorship.rocks](https://authorship.rocks/) [Authorship Discovery Specification](https://indieweb.org/authorship-spec) test cases. These test cases determine whether code can successfully retrieve the representative h-card (author) of a page.
 
 This logic is used to determine which h-card, if any, to save alongside a piece of content in the index. This logic plays a critical role in the profile pictures and names that appear in search results.
 

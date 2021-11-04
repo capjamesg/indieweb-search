@@ -1,0 +1,38 @@
+{% if results[r]['_source']["special_snippet"] and results[r]['_source']["special_snippet"]["type"][0] == 'h-event' %}
+<ul>
+{% if results[r]['_source']["special_snippet"]["properties"]["start"] %}
+    <li>Start: {{ results[r]['_source']["special_snippet"]["properties"]["start"][0].split("T")[0] }}</li>
+{% endif %}
+{% if results[r]['_source']["special_snippet"]["properties"]["end"] %}
+    <li>End: {{ results[r]['_source']["special_snippet"]["properties"]["end"][0].split("T")[0] }}</li>
+{% endif %}
+{% if results[r]['_source']["special_snippet"]["properties"]["location"] %}
+<li>Location: 
+    {% if results[r]['_source']["special_snippet"]["properties"]["location"][0]["properties"]["name"] %}
+    {{ results[r]['_source']["special_snippet"]["properties"]["location"][0]["properties"]["name"][0] }}
+    {% endif %}
+    {% if results[r]['_source']["special_snippet"]["properties"]["location"][0]["properties"]["country-name"] %}
+    {{ results[r]['_source']["special_snippet"]["properties"]["location"][0]["properties"]["country-name"][0] }}
+    {% endif %}
+</li>
+    {% if results[r]['_source']["special_snippet"]["properties"]["location"][0]["properties"]["street-address"] %}
+    <li>Address: {{ results[r]['_source']["special_snippet"]["properties"]["location"][0]["properties"]["street-address"][0] }}</li>
+    {% endif %}
+{% endif %}
+</ul>
+{% elif results[r]['_source']["special_snippet"] and results[r]['_source']["special_snippet"]["type"][0] == 'h-recipe' %}
+{% if results[r]['_source']["special_snippet"]["properties"]["duration"] %}
+<p>Duration: {{ results[r]['_source']["special_snippet"]["properties"]["duration"][0].split("T")[0] }}</p>
+{% endif %}
+{% if results[r]['_source']["special_snippet"]["properties"]["yield"] %}
+<p>Yield: {{ results[r]['_source']["special_snippet"]["properties"]["yield"][0].split("T")[0] }}</p>
+{% endif %}
+<div>
+    {% if results[r]['_source']["special_snippet"]["properties"]["photo"] %}
+    <img src="{% if results[r]['_source']["special_snippet"]["properties"]["photo"][0].startswith('/') %}
+    https://{{ results[r]['_source']['url'].split('/')[2] }}{% endif %}
+    {{ results[r]['_source']["special_snippet"]["properties"]['photo'][0] }}"
+    class="u-photo" style="margin-right: 10px;" />
+    {% endif %}
+</div>
+{% endif %}
