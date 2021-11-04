@@ -1,20 +1,30 @@
+import crawler.identify_special_snippet as identify_special_snippet
+import crawler.authorship_discovery as authorship_discovery
 from bs4 import Comment
-import hashlib
 import datetime
 import logging
 import mf2py
 import json
-import sys
 
 def add_to_database(full_url, published_on, doc_title, meta_description, heading_info, page, 
 	pages_indexed, page_content, outgoing_links, crawl_budget, nofollow_all, main_page_content, 
 	original_h_card, hash, thin_content=False):
+
+	# the program will try to populate all of these values before indexing a document
+	category = None
+	special_snippet = {}
+	h_card = None
+	favicon = ""
+	length = len(page_content)
+	is_homepage = False
+	nofollow_all = "false"
+	date_to_record = ""
+	contains_javascript = False
+
 	# get last modified date
 
 	if page != "" and page.headers:
 		length = page.headers.get("content-length")
-	else:
-		length = len(page_content)
 
 	# remove script and style tags from page_content
 
@@ -22,6 +32,7 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 		script.decompose()
 
 	# remove HTML comments
+	# we don't want to include these in rankings
 
 	comments = page_content.findAll(text=lambda text:isinstance(text, Comment))
 	[comment.extract() for comment in comments]
@@ -31,76 +42,23 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 
 	if favicon:
 		favicon = favicon.get("href")
-	else:
-		favicon = ""
-
-	h_card = []
-	h_card_url = None
-	category = None
 
 	h_entry = mf2py.parse(page_content)
 
-	for i in h_entry["items"]:
-		if i['type'] == ['h-entry']:
-			if i['properties'].get('author'):
-				# if author is h_card
-				if type(i['properties']['author'][0]) == dict and i['properties']['author'][0].get('type') == ['h-card']:
-					h_card = i['properties']['author'][0]
-					break
+	special_snippet, h_card = identify_special_snippet.find_snippet(page_content, h_card)
 
-				elif type(i['properties']['author']) == list:
-					h_card = i['properties']['author'][0]
-					break
-
-			# category
-			if i['properties'].get('category'):
-				category = ", ".join(i['properties']['category'])
-				
-	# if rel=author, look for h-card on the rel=author link
 	if h_card == []:
-		if h_entry.get("rels") and h_entry["rels"].get("author"):
-			rel_author = h_entry['rels']['author']
-
-			if rel_author:
-				h_card_url = rel_author[0]
-
-	if h_card_url:
-		new_h_card = mf2py.parse(url=h_card_url)
-
-		if new_h_card.get("rels") and new_h_card.get("rels").get("me"):
-			rel_mes = new_h_card['rels']['me']
-		else:
-			rel_mes = []
-
-		for j in new_h_card["items"]:
-			if j.get('type') and j.get('type') == ['h-card'] and j['properties']['url'] == rel_author and j['properties'].get('uid') == j['properties']['url']:
-				h_card = j
-				break
-			elif j.get('type') and j.get('type') == ['h-card'] and j['properties'].get('url') in rel_mes:
-				h_card = j
-				break
-			elif j.get('type') and j.get('type') == ['h-card'] and j['properties']['url'] == rel_author:
-				h_card = j
-				break
-
-	if h_card == [] or h_card == None:
-		h_card = original_h_card
+		h_card = authorship_discovery.discover_author(h_card, h_entry, full_url, original_h_card)
 
 	if nofollow_all == True:
 		nofollow_all = "true"
-	else:
-		nofollow_all = "false"
 
 	if type(published_on) == dict and published_on.get("datetime") != None:
 		date_to_record = published_on["datetime"].split("T")[0]
-	else:
-		date_to_record = ""
 
 	# find out if page is home page
 	if full_url.replace("https://", "").replace("http://", "").strip("/").count("/") == 0:
 		is_homepage = True
-	else:
-		is_homepage = False
 
 	# get featured image if one is available
 	# may be presented in featured snippets
@@ -119,14 +77,13 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 		featured_image = ""
 
 	# use p-name in place of title tag if one is available
-	if page_content.find(".p-name"):
-		title = page_content.find(".p-name").text
-		if len(title.split(" ")) > 10:
-			title = title.split(" ", 10)[0] + "..."
+	if page_content.select(".p-name"):
+		title = page_content.select(".p-name")[0].text
+		if title.strip(" ") != "" and len(title) > 5:
+			if len(title.split(" ")) > 10:
+				title = title.split(" ", 10)[0] + "..."
 	else:
 		title = doc_title
-
-	contains_javascript = False
 
 	# page contains javascript
 	if page_content.find("script"):
@@ -163,29 +120,13 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 		"thin_content": thin_content,
 		"contains_javascript": contains_javascript,
 		"page_hash": hash,
-		"search_category": "blog"
+		"special_snippet": special_snippet
 	}
-
-	# results currently being saved to a file, so no need to run this code
-
-	# check_if_indexed = requests.post("https://es-indieweb-search.jamesg.blog/check?url={}".format(full_url), headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}).json()
-
-	# if len(check_if_indexed) > 0:
-	# 	record["incoming_links"] = check_if_indexed[0]["_source"]["incoming_links"]
-	# else:
-	# 	record["incoming_links"] = 0
 
 	with open("results.json", "a+") as f:
 		f.write(json.dumps(record))
 		f.write("\n")
 
-	# if len(check_if_indexed) == 0:
-	# 	r = requests.post("https://es-indieweb-search.jamesg.blog/create", headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}, json=record)
-	# else:
-	# 	r = requests.post("https://es-indieweb-search.jamesg.blog/update", headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}, json=record)
-	# 	print("updated page {} ({}/{})".format(full_url, pages_indexed, crawl_budget))
-
-	print("indexed new page {} ({}/{})".format(full_url, pages_indexed, crawl_budget))
 	logging.info("indexed new page {} ({}/{})".format(full_url, pages_indexed, crawl_budget))
 
 	pages_indexed += 1

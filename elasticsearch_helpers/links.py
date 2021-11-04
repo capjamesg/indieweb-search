@@ -28,8 +28,15 @@ link_microformat_instances = {}
 # Get all links on each page in the index
 # Write all links to a file
 
-with open('links.csv', 'a') as f:
+overall_count = 0
+
+with open('links.csv', 'w+') as f:
     for hits in scroll(es, 'pages', body, '3m', 40):
+        # overall_count += 1
+
+        # if overall_count == 10:
+        #     break
+
         for h in hits:
             # don't count links on pages that specified nofollow in the X-Robots-Tag header
             if h["_source"].get("page_is_nofollow") and h["_source"].get("page_is_nofollow") == "true":
@@ -91,23 +98,33 @@ with open('links.csv', 'a') as f:
 
                     mf2_attribute = ""
 
+                    weight = 0
+
                     if l.has_attr("class"):
                         if "u-in-reply-to" in l["class"]:
                             mf2_attribute = "u-in-reply-to"
+                            weight = 0.1
                         elif "u-like-of" in l["class"]:
                             mf2_attribute = "u-like-of"
+                            weight = 0.5
                         elif "u-repost-of" in l["class"]:
                             mf2_attribute = "u-repost-of"
+                            weight = 0.75
                         elif "u-bookmark-of" in l["class"]:
                             mf2_attribute = "u-bookmark-of"
+                            weight = 0.75
                         elif "u-url" in l["class"]:
                             mf2_attribute = "u-url"
+                            weight = 0
                         elif "u-favorite-of" in l["class"]:
                             mf2_attribute = "u-favorite-of"
+                            weight = 0.5
                         elif "u-quotation-of" in l["class"]:
                             mf2_attribute = "u-quotation-of"
+                            weight = 0.75
                         elif "u-invitee" in l["class"]:
                             mf2_attribute = "u-invitee"
+                            weight = 0
 
                     if link_microformat_instances.get(mf2_attribute):
                         link_microformat_instances[mf2_attribute] += 1
@@ -117,12 +134,12 @@ with open('links.csv', 'a') as f:
                     link = link.lower()
 
                     try:
-                        link_domain = link.split('/')[2]
+                        link_domain = link.split('/')[2].replace("www.", "").lower()
 
                         if domain_links.get(link_domain):
-                            domain_links[link_domain] += 1
+                            domain_links[link_domain] += weight + 1
                         else:
-                            domain_links[link_domain] = 1
+                            domain_links[link_domain] = weight + 1
 
                         # don't count links to someone's own site
                         if h["_source"]["domain"] == link_domain:
@@ -240,7 +257,7 @@ for link, link_count in links.items():
         continue
     
     try:
-        link_domain = link.split('/')[2].lower()
+        link_domain = link.split('/')[2].lower().replace("www.", "")
 
         referring_domains = domain_links.get(link_domain)
     except:
