@@ -2,9 +2,8 @@ from flask import render_template, request, redirect, send_from_directory, jsoni
 from .direct_answers import choose_direct_answer
 from .direct_answers import search_result_features
 from spellchecker import SpellChecker
-import search_helpers
+from . import search_helpers, config
 import requests
-import config
 import json
 import math
 import spacy

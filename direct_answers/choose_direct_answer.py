@@ -1,4 +1,5 @@
-from . import search_result_features, config
+from . import search_result_features
+from .. import config
 
 def choose_featured_snippet(cleaned_value, cleaned_value_for_query, rows, special_result, full_query_with_full_stops, session, nlp):
 	search_for_snippet = False
@@ -42,7 +43,7 @@ def choose_featured_snippet(cleaned_value, cleaned_value_for_query, rows, specia
 
 		if do_i_use == "" and len(rows) > 1:
 			do_i_use, special_result = search_result_features.generate_featured_snippet(original, special_result, nlp, rows[1]["_source"]["url"], rows[1]["_source"])
-			
+
 	elif len(rows) > 0 and (rows[0]["_source"]["url"].startswith("https://jamesg.blog") or \
 		rows[0]["_source"]["url"].startswith("https://microformats.org/wiki/") or \
 		rows[0]["_source"]["url"].startswith("https://indieweb.org/")):
