@@ -8,14 +8,21 @@
     </form>
     <p class="hide-on-mobile">Returned {{ '{0:,}'.format(number_of_results) }} search result{% if number_of_results != 1 %}s{% endif %} for your "{{ query }}" query.</p>
     <p>
-      {% if query.startswith("discover ") %}Showing home pages that talk about "{{ query }}". You can also search for your query <a href="/results?query={{ query.replace('discover', '', 1) }}">on any page on any site in the index</a>. {% else %}Ordered by relevance. You can also <a href="/results?query=discover {{ query }}&page={{ page }}">discover individual sites that may write about your query</a>.{% endif %}
+      {% if query.startswith("discover ") %}
+        Showing home pages that talk about "{{ query }}".
+        You can also search for your query <a href="/results?query={{ query.replace('discover', '', 1) }}">on any page on any site in the index</a>.
+      {% else %}
+        Ordered by relevance. You can also <a href="/results?query=discover {{ query }}&page={{ page }}">discover individual sites that may write about your query</a>.
+      {% endif %}
     </p>
     {% include "search/special_serp_items.html" %}
     {% if out_of_bounds_page == False %}
       <ol class="serp">
         {% for r in range(0, results | length) %}
         {% if results[r]['_source']['url'] != special_result.breadcrumb %}
-        {% if (results[r]['_source']['domain'] != results[r-1]['_source']['domain'] or (special_result and results[r]['_source']['domain'] == special_result.breadcrumb.split("/")[2]) or r == 0) or (results[r]['_source']["special_snippet"] and results[r]['_source']["special_snippet"] != {}) %}
+        {% if (results[r]['_source']['domain'] != results[r-1]['_source']['domain'] or 
+          (special_result and results[r]['_source']['domain'] == special_result.breadcrumb.split("/")[2]) or r == 0) or 
+          (results[r]['_source']["special_snippet"] and results[r]['_source']["special_snippet"] != {}) %}
           <li class="h-entry" style="margin-bottom: 20px; border-radius: 10px; background-color: white; border: 1px solid lightgrey; padding: 10px;">
             {% include "search/breadcrumbs.html" %}
           {% else %}
@@ -25,14 +32,23 @@
               {% if results[r]['_source']['h_card'] and results[r]['_source']['h_card']['url'] and 
                 results[r]['_source']['h_card']['url'][0].split("/")[2] == results[r]['_source']['url'].split('/')[2] and
                 results[r]['_source']['domain'] != results[r-1]['_source']['domain'] %}
-                <div class="h-card p-author" style="float: right;">
+                <div class="h-card" style="float: right;">
                   {% if results[r]["_source"]["h_card"]["photo"] %}
-                  <img src="{% if results[r]['_source']['h_card']['photo'][0].startswith('/') %}https://{{ results[r]['_source']['url'].split('/')[2] }}{% endif %}{{ results[r]['_source']['h_card']['photo'][0] }}" height="75" width="75" class="u-photo" style="float: left; margin-right: 10px;" />
+                  <img src="
+                    {% if results[r]['_source']['h_card']['photo'][0].startswith('/') %}
+                      https://{{ results[r]['_source']['url'].split('/')[2] }}
+                    {% endif %}
+                    {{ results[r]['_source']['h_card']['photo'][0] }}" height="75" width="75" class="u-photo" style="float: left; margin-right: 10px;" />
                   {% endif %}
                 </div>
               {% endif %}
-              <p class="p-name" style="font-size: 22px; margin-bottom: 0;"><a href="{{ results[r]['_source']['url'] }}" class="u-url u-uid">{% if results[r]['_source']['title']|length == 0 %}{{ " ".join(results[r]['_source']['url'][0].split(" ")[:20]) }}{% if results[r]['_source']['url'][0].split(" ")|length > 20 %}...{% endif %}{% else %}{{ " ".join(results[r]['_source']['title'].split(" ")[:20]) }}{% if results[r]['_source']['title'].split(" ")|length > 20 %}...{% endif %}{% endif %}</a></p>
-              {% if results[r]['_source']['h_card'] and results[r]['_source']['h_card']["name"] and results[r]['_source']['h_card']["name"][0].strip() != results[r]['_source']['title'].strip() and results[r]['_source']['h_card']['url'] and results[r]['_source']['h_card']['url'][0].split("/")[2] == results[r]['_source']['url'].split('/')[2] %}
+              <p class="p-name" style="font-size: 22px; margin-bottom: 0;"><a href="{{ results[r]['_source']['url'] }}" class="u-url u-uid">
+                {% if results[r]['_source']['title']|length == 0 %}{{ " ".join(results[r]['_source']['url'][0].split(" ")[:20]) }}
+                {% if results[r]['_source']['url'][0].split(" ")|length > 20 %}...{% endif %}{% else %}{{ " ".join(results[r]['_source']['title'].split(" ")[:20]) }}
+                {% if results[r]['_source']['title'].split(" ")|length > 20 %}...{% endif %}{% endif %}</a></p>
+              {% if results[r]['_source']['h_card'] and results[r]['_source']['h_card']["name"] 
+                and results[r]['_source']['h_card']["name"][0].strip() != results[r]['_source']['title'].strip() and results[r]['_source']['h_card']['url']
+                and results[r]['_source']['h_card']['url'][0].split("/")[2] == results[r]['_source']['url'].split('/')[2] %}
               <p class="breadcrumbs">Written by <a href="{{ results[r]['_source']['h_card']['url'][0] }}" class="p-author">{{ results[r]['_source']['h_card']['name'][0] }}</a></p>
               {% endif %}
               {% if results[r]['_source']["special_snippet"] and results[r]['_source']["special_snippet"]["type"][0] == 'h-review' %}
@@ -45,7 +61,13 @@
               {% endif %}
               {% endif %}
               {{ results[r]['_source']['published_on'] }}
-              <p class="p-summary">{% if results[r]['_source']['meta_description']|length > 0 %}{{ results[r]['_source']['meta_description'] }}{% elif (results[r]['_source']['h1'].split(",") and results[r]['_source']['h1'].split(",")[0]|length > 0) or results[r]['_source']['h1'] != "" %}{{ results[r]['_source']['h1'].split(",")[0] }}{% else %}{{ results[r]['_source']['h2'].split(",")[0] }}{% endif %}</p>
+              <p class="p-summary">
+                {% if results[r]['_source']['meta_description']|length > 0 %}
+                  {{ results[r]['_source']['meta_description'] }}
+                {% elif (results[r]['_source']['h1'].split(",") and results[r]['_source']['h1'].split(",")[0]|length > 0) or results[r]['_source']['h1'] != "" %}
+                  {{ results[r]['_source']['h1'].split(",")[0] }}{% else %}{{ results[r]['_source']['h2'].split(",")[0] }}
+                {% endif %}
+              </p>
               {% include "search/special_result_markup.html" %}
               {% if results[r]['_source']['url'].startswith("https://indieweb.org/") or results[r]['_source']['url'].startswith("https://microformats.org/wiki/") %}
               {% set title_count = 0 %}
@@ -61,7 +83,11 @@
               {% if results[r]['_source']['published_on'] %}
                 <p>Published on <time class="dt-published" datetime="{{ results[r]['_source']['published_on'] }}">{{ results[r]['_source']['published_on'] }}</time>.</p>
               {% endif %}
+            {% if not (results[r]['_source']['domain'] != results[r-1]['_source']['domain'] or 
+              (special_result and results[r]['_source']['domain'] == special_result.breadcrumb.split("/")[2]) or r == 0) or not
+              (results[r]['_source']["special_snippet"] and results[r]['_source']["special_snippet"] != {}) %}
             </div>
+            {% endif %}
             {% if results[r+1] and results[r]['_source']['domain'] != results[r+1]['_source']['domain'] %}
               </div>
               </li>
@@ -83,7 +109,8 @@
       {% if suggestion_made and corrected_text.strip() != query.strip() %}
         <p>Did you mean <a href="/results?query={{ corrected_text.strip() }}">{{ corrected_text.strip() }}</a>?</p>
       {% else %}
-        <p>If you cannot find what you are looking for, first check the spelling of your query. If your spelling is correct, consider searching for similar words or phrases that relate to your query.</p>
+        <p>If you cannot find what you are looking for, first check the spelling of your query.
+          If your spelling is correct, consider searching for similar words or phrases that relate to your query.</p>
       {% endif %}
     </section>
     {% endif %}
