@@ -1,9 +1,10 @@
 from flask import render_template, request, redirect, send_from_directory, jsonify, Blueprint
+from .direct_answers import choose_direct_answer
 from .direct_answers import search_result_features
 from spellchecker import SpellChecker
-from . import config
 import search_helpers
 import requests
+import config
 import json
 import math
 import spacy
@@ -47,9 +48,9 @@ def results_page():
 
 	allowed_chars = [" ", '"', ":", "-", "/", ".", "="]
 
-	query_values_in_list, query_with_handled_spaces = search_helpers.handle_advanced_search.handle_advanced_search(query_with_handled_spaces)
+	query_values_in_list, query_with_handled_spaces = search_helpers.handle_advanced_search(query_with_handled_spaces)
 
-	cleaned_value_for_query = ''.join(e for e in query_with_handled_spaces if e.isalnum() or e == " " or e == ".").strip()
+	cleaned_value_for_query = ''.join(e for e in query_with_handled_spaces if e.isalnum() or e in allowed_chars).strip()
 
 	if cleaned_value_for_query.startswith("xray https://") or cleaned_value_for_query.startswith("xray http://"):
 		return redirect("https://xray.p3k.io/parse?url={}".format(cleaned_value_for_query.replace("xray ", "")))
@@ -126,7 +127,7 @@ def results_page():
 	
 	if page == 1:
 		cleaned_value = cleaned_value_for_query.lower()
-		do_i_use, special_result = search_result_features.choose_featured_snippet.choose_featured_snippet(
+		do_i_use, special_result = choose_direct_answer.choose_featured_snippet(
 			cleaned_value,
 			cleaned_value_for_query,
 			rows,
