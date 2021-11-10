@@ -11,6 +11,11 @@ import crawler.discovery as page_link_discovery
 
 yesterday = datetime.datetime.today() - datetime.timedelta(days=1)
 
+def find_base_url_path(url):
+	url = url.strip("/").replace("http://", "https://").split("?")[0].lower()
+
+	return url
+
 def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, external_links, discovered_urls, iterate_list_of_urls, site_url, 
 	crawl_budget, url, feeds, feed_urls, site, session, web_page_hashes, average_crawl_speed, homepage_meta_description, 
 	link_discovery=True, h_card=[], crawl_depth=0):
@@ -123,7 +128,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 						domain = full_url.split("/")[2]
 						link["rel"] = full_url.split("/")[0] + "//" + domain + link["rel"]
 
-					canonical = link["rel"].strip("/").replace("http://", "https://").split("?")[0].lower()
+					canonical = find_base_url_path(link["rel"])
 
 					result = url_handling_helpers.parse_canonical(canonical, full_url, link["url"], iterate_list_of_urls, discovered_urls)
 
@@ -229,7 +234,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 				canonical_url = full_url.split("/")[0] + "//" + domain + canonical_url
 
 			if canonical_url:
-				canonical = canonical_url.strip("/").replace("http://", "https://").split("?")[0].lower()
+				canonical = find_base_url_path(canonical_url)
 
 				result = url_handling_helpers.parse_canonical(canonical, full_url, link, iterate_list_of_urls, discovered_urls)
 

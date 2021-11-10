@@ -42,23 +42,30 @@ def get_page_info(page_text, page_desc_soup, page_url, homepage_meta_description
 
 	meta_description = ""
 
-	if page_desc_soup.find("meta", {"name":"description"}) != None and page_desc_soup.find("meta", {"name":"description"}).get("content") and page_desc_soup.find("meta", {"name":"description"})["content"] != "":
-		meta_description = page_desc_soup.find("meta", {"name":"description"})["content"]
+	properties_to_check = [
+		("name", "description"),
+		("name", "og:description"),
+		("property", "og:description"),
+		("name", "twitter:description"),
+	]
 
-	elif page_desc_soup.find("meta", {"name":"og:description"}) != None and page_desc_soup.find("meta", {"name":"og:description"}).get("content") and page_desc_soup.find("meta", {"name":"og:description"})["content"] != "":
-		meta_description = page_desc_soup.find("meta", {"name":"og:description"})["content"]
+	for key, value in properties_to_check:
+		if page_desc_soup.find("meta", {key: value}) != None \
+		and page_desc_soup.find("meta", {key: value}).get("content") \
+		and page_desc_soup.find("meta", {key: value})["content"] != "":
+			meta_description = page_desc_soup.find("meta", {key: value})["content"]
+			break
 
-	elif page_desc_soup.find("meta", {"property":"og:description"}) != None and page_desc_soup.find("meta", {"property":"og:description"}).get("content") and page_desc_soup.find("meta", {"property":"og:description"})["content"] != "":
-		meta_description = page_desc_soup.find("meta", {"property":"og:description"})["content"]
-
-	if meta_description == "" or (homepage_meta_description != "" and meta_description == homepage_meta_description):
+	if meta_description == "" or (homepage_meta_description != "" and \
+		meta_description == homepage_meta_description):
 		summary = page_desc_soup.select("p-summary")
 
 		if summary:
 			meta_description = summary[0].text
 
 	# try to retrieve a larger meta description
-	if meta_description == "" or len(meta_description) < 75 or (homepage_meta_description != "" and meta_description == homepage_meta_description):
+	if meta_description == "" or len(meta_description) < 75 or (homepage_meta_description != "" \
+		and meta_description == homepage_meta_description):
 		# Use first paragraph as meta description if one can be found
 		# get paragraph after h1
 
@@ -71,7 +78,8 @@ def get_page_info(page_text, page_desc_soup, page_url, homepage_meta_description
 				if len(meta_description) < 50:
 					meta_description = ""
 
-	if meta_description == "" or meta_description == None or len(meta_description) < 75 or (homepage_meta_description != "" and meta_description == homepage_meta_description):
+	if meta_description == "" or meta_description == None or len(meta_description) < 75 \
+		or (homepage_meta_description != "" and meta_description == homepage_meta_description):
 		h1 = page_desc_soup.find("h1")
 		
 		if h1:
@@ -84,7 +92,8 @@ def get_page_info(page_text, page_desc_soup, page_url, homepage_meta_description
 			elif paragraph_to_use_for_meta_desc:
 				meta_description = paragraph_to_use_for_meta_desc.text
 
-	if meta_description == "" or meta_description == None or (homepage_meta_description != "" and meta_description == homepage_meta_description):
+	if meta_description == "" or meta_description == None or (homepage_meta_description != "" \
+		and meta_description == homepage_meta_description):
 		h2 = page_desc_soup.find_all("h2")
 
 		if h2 and len(h2) > 0:
@@ -97,7 +106,8 @@ def get_page_info(page_text, page_desc_soup, page_url, homepage_meta_description
 
 	# do not index stub descriptions from the IndieWeb wiki
 
-	if meta_description.startswith("This article is a stub.") or (homepage_meta_description != "" and meta_description == homepage_meta_description):
+	if meta_description.startswith("This article is a stub.") or \
+		(homepage_meta_description != "" and meta_description == homepage_meta_description):
 		stub = [p for p in page_desc_soup.find_all('p') if "stub" in p.text]
 
 		if stub:

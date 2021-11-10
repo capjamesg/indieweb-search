@@ -33,7 +33,7 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
 
     # remove all proper nouns from cleaned_value
 
-    cleaned_value = " ".join([w for w in cleaned_value.split(" ") if "james" not in w.lower() and w.lower() not in proper_nouns and w.lower() not in post["title"].lower().split() and w.lower() not in post["url"].lower().split("/")[-1]])
+    cleaned_value = " ".join([w for w in cleaned_value.split(" ") if w.lower() not in proper_nouns and w.lower() not in post["title"].lower().split() and w.lower() not in post["url"].lower().split("/")[-1]])
 
     # read post with bs4
     if post.get("page_content"):
@@ -45,7 +45,7 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
         print('sd')
         if "<pre>" or "<em>" in post["page_content"]:
             # get all pre tags
-            print('x')
+
             pre_tags = soup.find_all("pre")
 
             for tag in pre_tags:
@@ -59,10 +59,18 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
                 elif tag.text:
                     context = "<p>" + tag.text + "</p>"
 
-                return tag.text, {"url": original_url, "title": post["title"], "type": "code", "breadcrumb": url, 
-                "context": context}
+                return tag.text, \
+                    {
+                        "url": original_url,
+                        "title": post["title"],
+                        "type": "code",
+                        "breadcrumb": url, 
+                        "context": context
+                    }
 
     all_locations = []
+
+    
 
     do_i_use, response = recipes.parse_recipe(original_cleaned_value, soup, url, post)
 
@@ -94,7 +102,7 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
     if do_i_use != None and response != None:
         return do_i_use, response
 
-    do_i_use, response = whois.parse_get_rel(original_cleaned_value, soup, url, original_url)
+    do_i_use, response = whois.parse_get_rel(original_cleaned_value, soup, original_url)
 
     if do_i_use != None and response != None:
         return do_i_use, response
@@ -157,9 +165,21 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
             ents = [w for w in nlp(sentence_with_query[0]).ents if w.label_ == ent_type]
 
             if len(ents) > 0:
-                return "<b style='font-size: 22px'>{}</b><br>{}".format(", ".join([e.text for e in ents]), sentence_with_query[0].replace("\n", " ")), {"type": "direct_answer", "breadcrumb": url, "title": soup.find("h1").text, "featured_image": post.get("featured_image")}
+                return "<b style='font-size: 22px'>{}</b><br>{}".format(", ".join([e.text for e in ents]), sentence_with_query[0].replace("\n", " ")), \
+                    {
+                        "type": "direct_answer",
+                        "breadcrumb": url,
+                        "title": soup.find("h1").text,
+                        "featured_image": post.get("featured_image")
+                    }
             elif len(all_locations) > 0:
-                return "<b style='font-size: 22px'>{}</b><br>{}".format(all_locations[0].text, sentence_with_query[0]), {"type": "direct_answer", "breadcrumb": url, "title": soup.find("h1").text, "featured_image": post.get("featured_image")}
+                return "<b style='font-size: 22px'>{}</b><br>{}".format(all_locations[0].text, sentence_with_query[0]), \
+                    {
+                        "type": "direct_answer",
+                        "breadcrumb": url,
+                        "title": soup.find("h1").text,
+                        "featured_image": post.get("featured_image")
+                    }
     
     # initialize tokenizer for later use with nltk
     t = nltk.tokenize.WhitespaceTokenizer()
@@ -169,8 +189,16 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
     # get definition if on page and same as query
     if soup.find_all("dfn"):
         for dfn in soup.find_all("dfn"):
-            if dfn.text.lower().replace(" ", "").replace("-", "") == new_cleaned_value_for_direct_answer.lower().replace(" ", "").replace("-", "") or "define" in new_cleaned_value_for_direct_answer.lower():
-                return "<b style='font-size: 22px'>{}</b><br>{}".format(dfn.text, dfn.find_parent("p").text), {"type": "direct_answer", "breadcrumb": url, "title": post["title"], "featured_image": post.get("featured_image")}
+            if dfn.text.lower().replace(" ", "").replace("-", "") == new_cleaned_value_for_direct_answer.lower().replace(" ", "").replace("-", "") or \
+                "define" in new_cleaned_value_for_direct_answer.lower():
+                
+                return "<b style='font-size: 22px'>{}</b><br>{}".format(dfn.text, dfn.find_parent("p").text), \
+                    {
+                        "type": "direct_answer",
+                        "breadcrumb": url,
+                        "title": post["title"],
+                        "featured_image": post.get("featured_image")
+                    }
 
     if len(original_cleaned_value) != 0 and len(original_cleaned_value.split(" ")) > 0 and "what is" in original_cleaned_value.lower():
         try:
@@ -187,26 +215,38 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
                 location_of_tag_final = ""
 
                 for f in location_of_tag.find_next_siblings()[:3]:
-                    if f.name != "h1" and f.name != "h2" and f.name != "h3" and f.name != "h4" and f.name != "h5" and f.name != "h6":
-                        if f.name == "p" or f.name == "li" or f.name == "ul" or f.name == "ol" or f.name == "pre" or f.name == "a":
-                            location_of_tag_final += str(f)
+                    accepted_values = ["p", "li", "ul", "ol", "pre", "a"]
+                    not_accepted_values = ["h1", "h2", "h3", "h4", "h5", "h6"]
+
+                    if f.name in accepted_values and f.name not in not_accepted_values:
+                        location_of_tag_final += str(f)
                     else:
                         break
 
-                return "<b>{}</b><br>{}".format(in_h2[0].text, location_of_tag_final), {"type": "direct_answer", "breadcrumb": url, "title": soup.find("h1").text, "featured_image": post.get("featured_image")}
+                return "<b>{}</b><br>{}".format(in_h2[0].text, location_of_tag_final), \
+                    {
+                        "type": "direct_answer",
+                        "breadcrumb": url,
+                        "title": soup.find("h1").text,
+                        "featured_image": post.get("featured_image")
+                    }
 
-            all_locs = [f for f in soup.find_all(["p"]) if original_cleaned_value.lower() in f.text.lower() and (soup.next_sibling.name != "ul" or soup.next_sibling.name != "ol")]
+            all_locs = [f for f in soup.find_all(["p"]) if original_cleaned_value.lower() in f.text.lower() 
+                        and (soup.next_sibling.name != "ul" or soup.next_sibling.name != "ol")]
 
             location_of_tag = all_locs[0]
 
             if len(all_locs) > 0:
                 do_i_use = "<b>" + str(all_locs[0].text) + "</b>"
-                return do_i_use, {"type": "direct_answer", "breadcrumb": url, "title": soup.find("h1").text, "featured_image": post.get("featured_image")}
+                return do_i_use, \
+                    {
+                        "type": "direct_answer",
+                        "breadcrumb": url,
+                        "title": soup.find("h1").text,
+                        "featured_image": post.get("featured_image")
+                    }
 
             all_locs = [f for f in soup.find_all(["li"]) if original_cleaned_value in f.text.lower()]
-
-            # if len(all_locs) < 3:
-            #     return "", special_result
 
             if all_locs:
                 location_of_tag = all_locs[0]
@@ -235,11 +275,22 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
                 first_five_children = all_lis[start:position_in__parent_list+3]
 
                 if len(all_lis) == 4:
-                    do_i_use = str(location_of_tag.find_parent().find_previous()) + "<{}>".format(str(location_of_tag.find_parent().name)) + "".join(all_lis) + "</{}>".format(location_of_tag.find_parent().name) + "<p>...</p>"
+                    do_i_use = str(location_of_tag.find_parent().find_previous()) + \
+                        "<{}>".format(str(location_of_tag.find_parent().name)) + \
+                        "".join(all_lis) + "</{}>".format(location_of_tag.find_parent().name) + \
+                        "<p>...</p>"
                 elif len(list(location_of_tag.find_parent().children)) > 5:
-                    do_i_use = str(location_of_tag.find_parent().find_previous()) + "<{}>".format(str(location_of_tag.find_parent().name)) + add_ellipses + "".join(first_five_children) + "<li>...</li>" + "</{}>".format(location_of_tag.find_parent().name)
+                    do_i_use = str(location_of_tag.find_parent().find_previous()) + \
+                        "<{}>".format(str(location_of_tag.find_parent().name)) + \
+                        add_ellipses + \
+                        "".join(first_five_children) + \
+                        "<li>...</li>" + \
+                        "</{}>".format(location_of_tag.find_parent().name)
                 else:
-                    do_i_use = str(location_of_tag.find_parent().find_previous()) + "<{}>".format(str(location_of_tag.find_parent().name)) + "".join(first_five_children) + "</{}>".format(location_of_tag.find_parent().name)
+                    do_i_use = str(location_of_tag.find_parent().find_previous()) + \
+                        "<{}>".format(str(location_of_tag.find_parent().name)) + \
+                        "".join(first_five_children) + \
+                        "</{}>".format(location_of_tag.find_parent().name)
             elif location_of_tag and (location_of_tag.name == "h2" or location_of_tag.name == "h3"):
                 do_i_use = "<ul>" + "".join(["<li>{}</li>".format(h2.text) for h2 in list(all_locs)]) + "</ul>"
             elif location_of_tag.name == "strong":

@@ -2,6 +2,7 @@ import requests
 import datetime
 import logging
 import config
+import url_handling_helpers.url_handling_helpers as url_handling_helpers
 
 def parse_canonical(canonical, full_url, url, iterate_list_of_urls, discovered_urls):
 	canonical_domain = canonical.split("/")[2]
@@ -53,5 +54,51 @@ def save_feed(site, full_url, feed_url, feed_type, feeds, feed_urls):
 	feed_urls.append(feed_url.strip("/"))
 	
 	logging.info("found feed {}, will save".format(feed_url))
+
+	return feeds, feed_urls
+
+def find_feeds(page_desc_soup, full_url, site):
+	if page_desc_soup.find_all("link", {"rel": "alternate"}):
+		for feed_item in page_desc_soup.find_all("link", {"rel": "alternate"}):
+			if feed_item and feed_item["href"].startswith("/"):
+				# get site domain
+				domain = full_url.split("/")[2]
+				feed_url = full_url.split("/")[0] + "//" + domain + feed_item["href"]
+
+				if feed_url and feed_url not in feed_urls:
+					feeds, feed_urls = url_handling_helpers.save_feed(site, full_url, feed_item["href"], feed_item.get("type"), feeds, feed_urls)
+					
+			elif feed_item and feed_item["href"].startswith("http"):
+				if feed_item["href"] not in feed_urls and feed_item["href"].split("/")[2] == full_url.split("/")[2]:
+					feeds, feed_urls = url_handling_helpers.save_feed(site, full_url, feed_item["href"], feed_item.get("type"), feeds, feed_urls)
+					
+				elif feed_item["href"] not in feed_urls and feed_item["href"].split("/")[2] != full_url.split("/")[2]:
+					print("found feed {}, but it points to a different domain, not saving".format(feed_item["href"]))
+					logging.info("found feed {}, but it points to a different domain, not saving".format(feed_item["href"]))
+
+			else:
+				feeds, feed_urls = url_handling_helpers.save_feed(site, full_url, full_url.strip("/") + "/" + feed_item["href"], feed_item.get("type"), feeds, feed_urls)
+
+	# check if page has h-feed class on it
+	# if a h-feed class is present, mark page as feed
+
+	if page_desc_soup.select(".h-feed") and len(feeds) < 25:
+		feeds.append({"website_url": site, "page_url": full_url, "feed_url": full_url, "mime_type": "h-feed", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
+		feed_urls.append(full_url.strip("/"))
+
+		logging.info("{} is a h-feed, will save to feeds.json".format(full_url))
+
+	# check for websub hub
+
+	if page_desc_soup.find("link", {"rel": "hub"}) and len(feeds) < 25:
+		websub_hub = page_desc_soup.find("link", {"rel": "hub"})["href"]
+
+		websub_hub = websub_hub.strip().strip("<").strip(">")
+
+		feeds.append({"website_url": site, "page_url": full_url, "feed_url": websub_hub, "mime_type": "websub", "etag": "NOETAG", "discovered": datetime.datetime.now().strftime("%Y-%m-%d")})
+		
+		feed_urls.append(full_url.strip("/"))
+
+		logging.info("{} is a websub hub, will save to feeds.json".format(full_url))
 
 	return feeds, feed_urls

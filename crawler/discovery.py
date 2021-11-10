@@ -38,6 +38,7 @@ def page_link_discovery(links, final_urls, iterate_list_of_urls, page_being_proc
 			# skip email addresses
 			if "@" in link["href"]:
 				continue
+			
 			# Add start of URL to end of any links that don't have it
 			if link["href"].startswith("http"):
 				full_link = link["href"]

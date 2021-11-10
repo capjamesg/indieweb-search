@@ -8,6 +8,9 @@ body = {"query": {"match_all": {}}}
 
 count = 0
 
+def get_root_canonical(url):
+    return url.strip("/").replace("http://", "https://").split("?")[0]
+
 # Remove domains
 for hits in scroll(es, 'pages', body, '2m', 20):
     for hit in hits:
@@ -24,7 +27,7 @@ for hits in scroll(es, 'pages', body, '2m', 20):
             if canonical and canonical.startswith("/"):
                 canonical = "https://" + hit['_source']['domain'] + canonical
                 
-            if canonical and canonical.strip("/").replace("http://", "https://").split("?")[0] == hit['_source']['url'].strip("/").replace("http://", "https://").split("?")[0]:
+            if canonical and get_root_canonical(canonical) == get_root_canonical(hit['_source']['url']):
                 is_canonical = True
 
         if is_canonical == False:
