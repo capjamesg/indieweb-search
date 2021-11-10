@@ -2,7 +2,8 @@ import mf2py
 import os
 
 def parse_whois(original_cleaned_value, soup, url, original_url): 
-    if "who is" in original_cleaned_value or (("." in original_cleaned_value and len(original_cleaned_value.split(".")[0]) > 3 and len(original_cleaned_value.split(".")[0]) > 1 and len(original_cleaned_value.split(" ")) == 1)):
+    if "who is" in original_cleaned_value or (("." in original_cleaned_value and \
+        len(original_cleaned_value.split(".")[0]) > 3 and len(original_cleaned_value.split(".")[0]) > 1 and len(original_cleaned_value.split(" ")) == 1)):
         mf2s = mf2py.parse(doc=soup)["items"]
 
         h_card = ""
@@ -63,7 +64,12 @@ def parse_whois(original_cleaned_value, soup, url, original_url):
             else:
                 title = url
                 
-            return "<img src='{}' height='100' width='100' style='float: right;'><p>{}</p>".format(photo, to_show), {"type": "direct_answer", "breadcrumb": original_url, "title": title}
+            return "<img src='{}' height='100' width='100' style='float: right;'><p>{}</p>".format(photo, to_show), \
+                {
+                    "type": "direct_answer",
+                    "breadcrumb": original_url,
+                    "title": title
+                }
 
     return None, None
 
@@ -96,11 +102,18 @@ def parse_social(original_cleaned_value, soup, url, original_url):
             if to_show == "":
                 to_show = "No social links were found on this site's home page."
 
-            return "<h3>{} Social Links</h3><ul>{}</ul><details><br><summary>How to show up here</summary>You can have social links show up by entering 'yourdomainname.com social' into the search engine as long as you have rel=me links set up on your home page. Learn how to do this on the <a href='https://indieweb.org/rel-me'>IndieWeb wiki</a>.</details>".format(title, to_show), {"type": "direct_answer", "breadcrumb": original_url, "title": title}
+            return """<h3>{} Social Links</h3><ul>{}</ul><details><br><summary>How to show up here</summary>
+                You can have social links show up by entering 'yourdomainname.com social' into the search engine as long as you have rel=me links set up on your home page.
+                Learn how to do this on the <a href='https://indieweb.org/rel-me'>IndieWeb wiki</a>.</details>""".format(title, to_show), \
+                {
+                    "type": "direct_answer",
+                    "breadcrumb": original_url,
+                    "title": title
+                }
 
     return None, None
 
-def parse_get_rel(original_cleaned_value, soup, url, original_url):
+def parse_get_rel(original_cleaned_value, soup, original_url):
     # get all feeds on a page
     if original_cleaned_value.endswith("get rel"):
         # get all rel values
@@ -114,7 +127,12 @@ def parse_get_rel(original_cleaned_value, soup, url, original_url):
         if to_show == "":
             to_show = "No rel links were found on this site's home page."
 
-        return "<h3>'Rel' Attributes for {}</h3><ul>{}</ul>".format(original_url.replace("https://", "").replace("http://", "").strip("/"), to_show), {"type": "direct_answer", "breadcrumb": original_url, "title": soup.find_all("h1")[0].text}
+        return "<h3>'Rel' Attributes for {}</h3><ul>{}</ul>".format(original_url.replace("https://", "").replace("http://", "").strip("/"), to_show), \
+            {
+                "type": "direct_answer",
+                "breadcrumb": original_url,
+                "title": soup.find_all("h1")[0].text
+            }
 
     return None, None
 
@@ -158,7 +176,12 @@ def parse_feed(original_cleaned_value, soup, url, original_url):
             if to_show == "":
                 to_show = "No feeds were found on this site's home page."
 
-            return "<h3>{} Feeds</h3><ul>{}</ul>".format(title, to_show), {"type": "direct_answer", "breadcrumb": original_url, "title": title}
+            return "<h3>{} Feeds</h3><ul>{}</ul>".format(title, to_show), \
+                {
+                    "type": "direct_answer",
+                    "breadcrumb": original_url,
+                    "title": title
+                }
 
     return None, None
 
@@ -187,6 +210,11 @@ def parse_address(original_cleaned_value, soup, url, original_url):
             if to_show == "":
                 to_show = "No addresses were found on this site's home page."
 
-            return "<h3>{} Addresses</h3><ul>{}</ul>".format(title, to_show), {"type": "direct_answer", "breadcrumb": original_url, "title": title}
+            return "<h3>{} Addresses</h3><ul>{}</ul>".format(title, to_show), \
+                {
+                    "type": "direct_answer",
+                    "breadcrumb": original_url,
+                    "title": title
+                }
 
     return None, None
