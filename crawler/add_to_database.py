@@ -1,5 +1,6 @@
 import crawler.identify_special_snippet as identify_special_snippet
 import crawler.authorship_discovery as authorship_discovery
+import crawler.post_type_discovery as post_type_discovery	
 from bs4 import Comment
 import datetime
 import logging
@@ -43,12 +44,18 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 	if favicon:
 		favicon = favicon.get("href")
 
-	h_entry = mf2py.parse(page_content)
+	h_entry_object = mf2py.parse(page_content)
 
 	special_snippet, h_card = identify_special_snippet.find_snippet(page_content, h_card)
 
 	if h_card == []:
-		h_card = authorship_discovery.discover_author(h_card, h_entry, full_url, original_h_card)
+		h_card = authorship_discovery.discover_author(h_card, h_entry_object, full_url, original_h_card)
+
+	page_as_h_entry = None
+
+	for item in h_entry_object:
+		if item["type"] == ["h-entry"]:
+			page_as_h_entry = item
 
 	if nofollow_all == True:
 		nofollow_all = "true"
@@ -122,6 +129,10 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 		"page_hash": hash,
 		"special_snippet": special_snippet
 	}
+
+	if page_as_h_entry != None:
+		post_type = post_type_discovery.get_post_type(page_as_h_entry)
+		record["post_type"] = post_type
 
 	with open("results.json", "a+") as f:
 		f.write(json.dumps(record))
