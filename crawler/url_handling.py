@@ -245,6 +245,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 
 		if check_if_no_index and check_if_no_index.get("content") and ("noindex" in check_if_no_index.get("content") or "none" in check_if_no_index.get("content")):
 			logging.info("{} marked as noindex, skipping".format(full_url))
+			url_handling_helpers.check_remove_url(full_url)
 			return url, discovered_urls, False, feeds, hash, crawl_depth, average_crawl_speed
 
 		elif check_if_no_index and check_if_no_index.get("content") and "nofollow" in check_if_no_index.get("content"):
@@ -328,10 +329,12 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 
 		if "/tags/" in full_url or "/tag/" in full_url or "/label/" in full_url or "/search/" in full_url or "/category/" in full_url or "/categories/" in full_url:
 			logging.info("{} marked as follow, noindex because it is a tag, label, or search resource".format(full_url))
+			url_handling_helpers.check_remove_url(full_url)
 			return url, {}, False, feeds, hash, crawl_depth, average_crawl_speed
 
 		elif "/page/" in full_url and full_url.split("/")[-1].isdigit():
 			logging.info("{} marked as follow, noindex because it is a page archive".format(full_url))
+			url_handling_helpers.check_remove_url(full_url)
 			return url, {}, False, feeds, hash, crawl_depth, average_crawl_speed
 
 		thin_content = False
@@ -407,6 +410,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 		page_text, page_desc_soup, published_on, meta_description, doc_title, noindex = crawler.page_info.get_page_info(page_text, page_desc_soup, full_url, homepage_meta_description)
 
 		if noindex == True:
+			url_handling_helpers.check_remove_url(full_url)
 			return url, discovered_urls, False, feeds, hash, crawl_depth, average_crawl_speed
 
 		# get number of links
@@ -424,6 +428,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 
 		if check_if_no_index and check_if_no_index.get("content") and "noindex" in check_if_no_index.get("content"):
 			logging.info("{} marked as noindex, skipping".format(full_url))
+			url_handling_helpers.check_remove_url(full_url)
 			return url, discovered_urls, False, feeds, hash, crawl_depth, average_crawl_speed
 			
 		try:

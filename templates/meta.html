@@ -26,3 +26,8 @@
     <link rel="search" type="application/opensearchdescription+xml" title="IndieWeb Search" href="https://indieweb-search.jamesg.blog/search.xml">
 
     <link rel="webmention" href="https://webmention.jamesg.blog/endpoint" />
+
+    {% if request.endpoint.startswith("https://indieweb-search.jamesg.blog/results?query=") %}
+        <link rel="alternate" type="application/jf2feed+json" href="https://indieweb-search.jamesg.blog/results?query={{ query }}&format=jf2" />
+        <link rel="alternate" type="application/json" href="https://indieweb-search.jamesg.blog/results?query={{ query }}&format=json_feed" />
+    {% endif %}

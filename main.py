@@ -2,7 +2,7 @@ from flask import render_template, request, redirect, send_from_directory, jsoni
 from .direct_answers import choose_direct_answer
 from .direct_answers import search_result_features
 from spellchecker import SpellChecker
-from . import search_helpers, config
+from . import search_helpers, config, search_page_feeds
 import requests
 import json
 import math
@@ -29,7 +29,6 @@ def search_autocomplete():
 @main.route("/results", methods=["GET", "POST"])
 def results_page():
 	page = request.args.get("page")
-	is_json = request.args.get("json")
 	site = request.args.get("site")
 
 	if site and site == "jamesg.blog":
@@ -94,7 +93,7 @@ def results_page():
 
 	cleaned_value_for_query = cleaned_value_for_query.replace("what is", "")
 
-	if request.args.get("serp_as_json") and (request.args.get("serp_as_json") == "direct" or request.args.get("serp_as_json") == "results_page"):
+	if request.args.get("format") and (request.args.get("format") == "json_feed" or request.args.get("format") == "jf2"):
 		minimal = "true"
 
 	query_params = ""
@@ -180,8 +179,17 @@ def results_page():
 	else:
 		base_results_query="/results?query={}".format(cleaned_value)
 
-	if is_json:
-		return jsonify(rows)
+	format = request.args.get("format")
+
+	if format == "json_feed":
+		json_feed = search_page_feeds.process_json_feed(rows, cleaned_value, page, format)
+
+		return json_feed
+
+	elif format == "jf2":
+		jf2_feed = search_page_feeds.process_jf2_feed(rows)
+
+		return jf2_feed
 
 	# show one result if a featured snippet is available, even if there are no other results to show
 	if special_result != False and do_i_use != None and int(num_of_results) == 0:
