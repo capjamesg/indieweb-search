@@ -160,9 +160,7 @@ Only contributors to the IndieWeb wiki will be considered at this stage due to t
 Results pages from IndieWeb Search are programmatically accessible in two ways:
 
 1. By using the dedicated JSON API flags in the URL of a results page.
-2. By parsing the results page with microformats.
-
-Each results page is marked up with the h-feed microformat so you can parse results.
+2. By using one of the search result feeds, as mentioned in the "Supported Feeds" section of this document.
 
 To find out more information about a result, including the raw text stored in the index that corresponds to the result, we recommend using the API.
 
@@ -194,6 +192,15 @@ This API call returns:
 - word_count (integer)
 
 This feature is not currently deployed on production.
+
+### Supported Feeds
+
+All IndieWeb Search results are marked up with a h-feed containing h-entry objects. This means you can subscribe to any search results page in a feed reader that can process h-feed. In addition, the following feed types are supported:
+
+- [jf2 Feed](https://indieweb.org/jf2)
+- [JSON Feed](https://www.jsonfeed.org)
+
+RSS feeds are not currently supported for search result pages.
 
 ## Rich Results
 

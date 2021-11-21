@@ -173,12 +173,7 @@ def results_page():
 
 	elif request.args.get("serp_as_json") and request.args.get("serp_as_json") == "results_page":
 		return jsonify({"results": [r["_source"] for r in rows]})
-
-	if request.args.get("type") == "image":
-		base_results_query="/results?query={}&type=image".format(cleaned_value)
-	else:
-		base_results_query="/results?query={}".format(cleaned_value)
-
+		
 	format = request.args.get("format")
 
 	if format == "json_feed":
