@@ -159,21 +159,32 @@ Only contributors to the IndieWeb wiki will be considered at this stage due to t
 
 Results pages from IndieWeb Search are programmatically accessible in two ways:
 
-1. By using the dedicated JSON API flags in the URL of a results page.
-2. By using one of the search result feeds, as mentioned in the "Supported Feeds" section of this document.
+1. By using one of the search result feeds, as mentioned in the "Supported Feeds" section of this document.
+2. By using the dedicated JSON API flags in the URL of a results page.
 
 To find out more information about a result, including the raw text stored in the index that corresponds to the result, we recommend using the API.
 
-### JSON API Usage
+### Supported Feeds
+
+All IndieWeb Search results are marked up with a h-feed containing h-entry objects. This means you can subscribe to any search results page in a feed reader that can process h-feed. In addition, the following feed types are supported:
+
+- [jf2 Feed](https://indieweb.org/jf2)
+- [JSON Feed](https://www.jsonfeed.org)
+
+RSS feeds are not currently supported for search result pages.
+
+### Feed API
+
+You can also use the custom JSON API which contains more granular search information. The data in the JSON API is *not* JSON Feed data as per the [JSON Feed](https://www.jsonfeed.org) specification. Instead, the JSON API is a custom JSON object that contains more information than other forms of structured data allow.
 
 To use the JSON API, append one of the two flags below to the end of a search result URL:
 
-- `serp_as_json=direct`: Returns the featured snippet displayed in the search result. No more than one featured snippet will be returned.
-- `serp_as_json=results_page`: Returns all results displayed in the search result, excluding the featured snippet result.
+- `format=direct_serp_json`: Returns the featured snippet displayed in the search result. No more than one featured snippet will be returned.
+- `format=results_page_json`: Returns all results displayed in the search result, excluding the featured snippet result.
 
 Here is an example JSON API call:
 
-    https://indieweb-search.jamesg.blog/results?query=what+is+a+web+crawler&serp_as_json=results_page
+    https://indieweb-search.jamesg.blog/results?query=what+is+a+web+crawler&format=results_page_json
 
 This API call returns:
 
@@ -192,15 +203,6 @@ This API call returns:
 - word_count (integer)
 
 This feature is not currently deployed on production.
-
-### Supported Feeds
-
-All IndieWeb Search results are marked up with a h-feed containing h-entry objects. This means you can subscribe to any search results page in a feed reader that can process h-feed. In addition, the following feed types are supported:
-
-- [jf2 Feed](https://indieweb.org/jf2)
-- [JSON Feed](https://www.jsonfeed.org)
-
-RSS feeds are not currently supported for search result pages.
 
 ## Rich Results
 

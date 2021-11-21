@@ -184,7 +184,7 @@ def results_page():
 			return jsonify({"message": "no custom serp available on this search"})
 
 	elif format == "results_page_json":
-		return jsonify({"results": [r["_source"] for r in rows]})"
+		return jsonify({"results": [r["_source"] for r in rows]})
 
 	# show one result if a featured snippet is available, even if there are no other results to show
 	if special_result != False and do_i_use != None and int(num_of_results) == 0:
