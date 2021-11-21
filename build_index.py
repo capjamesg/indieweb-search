@@ -262,8 +262,6 @@ def build_index(site, reindex=False):
 	average_crawl_speed = []
 
 	homepage_meta_description = ""
-
-	crawl_budget = 20
 	
 	for url in iterate_list_of_urls:
 		if crawl_depths.get("url"):
