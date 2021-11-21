@@ -64,6 +64,7 @@ input[type="text"], input[type="username"], input[type="password"], select {
   border: 1px solid lightgray;
   padding: 20px;
   margin: auto;
+  max-width: 35em;
 }
 
 button {

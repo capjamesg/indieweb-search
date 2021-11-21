@@ -164,15 +164,6 @@ def results_page():
 
 	if "random aeropress" in cleaned_value or "generate aeropress" in cleaned_value and request.args.get("type") != "image":
 		special_result = search_result_features.aeropress_recipe()
-
-	if request.args.get("serp_as_json") and request.args.get("serp_as_json") == "direct":
-		if special_result:
-			return jsonify({"text": do_i_use, "featured_serp": special_result})
-		else:
-			return jsonify({"message": "no custom serp available on this search"})
-
-	elif request.args.get("serp_as_json") and request.args.get("serp_as_json") == "results_page":
-		return jsonify({"results": [r["_source"] for r in rows]})
 		
 	format = request.args.get("format")
 
@@ -185,6 +176,15 @@ def results_page():
 		jf2_feed = search_page_feeds.process_jf2_feed(rows)
 
 		return jf2_feed
+
+	elif format == "direct_serp_json":
+		if special_result:
+			return jsonify({"text": do_i_use, "featured_serp": special_result})
+		else:
+			return jsonify({"message": "no custom serp available on this search"})
+
+	elif format == "results_page_json":
+		return jsonify({"results": [r["_source"] for r in rows]})"
 
 	# show one result if a featured snippet is available, even if there are no other results to show
 	if special_result != False and do_i_use != None and int(num_of_results) == 0:
@@ -200,7 +200,7 @@ def results_page():
 		results_type=request.args.get("type"),
 		out_of_bounds_page=out_of_bounds_page,
 		ordered_by=request.args.get("order"),
-		base_results_query=base_results_query,
+		base_results_query=cleaned_value_for_query,
 		corrected_text=final_query,
 		suggestion_made=suggestion,
 		special_result=special_result,
@@ -211,9 +211,9 @@ def results_page():
 def robots():
 	return send_from_directory(main.static_folder, "robots.txt")
 
-@main.route('/images/<path:path>')
+@main.route('/assets/<path:path>')
 def send_static_images(path):
-	return send_from_directory("static/images", path)
+	return send_from_directory("static/", path)
 
 @main.route("/changelog")
 def changelog():
