@@ -31,3 +31,32 @@
         <link rel="alternate" type="application/jf2feed+json" href="https://indieweb-search.jamesg.blog/results?query={{ query }}&format=jf2" />
         <link rel="alternate" type="application/json" href="https://indieweb-search.jamesg.blog/results?query={{ query }}&format=json_feed" />
     {% endif %}
+    
+    <style id="darkmode" media="none">
+      html, .citation_box, details, summary, .social li {
+        background-color: #1F2937;
+      }
+      a, .breadcrumbs a {
+        color: lightgreen;
+        border-bottom: 2px dotted lightgreen;
+      }
+      a:hover {
+        color: #ccc;
+      }
+      h1, h2, h3 {
+        color: orange;
+      }
+      .social_interaction, .webmention {
+        background: none;
+      }
+      p, li, dt, dd, .indieweb_footer, input, label {
+        color: white;
+      }
+      input, textarea, .serp_result {
+        background-color: #0c2548;
+        color: #ccc;
+      }
+      ::placeholder {
+        color: #ccc;
+      }
+    </style>
