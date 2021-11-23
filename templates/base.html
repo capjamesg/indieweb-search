@@ -6,15 +6,52 @@
   <body>
     <main>
       <a href="#main" class="accessibility_label">Skip to main content</a>
-      <nav>
+      <nav id="top_navigation">
         <p><a href="/">IndieWeb Search</a></p>
         <ul>
-          <li><a href="/about">About</a></li>
-          <li><a href="/stats">Statistics</a></li>
-          <li><a href="/changelog">Changelog</a></li>
-          <li><a href="https://indieweb.org">IndieWeb.org</a></li>
-      </ul>
+            <li><a href="/about">About</a></li>
+            <li><a href="/stats">Statistics</a></li>
+            <li><a href="/changelog">Changelog</a></li>
+            <li><a href="https://indieweb.org">IndieWeb.org</a></li>
+        </ul>
       </nav>
+      <script>
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+          document.getElementById('darkmode').media = "all";
+        }
+
+        if (localStorage.getItem('darkmode') == "true") {
+          document.getElementById('darkmode').media = "all";
+        } else if (localStorage.getItem('darkmode') == "false") {
+          document.getElementById('darkmode').media = "none";
+        }
+
+        var navigation = document.getElementById("top_navigation");
+        var ul = navigation.getElementsByTagName("ul")[0];
+        
+        var li = document.createElement("li");
+        var dark_style = document.getElementById("darkmode");
+  
+        if (dark_style.media === "all") {
+          li.innerHTML = "<a onclick='toggleTheme();'>Light Mode</a>";
+        } else {
+          li.innerHTML = "<a onclick='toggleTheme();'>Dark Mode</a>";
+        }
+
+        ul.appendChild(li);
+  
+        function toggleTheme() {
+          if (dark_style.media === "all") {
+            dark_style.media = "none";
+            li.innerHTML = "<a onclick='toggleTheme();'>Dark Mode</a>";
+            localStorage.setItem('darkmode', 'false');
+          } else {
+            dark_style.media = "all";
+            li.innerHTML = "<a onclick='toggleTheme();'>Light Mode</a>";
+            localStorage.setItem('darkmode', 'true');
+          }
+        }
+      </script>
       <div id="main">
           {% block content %}
           {% endblock %}

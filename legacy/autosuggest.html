@@ -1,0 +1,27 @@
+<!-- <script>
+  var suggestions = document.getElementById("suggestions");
+
+  // when user types in search bar, get query suggestions from server
+  document.getElementById("query").addEventListener("keydown", function(event) {
+    // if field length > 3
+    if (this.value.length > 3) {
+      suggestions.style.display = "inline-block";
+      fetch('/autocomplete?q=' + this.value)
+        .then(function(response) {
+          return response.json();
+        })
+        .then(function(data) {
+          data["results"][0]["options"].forEach(function(item) {
+            // remove existing options from suggestions
+            while (suggestions.firstChild) {
+              suggestions.removeChild(suggestions.firstChild);
+            }
+            var option = document.createElement("option");
+            option.value = item.text;
+            option.text = item.text;
+            suggestions.appendChild(option);
+          });
+        });
+    }
+  });
+</script> -->

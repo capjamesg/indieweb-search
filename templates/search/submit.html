@@ -9,7 +9,7 @@
     <p>Use the form below to search web sites published by members of the IndieWeb community and related sites.</p>
   {% endif %}
   <form action="/results" method="GET" role="search">
-    <input type="text" id="query" name="query" placeholder="Enter your query" aria-label="Search" autocomplete="off" /><br>
+    <input type="search" id="query" name="query" placeholder="Enter your query" aria-label="Search" autocomplete="off" /><br>
     <select id="suggestions" style="display: none;"></select>
     {% if query == 'site:"jamesg.blog"' %}
       <input type="hidden" name="site" value="{{ query.replace("site:", "").replace('"', "") }}" />
@@ -19,31 +19,4 @@
   </form>
   <p class="advanced-p">View <a href="/advanced">advanced search options</a>.</p>
 </section>
-<!-- <script>
-  var suggestions = document.getElementById("suggestions");
-
-  // when user types in search bar, get query suggestions from server
-  document.getElementById("query").addEventListener("keydown", function(event) {
-    // if field length > 3
-    if (this.value.length > 3) {
-      suggestions.style.display = "inline-block";
-      fetch('/autocomplete?q=' + this.value)
-        .then(function(response) {
-          return response.json();
-        })
-        .then(function(data) {
-          data["results"][0]["options"].forEach(function(item) {
-            // remove existing options from suggestions
-            while (suggestions.firstChild) {
-              suggestions.removeChild(suggestions.firstChild);
-            }
-            var option = document.createElement("option");
-            option.value = item.text;
-            option.text = item.text;
-            suggestions.appendChild(option);
-          });
-        });
-    }
-  });
-</script> -->
 {% endblock %}

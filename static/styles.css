@@ -49,7 +49,11 @@ input[type="submit"] {
   margin-top: 15px;
 }
 
-input[type="text"], input[type="username"], input[type="password"], select {
+input[type="text"],
+input[type="username"],
+input[type="password"],
+input[type="search"],
+select {
   padding: 10px;
   border-radius: 10px;
   margin-bottom: 10px;
@@ -65,6 +69,13 @@ input[type="text"], input[type="username"], input[type="password"], select {
   padding: 20px;
   margin: auto;
   max-width: 35em;
+}
+.serp_result {
+  margin-bottom: 20px;
+  border-radius: 10px;
+  background-color: white;
+  border: 1px solid lightgrey;
+  padding: 10px;
 }
 
 button {
@@ -256,7 +267,12 @@ a:focus {
   border-bottom: 2px dotted black;
 }
 
-input[type="text"]:focus, input[type="number"]:focus, textarea:focus, input[type="text"]:focus, input[type="username"]:focus, input[type="password"]:focus {
+input[type="text"]:focus,
+input[type="number"]:focus,
+textarea:focus,
+input[type="search"]:focus,
+input[type="username"]:focus,
+input[type="password"]:focus {
   outline: 3px solid royalblue;
 }
 

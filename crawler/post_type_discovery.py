@@ -1,6 +1,8 @@
 # implementation of the post type discovery spec
 # see spec on the IndieWeb wiki: https://indieweb.org/post-type-discovery
 
+from bs4 import BeautifulSoup
+
 def get_post_type(h_entry):
     post = h_entry.get("properties")
 
@@ -30,8 +32,11 @@ def get_post_type(h_entry):
 
     content = post.get("content")
 
-    if content and content[0] != "":
-        content = content[0].strip().replace("\n", " ").replace("\r", " ")
+    if content and content[0].get("text") and content[0].get("text")[0] != "":
+        content = BeautifulSoup(content[0].get("text"), "lxml").get_text()
+
+    if content and content[0].get("html") and content[0].get("html")[0] != "":
+        content = BeautifulSoup(content[0].get("html"), "lxml").get_text()
 
     if not content.startswith(title):
         return "article"
