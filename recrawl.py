@@ -48,17 +48,17 @@ def poll_feeds(f):
 
     if r.status_code == 304:
         print("Feed {} unchanged".format(url))
-        return
+        return url, etag, None
     elif r.status_code != 200:
         print("{} status code returned while retrieving {}".format(r.status_code, url))
-        return
+        return url, etag, None
 
     if r.headers.get('content-type'):
         content_type = r.headers['content-type']
     else:
         content_type = ""
 
-    print("polling " + url)
+    # print("polling " + url)
 
     site_url = "https://" + url.split("/")[2] 
 
@@ -69,15 +69,18 @@ def poll_feeds(f):
 
         etag = feed.get("etag", "")
 
+        if not feed:
+            return url, etag, None
+
         if etag == feed_etag:
             print("{} has not changed since last poll, skipping".format(url))
-            return
+            return url, etag, None
 
         last_modified = feed.get("modified_parsed", None)
 
         if last_modified and datetime.datetime.fromtimestamp(mktime(last_modified)) < datetime.datetime.now() - datetime.timedelta(hours=12):
             print("{} has not been modified in the last 12 hours, skipping".format(url))
-            return
+            return url, etag, None
 
         for entry in feed.entries:
             site_url = "https://" + entry.link.split("/")[2]
@@ -97,7 +100,7 @@ def poll_feeds(f):
         else:
             print("updated etag for {}".format(url))
 
-    elif mime_type == "h-feed":
+    if mime_type == "h-feed":
         mf2_raw = mf2py.parse(r.text)
 
         for item in mf2_raw["items"]:
@@ -107,6 +110,7 @@ def poll_feeds(f):
                     if jf2.get("url"):
                         if type(jf2["url"]) == list:
                             jf2["url"] = jf2["url"][0]
+
                         if jf2["url"].startswith("/"):
                             jf2["url"] = site_url + jf2["url"]
 
@@ -144,7 +148,11 @@ def poll_feeds(f):
 
             r = requests.post("https://es-indieweb-search.jamesg.blog/create_websub", headers=headers, data={"website_url": url})
 
-            r = requests.post(url, headers={'Content-Type': 'application/x-www-form-urlencoded'}, data="hub.mode=subscribe&sub.topic={}&hub.callback=https://es-indieweb-search.jamesg.blog/websub/{}".format(url, r.get_json()["key"]))
+            r = requests.post(
+                url,
+                headers={'Content-Type': 'application/x-www-form-urlencoded'},
+                data="hub.mode=subscribe&sub.topic={}&hub.callback=https://es-indieweb-search.jamesg.blog/websub/{}".format(url, r.get_json()["key"])
+            )
 
             print("sent websub request to {}".format(url))
 
@@ -171,10 +179,10 @@ feed_url_list = []
 
 for key, value in feeds_by_page.items():
     try:
-        if len(value) > 1:
+        if value and len(value) > 1:
             print(value)
             to_add = [feed for feed in value if feed[4] == "h-feed"]
-        elif len(value) < 2:
+        elif value and len(value) < 2:
             to_add = value[0]
 
         feed_url_list.append(to_add)
@@ -200,12 +208,10 @@ def process_feeds():
                 try:
                     url, etag, full_item = future.result()
 
-                    feeds.append([url, etag])
-
-                    if etag:
-                        full_item["etag"] = etag
+                    # feeds.append([url, etag])
 
                 except Exception as e:
+                    print(e)
                     pass
 
                 futures.remove(future)

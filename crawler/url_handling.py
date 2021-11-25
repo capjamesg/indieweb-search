@@ -70,8 +70,9 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 		# If URL is not relative internal link and does not start with http:// or https://
 		# Used to make sure link uses the right format
 
-		# session = requests.Session()
 		session.max_redirects = 3
+
+		header_links = None
 
 		try:
 			# Check if page is the right content type before indexing
@@ -402,7 +403,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 				heading_info[k] = v[:1]
 			
 			# only index a maximum of five of each heading
-			if len(v) > 5:
+			if len(v) > 5 and header_links != None:
 				header_links[k] = v[:5]
 
 		# Only index if noindex attribute is not present

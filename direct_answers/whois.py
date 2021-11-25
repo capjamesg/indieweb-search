@@ -3,7 +3,8 @@ import os
 
 def parse_whois(original_cleaned_value, soup, url, original_url): 
     if "who is" in original_cleaned_value or (("." in original_cleaned_value and \
-        len(original_cleaned_value.split(".")[0]) > 3 and len(original_cleaned_value.split(".")[0]) > 1 and len(original_cleaned_value.split(" ")) == 1)):
+        len(original_cleaned_value.split(".")[0]) > 3 and len(original_cleaned_value.split(".")[0]) > 1 \
+            and len(original_cleaned_value.split(" ")) == 1)):
         mf2s = mf2py.parse(doc=soup)["items"]
 
         h_card = ""
@@ -47,9 +48,23 @@ def parse_whois(original_cleaned_value, soup, url, original_url):
 
             for key, value in h_card["properties"].items():
                 if key != "photo" and key != "email" and key != "logo" and key != "url" and key !="uid" and type(value[0]) == str:
-                    to_show += "<p><b>{}</b>: {}</p>".format(key.title().replace("-", " "), value[0].strip("/"))
-                elif key == "email":
-                    to_show += "<p><b>{}</b>: <a href='{}'>{}</a></p>".format(key.title(), "mailto:{}".format(value[0].replace("mailto:", "")), value[0].replace("mailto:", ""))
+                    if value[0].startswith("/"):
+                        value[0] = url.strip("/") + "/" + value[0]
+                    elif value[0].startswith("http"):
+                        value[0] = value[0]
+                    elif value[0].startswith("//"):
+                        value[0] = url.strip("/") + "/" + value[0]
+                    elif value[0].startswith("./"):
+                        value[0] = "<a href='{}'>{}</a>".format(url.strip("./") + "/" + value[0], url.strip("./") + "/" + value[0])
+
+                    to_show += "<p><b>{}</b>: {}</p>".format(key.title().replace("-", " "), value[0])
+                elif key == "email" and "@" in value[0]:
+                    # @ must be in email for it to be valid
+                    to_show += "<p><b>{}</b>: <a href='{}'>{}</a></p>".format(
+                        key.title(),
+                        "mailto:{}".format(value[0].replace("mailto:", "")),
+                        value[0].replace("mailto:", "")
+                    )
                 elif key == "url":
                     if value[0].strip() == "":
                         to_show  += "<p><b>{}</b>: <a href='{}'>{}</a></p>".format("URL", original_url, original_url)
@@ -160,13 +175,25 @@ def parse_feed(original_cleaned_value, soup, url, original_url):
                         if link_type != None:
                             link_type = link_type[0]
 
-                            to_show += "<li><b>{} feed</b>: <a href='{}'>{}</a></li>".format(link_type, link.get("href"), link.get("href"))
+                            to_show += "<li><b>{} feed</b>: <a href='{}'>{}</a></li>".format(
+                                link_type,
+                                link.get("href"),
+                                link.get("href")
+                            )
                         elif link_type == "application/json":
                             link_type = "JSON"
 
-                            to_show += "<li><b>{} feed</b>: <a href='{}'>{}</a></li>".format(link_type, link.get("href"), link.get("href"))
+                            to_show += "<li><b>{} feed</b>: <a href='{}'>{}</a></li>".format(
+                                link_type,
+                                link.get("href"),
+                                link.get("href")
+                            )
                     else:
-                        to_show += "<li><b>Feed</b>: <a href='{}'>{}</a></li>".format(link.get("href"), link.get("href"), link.get("href"))
+                        to_show += "<li><b>Feed</b>: <a href='{}'>{}</a></li>".format(
+                            link.get("href"),
+                            link.get("href"),
+                            link.get("href")
+                        )
 
             if soup.find("h1"):
                 title = soup.find("h1").text
@@ -196,7 +223,15 @@ def parse_address(original_cleaned_value, soup, url, original_url):
 
             to_show = ""
 
-            supported_properties = ["p-street-address", "p-extended-address", "p-post-office-box", "p-locality", "p-region", "p-postal-code", "p-country-name"]
+            supported_properties = [
+                "p-street-address",
+                "p-extended-address",
+                "p-post-office-box",
+                "p-locality",
+                "p-region",
+                "p-postal-code",
+                "p-country-name"
+            ]
 
             for i in supported_properties:
                 if address.find(i):

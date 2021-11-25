@@ -54,7 +54,7 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 	page_as_h_entry = None
 
 	for item in h_entry_object:
-		if item["type"] == ["h-entry"]:
+		if item["type"] and item["type"] == ["h-entry"]:
 			page_as_h_entry = item
 
 	if nofollow_all == True:
@@ -71,16 +71,19 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 	# may be presented in featured snippets
 	featured_image = None
 
-	if page_content.find(".u-photo"):
+	if page_content.find(".u-featured"):
+		featured_image = page_content.find(".u-featured").get("src")
+
+	elif page_content.find(".u-photo"):
 		featured_image = page_content.find(".u-photo").get("src")
 
-	if featured_image == None and page_content.find("meta", property="og:image"):
+	elif page_content.find("meta", property="og:image"):
 		featured_image = page_content.find("meta", property="og:image").get("src")
 
-	if featured_image == None and page_content.find("meta", property="twitter:image"):
+	elif page_content.find("meta", property="twitter:image"):
 		featured_image = page_content.find("meta", property="twitter:image").get("src")
 
-	if featured_image == None:
+	else:
 		featured_image = ""
 
 	# use p-name in place of title tag if one is available
