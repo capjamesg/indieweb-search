@@ -1,12 +1,15 @@
 from flask import render_template, request, redirect, send_from_directory, jsonify, Blueprint
 from .direct_answers import choose_direct_answer
 from .direct_answers import search_result_features
+from .crawler import post_type_discovery
+from .crawler import authorship_discovery
 from spellchecker import SpellChecker
 from . import search_helpers, config, search_page_feeds
 import requests
 import json
 import math
 import spacy
+import mf2py
 
 main = Blueprint("main", __name__, static_folder="static", static_url_path="")
 
@@ -122,9 +125,10 @@ def results_page():
 			r["_source"]["h_card"] = json.loads(r["_source"]["h_card"])
 		else:
 			r["_source"]["h_card"] = None
+			
+	cleaned_value = cleaned_value_for_query.lower()
 	
 	if page == 1:
-		cleaned_value = cleaned_value_for_query.lower()
 		do_i_use, special_result = choose_direct_answer.choose_featured_snippet(
 			cleaned_value,
 			cleaned_value_for_query,
@@ -200,7 +204,7 @@ def results_page():
 		results_type=request.args.get("type"),
 		out_of_bounds_page=out_of_bounds_page,
 		ordered_by=request.args.get("order"),
-		base_results_query=cleaned_value_for_query,
+		base_results_query="/results?query=" + cleaned_value_for_query,
 		corrected_text=final_query,
 		suggestion_made=suggestion,
 		special_result=special_result,
@@ -227,7 +231,66 @@ def advanced_search():
 
 	domains = count_request["domains"]
 
-	return render_template("search/advanced_search.html", count=count, domains=domains, title="IndieWeb Search Advanced Search Options")
+	return render_template(
+		"search/advanced_search.html",
+		count=count,
+		domains=domains,
+		title="IndieWeb Search Advanced Search Options"
+	)
+
+@main.route("/api/post-type")
+def get_original_post_type():
+	page_to_check = request.args.get("url")
+
+	mf2_parsed = mf2py.parse(page_to_check)
+
+	if not mf2_parsed:
+		return jsonify({"status": "failed", "result": ""})
+	
+	if not mf2_parsed["items"]:
+		return jsonify({"status": "failed", "result": ""})
+
+	# get h_entry
+	h_entry = [i for i in mf2_parsed["items"] if i["type"] == ["h-entry"]]
+
+	result = post_type_discovery.get_post_type(h_entry)
+
+	return jsonify({"status": "success", "result": result})
+
+@main.route("/api/authorship")
+def get_post_author():
+	page_to_check = request.args.get("url")
+
+	mf2_parsed = mf2py.parse(page_to_check)
+
+	if not mf2_parsed:
+		return jsonify({"status": "failed", "message": "No microformats could be found on this page", "author": []})
+	
+	if not mf2_parsed["items"]:
+		return jsonify({"status": "failed", "message": "No microformats could be found on this page", "author": []})
+
+	# get h_entry
+	h_entry = [i for i in mf2_parsed["items"] if i["type"] == ["h-entry"]]
+
+	h_card = [i for i in mf2_parsed["items"] if i["type"] == ["h-card"]]
+
+	if not h_entry and h_card == []:
+		return jsonify({"status": "failed", "message": "No h-entry could be found on this page", "author": []})
+
+	if h_card == []:
+		for i in h_entry["items"]:
+			if i['type'] == ['h-entry']:
+				if i['properties'].get('author'):
+					# if author is h_card
+					if type(i['properties']['author'][0]) == dict and i['properties']['author'][0].get('type') == ['h-card']:
+						h_card = i['properties']['author'][0]
+
+					elif type(i['properties']['author']) == list:
+						h_card = i['properties']['author'][0]
+
+	result = authorship_discovery.discover_author(h_card, h_entry, page_to_check, [])
+
+	return jsonify({"status": "success", "result": result})
 
 @main.route("/stats")
 def stats():
@@ -249,7 +312,15 @@ def stats():
 
 	link_types = special_stats["link_microformat_instances"]
 
-	return render_template("search/stats.html", count=count, domains=domains, title="IndieWeb Search Index Stats", feed_breakdown=feed_breakdown_request, top_linked_assets=top_linked_assets, link_types=link_types)
+	return render_template(
+		"search/stats.html",
+		count=count,
+		domains=domains,
+		title="IndieWeb Search Index Stats",
+		feed_breakdown=feed_breakdown_request,
+		top_linked_assets=top_linked_assets,
+		link_types=link_types
+	)
 
 @main.route("/about")
 def about():

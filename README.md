@@ -123,8 +123,6 @@ The main folder contains root files that are relevant to running the project. Th
 - main.py: Run the web application.
 - build_index.py: The program that starts the web crawler.
 
-## Crawler Performance and Scalability
-
 ## Direct Answer Search Results
 
 Work is being done to support some "direct answer" search results. These are search results that aim to provide an immediate answer to your query before you click on a search result.
@@ -140,12 +138,6 @@ The main "direct answers" that are in development are:
 - Showing events marked up with h-event.
 - Displaying feeds associated with a page.
 - Showing all rel=me links on a site's home page.
-
-## Image Search Results
-
-While image search results are supported in the codebase, they are not currently in development or in use on the IndieWeb search site.
-
-Storing and processing images in the way required to support image search results would take away resources from this project's text search capabilities.
 
 ## Adding Your Domain to the Index
 
@@ -202,7 +194,62 @@ This API call returns:
 - url
 - word_count (integer)
 
-This feature is not currently deployed on production.
+## Discovery APIs
+
+IndieWeb Search has open APIs that implement the authorship discovery and post type discovery IndieWeb specifications. You can access these APIs to find the original author of a post and the type of a post, respectively/
+
+### Post Type API
+
+The post type API can be accessed by making the following API call:
+
+    /api/post_type?url=URL
+
+Where URL is equal to the URL whose post type you want to discover.
+
+A successful API call will return a JSON object with the following properties:
+
+    {
+        "status": "success",
+        "result": "post_type (i.e. 'like')"
+    }
+
+A failed API call will return the following response:
+
+    {
+        "status": "failed",
+        "message": "An error message",
+        "result: ""
+    }
+
+### Authorship Discovery API
+
+The authorship discovery API returns a h-card for the author who wrote a post.
+
+A successful API call will return:
+
+    {
+        "status": "success",
+        "result": {
+            "name": "Author Name",
+            "url": "https://author.example.com",
+            "photo": "https://author.example.com/photo.jpg",
+            "summary": "Author summary",
+            "h-card": {
+                "name": "Author Name",
+                "url": "https://author.example.com",
+                "photo": "https://author.example.com/photo.jpg",
+                "summary": "Author summary"
+            }
+        }
+    }
+
+A failed API call will return:
+
+    {
+        "status": "failed",
+        "message": "An error message",
+        "result": []
+    }
 
 ## Rich Results
 
