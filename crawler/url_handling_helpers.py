@@ -74,7 +74,6 @@ def find_feeds(page_desc_soup, full_url, site):
 				elif feed_item["href"] not in feed_urls and feed_item["href"].split("/")[2] != full_url.split("/")[2]:
 					print("found feed {}, but it points to a different domain, not saving".format(feed_item["href"]))
 					logging.info("found feed {}, but it points to a different domain, not saving".format(feed_item["href"]))
-
 			else:
 				feeds, feed_urls = save_feed(site, full_url, full_url.strip("/") + "/" + feed_item["href"], feed_item.get("type"), feeds, feed_urls)
 

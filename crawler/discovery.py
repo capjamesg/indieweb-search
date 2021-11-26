@@ -77,7 +77,7 @@ def page_link_discovery(links, final_urls, iterate_list_of_urls, page_being_proc
 				all_links.append([page_being_processed, link.get("href"), datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "internal", link.text])
 				logging.info("about page found")
 
-				logging.debug("indexing queue now contains " + full_link)
+				print("indexing queue now contains " + full_link)
 				final_urls[full_link] = ""
 
 				iterate_list_of_urls.append(full_link)

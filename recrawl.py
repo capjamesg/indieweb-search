@@ -58,7 +58,7 @@ def poll_feeds(f):
     else:
         content_type = ""
 
-    # print("polling " + url)
+    print("polling " + url)
 
     site_url = "https://" + url.split("/")[2] 
 
@@ -86,7 +86,8 @@ def poll_feeds(f):
             site_url = "https://" + entry.link.split("/")[2]
             session = requests.Session()
 
-            crawl_urls({entry.link: ""}, [], 0, [], [], {}, [entry.link], site_url, 10, entry.link, feeds, feed_url_list, entry.link.split("/")[2], session, {}, [], "", False, [], 0)
+            if entry.get("link"):
+                crawl_urls({entry.link: ""}, [], 0, [], [], {}, [entry.link], site_url, 1, entry.link, [], [], entry.link.split("/")[2], session, {}, [], "", False, [], 0)
 
             print("crawled {} url".format(entry.link))
 
@@ -136,9 +137,9 @@ def poll_feeds(f):
     elif mime_type == "websub":
         # send request to renew websub if the websub subscription has expired
 
-        expire_date = f.get("expire_date")
+        expire_date = f[4]
 
-        if f.get("websub_sent") != True or datetime.datetime.now() > datetime.datetime.strptime(expire_date, "%Y-%m-%dT%H:%M:%S.%fZ"):
+        if f[5] != True or datetime.datetime.now() > datetime.datetime.strptime(expire_date, "%Y-%m-%dT%H:%M:%S.%fZ"):
             # random string of 20 letters and numbers
             # each websub endpoint needs to be different
 
