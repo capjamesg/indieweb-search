@@ -135,7 +135,7 @@ def crawl_images(images_indexed, published_on, cursor, full_url, discovered_urls
 						else:
 							cursor.execute("INSERT INTO images VALUES (?, ?, ?, ?, ?, ?, ?)", (full_url, i["alt"], image_url_to_get, "", md5_checksum, caption, ocr_result, ))
 					else:
-						logging.debug("updating {} image as image already indexed".format(image_url_to_get))
+						print("updating {} image as image already indexed".format(image_url_to_get))
 						if published_on != None:
 							cursor.execute("UPDATE images SET post_url = ?, alt_text = ?, image_src = ?, published = ? WHERE image_src = ?", (full_url, i["alt"], image_url_to_get, published_on["datetime"].split("T")[0], image_url_to_get, ))
 						else:
