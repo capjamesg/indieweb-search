@@ -278,6 +278,7 @@ input[type="password"]:focus {
 
 a:hover {
   color: #0000CD;
+  cursor: pointer;
 }
 
 .breadcrumbs a {
