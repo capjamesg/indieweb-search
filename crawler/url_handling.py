@@ -229,21 +229,21 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 
 		# check for canonical url
 
-		if page_desc_soup.find("link", {"rel": "canonical"}):
-			canonical_url = page_desc_soup.find("link", {"rel": "canonical"})["href"]
+		# if page_desc_soup.find("link", {"rel": "canonical"}):
+		# 	canonical_url = page_desc_soup.find("link", {"rel": "canonical"})["href"]
 
-			if canonical_url and canonical_url.startswith("/"):
-				# get site domain
-				domain = full_url.split("/")[2]
-				canonical_url = full_url.split("/")[0] + "//" + domain + canonical_url
+		# 	if canonical_url and canonical_url.startswith("/"):
+		# 		# get site domain
+		# 		domain = full_url.split("/")[2]
+		# 		canonical_url = full_url.split("/")[0] + "//" + domain + canonical_url
 
-			if canonical_url:
-				canonical = find_base_url_path(canonical_url)
+		# 	if canonical_url:
+		# 		canonical = find_base_url_path(canonical_url)
 
-				result = url_handling_helpers.parse_canonical(canonical, full_url, link, iterate_list_of_urls, discovered_urls)
+		# 		result = url_handling_helpers.parse_canonical(canonical, full_url, link, iterate_list_of_urls, discovered_urls)
 
-				if result == True:
-					return url, discovered_urls, False, None, crawl_depth, average_crawl_speed
+		# 		if result == True:
+		# 			return url, discovered_urls, False, None, crawl_depth, average_crawl_speed
 
 		check_if_no_index = page_desc_soup.find("meta", {"name":"robots"})
 
