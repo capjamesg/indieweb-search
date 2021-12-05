@@ -42,7 +42,6 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
         return "", special_result
 
     if "code" in original_cleaned_value or "markup" in original_cleaned_value:
-        print('sd')
         if "<pre>" or "<em>" in post["page_content"]:
             # get all pre tags
 
@@ -69,8 +68,6 @@ def generate_featured_snippet(cleaned_value, special_result, nlp, url=None, post
                     }
 
     all_locations = []
-
-    
 
     do_i_use, response = recipes.parse_recipe(original_cleaned_value, soup, url, post)
 

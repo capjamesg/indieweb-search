@@ -109,8 +109,6 @@ def results_page():
 
 	if "js:none" in request.args.get("query"):
 		query_params += "&js=false"
-
-	print(cleaned_value_for_query)
 	
 	rows = session.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&sort={}&from={}&minimal={}{}".format(
 		config.ELASTICSEARCH_PASSWORD,
@@ -193,9 +191,13 @@ def results_page():
 		return jsonify({"results": [r["_source"] for r in rows]})
 
 	# show one result if a featured snippet is available, even if there are no other results to show
-	if special_result == False and do_i_use == None and int(num_of_results) == 0:
+	print(do_i_use)
+	if not special_result and not do_i_use and int(num_of_results) == 0:
 		num_of_results = 0
 		out_of_bounds_page = True
+	else:
+		num_of_results = 1
+		out_of_bounds_page = False
 		
 	return render_template("search/results.html",
 		results=rows,

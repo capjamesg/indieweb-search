@@ -1,4 +1,4 @@
-from . import search_result_features
+from . import search_result_features, timezone
 from .. import config
 
 def choose_featured_snippet(cleaned_value, cleaned_value_for_query, rows, special_result, full_query_with_full_stops, session, nlp):
