@@ -1,7 +1,16 @@
 import datetime
 import logging
 
-def page_link_discovery(links, final_urls, iterate_list_of_urls, page_being_processed, all_links, external_links, discovered_urls, site_url, crawl_depth):
+def page_link_discovery(
+		links,
+		final_urls,
+		iterate_list_of_urls,
+		page_being_processed,
+		all_links, external_links,
+		discovered_urls,
+		site_url,
+		crawl_depth
+	):
 	"""
 		Finds all the links on the page and adds them to the list of links to crawl.
 	"""

@@ -1,6 +1,13 @@
 import mf2py
 
 def find_snippet(page_content, h_card):
+	"""
+		Take h-entry object and see if it is eligible for a special h- snippet.
+
+		:param h_card: h-card object
+		
+		:return: True if eligible, False otherwise
+	"""
 	h_entry = mf2py.parse(page_content)
 
 	special_snippet = {}

@@ -4,6 +4,17 @@ import logging
 import config
 
 def parse_canonical(canonical, full_url, url, iterate_list_of_urls, discovered_urls):
+	"""
+		Check if a URL is canonical.
+
+		:param canonical: The canonical URL
+		:param full_url: The full URL of a resource
+		:param url: The URL
+		:param iterate_list_of_urls: The list of URLs to iterate through
+		:param discovered_urls: The list of URLs discovered
+
+		:return: The canonical URL
+	"""
 	canonical_domain = canonical.split("/")[2]
 
 	if canonical_domain.lower().replace("www.", "") != full_url.split("/")[2].lower().replace("www.", ""):
@@ -28,6 +39,11 @@ def parse_canonical(canonical, full_url, url, iterate_list_of_urls, discovered_u
 	return False
 
 def check_remove_url(full_url):
+	"""
+		Check if a URL should be removed.
+
+		:param full_url: The full URL of a resource to check
+	"""
 	check_if_indexed = requests.post("https://es-indieweb-search.jamesg.blog/check?url={}".format(full_url), headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)}).json()
 
 	if len(check_if_indexed) > 0:
@@ -39,6 +55,18 @@ def check_remove_url(full_url):
 		logging.info("removed {} from index as it is no longer valid".format(full_url))
 
 def save_feed(site, full_url, feed_url, feed_type, feeds, feed_urls):
+	"""
+		Add a feed to the list of feeds found on a website.
+
+		:param site: The site being crawled
+		:param full_url: The full URL of the page on which the feed was found
+		:param feed_url: The feed URL
+		:param feed_type: The feed type
+		:param feeds: The list of feeds found on the site
+		:param feed_urls: The list of feed URLs found on the site
+
+		:return: The list of feeds found on the site
+	"""
 	supported_protocols = ["http", "https"]
 
 	if feed_url != None and ("://" in feed_url and feed_url.split("://")[0] not in supported_protocols) or (":" in feed_url \
@@ -57,6 +85,13 @@ def save_feed(site, full_url, feed_url, feed_type, feeds, feed_urls):
 	return feeds, feed_urls
 
 def find_feeds(page_desc_soup, full_url, site):
+	"""
+		Find the feeds provided in HTTP headers and on a HTML web page.
+
+		:param page_desc_soup: The BeautifulSoup object of the HTML page
+		:param full_url: The full URL of the page on which the feed was found
+		:param site: The site being crawled
+	"""
 	if page_desc_soup.find_all("link", {"rel": "alternate"}):
 		for feed_item in page_desc_soup.find_all("link", {"rel": "alternate"}):
 			if feed_item and feed_item["href"].startswith("/"):

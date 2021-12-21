@@ -1,8 +1,7 @@
 from flask import render_template, request, redirect, send_from_directory, jsonify, Blueprint
 from .direct_answers import choose_direct_answer
 from .direct_answers import search_result_features
-from .crawler import post_type_discovery
-from .crawler import authorship_discovery
+import indieweb_utils
 from spellchecker import SpellChecker
 from . import search_helpers, config, search_page_feeds
 import requests
@@ -257,7 +256,7 @@ def get_original_post_type():
 	# get h_entry
 	h_entry = [i for i in mf2_parsed["items"] if i["type"] == ["h-entry"]]
 
-	result = post_type_discovery.get_post_type(h_entry)
+	result = indieweb_utils.get_post_type(h_entry)
 
 	return jsonify({"status": "success", "result": result})
 
@@ -292,7 +291,7 @@ def get_post_author():
 					elif type(i['properties']['author']) == list:
 						h_card = i['properties']['author'][0]
 
-	result = authorship_discovery.discover_author(h_card, h_entry, page_to_check, [])
+	result = indieweb_utils.discover_author(h_card, h_entry, page_to_check, [])
 
 	return jsonify({"status": "success", "result": result})
 

@@ -12,6 +12,9 @@ import crawler.discovery as page_link_discovery
 yesterday = datetime.datetime.today() - datetime.timedelta(days=1)
 
 def find_base_url_path(url):
+	"""
+		Finds the base path of a URL.
+	"""
 	url = url.strip("/").replace("http://", "https://").split("?")[0].lower()
 
 	return url
@@ -20,7 +23,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 	crawl_budget, url, feeds, feed_urls, site, session, web_page_hashes, average_crawl_speed, homepage_meta_description, 
 	link_discovery=True, h_card=[], crawl_depth=0):
 	"""
-		Crawls URLs in list, adds URLs to index, and returns updated list
+		Crawls URLs in list, adds URLs to index, and returns updated list.
 	"""
 
 	count = 0
@@ -190,7 +193,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 		average_crawl_speed = average_crawl_speed[:100]
 
 		try:
-			page_desc_soup = BeautifulSoup(page.content, "lxnl")
+			page_desc_soup = BeautifulSoup(page.content, "lxml")
 		except:
 			page_desc_soup = BeautifulSoup(page.content, "html5lib")
 
@@ -257,6 +260,7 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 			nofollow_all = True
 
 		# filter out pages marked as adult content
+
 		if page_desc_soup.find("meta", {"name": "rating"}):
 			if page_desc_soup.find("meta", {"name": "rating"}).get("content") == "adult" or \
 				page_desc_soup.find("meta", {"name": "rating"}).get("content") == "RTA-5042-1996-1400-1577-RTA":
@@ -426,7 +430,8 @@ def crawl_urls(final_urls, namespaces_to_ignore, pages_indexed, all_links, exter
 
 		# if the ratio of words to links < 3:1, do not index
 		# these pages may be spam or other non-content pages that will not be useful to those using the search engine
-		if word_count and (word_count > 0 and number_of_links and number_of_links > 0) and word_count > 200 and word_count / number_of_links < 3:
+		if word_count and (word_count > 0 and number_of_links and number_of_links > 0) \
+		and word_count > 200 and word_count / number_of_links < 3:
 			thin_content = True
 			
 		count += 1

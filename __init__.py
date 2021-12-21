@@ -1,16 +1,21 @@
 from flask import Flask, render_template
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
+from .config import SENTRY_DSN, SENTRY_SERVER_NAME
 import os
+
+# set up sentry for error handling
+if SENTRY_DSN != "":
+    import sentry_sdk
+    from sentry_sdk.integrations.flask import FlaskIntegration
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[FlaskIntegration()],
+        traces_sample_rate=1.0,
+        server_name=SENTRY_SERVER_NAME
+    )
 
 def create_app():
     app = Flask(__name__)
-
-    # Limiter(
-    #     app,
-    #     key_func=get_remote_address,
-    #     default_limits=["200 per day", "50 per hour"]
-    # )
 
     app.config['SECRET_KEY'] = os.urandom(32)
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///search.db'

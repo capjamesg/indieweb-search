@@ -307,12 +307,7 @@ This project makes use of the following technologies:
 - pytextrank
 - pyspellchecker
 - feedparser
-
-## Authorship Discovery Compliance
-
-This project complies with all five test cases in the [authorship.rocks](https://authorship.rocks/) [Authorship Discovery Specification](https://indieweb.org/authorship-spec) test cases. These test cases determine whether code can successfully retrieve the representative h-card (author) of a page.
-
-This logic is used to determine which h-card, if any, to save alongside a piece of content in the index. This logic plays a critical role in the profile pictures and names that appear in search results.
+- indieweb_utils
 
 ## Acknowledgements
 

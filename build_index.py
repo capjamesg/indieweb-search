@@ -1,8 +1,9 @@
 import requests
 import datetime
 import logging
+import indieweb_utils
 import concurrent.futures
-import cProfile
+# import cProfile
 import mf2py
 import config
 from bs4 import BeautifulSoup
@@ -112,30 +113,6 @@ def find_robots_directives(site_url):
 
 	return namespaces_to_ignore, sitemap_urls, protocol
 
-def canonicalize_url(protocol, domain, url):
-	"""
-		Canonicalizes a URL in a standard format.
-	"""
-
-	url = url.split("#")[0]
-	url = url.split("?")[0]
-	url = url.lower()
-
-	if url.startswith("http://") or url.startswith("https://"):
-		return url
-
-	elif url.startswith("//"):
-		return protocol + url
-
-	elif url.startswith("/"):
-		return protocol + domain + url
-	elif url.startswith("./")
-		return protocol + domain + url[1:]
-	elif url.startswith("../"):
-		return protocol + domain + url.split("../")[:-1]
-	else:
-		return protocol + domain + "/" + url
-
 def process_domain(site, reindex):
 	"""
 		Processes a domain and executes a function that crawls all pages on the domain.
@@ -203,7 +180,7 @@ def process_domain(site, reindex):
 			if "/tag/" in u.find("loc").text:
 				continue
 			
-			canonicalized_url = canonicalize_url(protocol, site, u.find("loc").text)
+			canonicalized_url = indieweb_utils.canonicalize_url(protocol, site, u.find("loc").text)
 
 			if u.find("lastmod"):
 				final_urls[canonicalized_url] = u.find("lastmod").text

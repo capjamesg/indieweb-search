@@ -18,6 +18,11 @@ for word in stopwords:
 def get_page_info(page_text, page_desc_soup, page_url, homepage_meta_description):
 	"""
 		Scrapes page information for index and returns it to be added to the index later.
+
+		:param page_text: The text on a web page
+		:param page_desc_soup: The BeautifulSoup object of the HTML page
+		:param page_url: The full URL of the page on which the feed was found
+		:param homepage_meta_description: The meta description of the homepage
 	"""
 
 	contains_hfeed = page_desc_soup.find(class_="h-feed")
