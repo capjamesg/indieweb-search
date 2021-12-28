@@ -27,7 +27,7 @@
 
     <link rel="webmention" href="https://webmention.jamesg.blog/endpoint" />
 
-    {% if request.endpoint.startswith("https://indieweb-search.jamesg.blog/results?query=") %}
+    {% if request.path.startswith("/results") %}
         <link rel="alternate" type="application/jf2feed+json" href="https://indieweb-search.jamesg.blog/results?query={{ query }}&format=jf2" />
         <link rel="alternate" type="application/json" href="https://indieweb-search.jamesg.blog/results?query={{ query }}&format=json_feed" />
     {% endif %}
@@ -53,8 +53,8 @@
         color: white;
       }
       input, textarea, .serp_result, .search_box, .main_content_box {
-        background-color: #0c2548;
-        color: #ccc;
+        background-color: #0c2548 !important;
+        color: #ccc !important;
       }
       ::placeholder {
         color: #ccc;
