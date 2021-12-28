@@ -30,6 +30,7 @@
     {% if request.path.startswith("/results") %}
         <link rel="alternate" type="application/jf2feed+json" href="https://indieweb-search.jamesg.blog/results?query={{ query }}&format=jf2" />
         <link rel="alternate" type="application/json" href="https://indieweb-search.jamesg.blog/results?query={{ query }}&format=json_feed" />
+        <link rel="alternate" type="application/rss+xml" href="https://indieweb-search.jamesg.blog/results?query={{ query }}&format=rss" />
     {% endif %}
     
     <style id="darkmode" media="none">

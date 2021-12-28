@@ -180,6 +180,11 @@ def results_page():
 
 		return jf2_feed
 
+	elif format == "rss":
+		rss_feed = search_page_feeds.process_rss_feed(rows, cleaned_value, page, format)
+
+		return rss_feed
+
 	elif format == "direct_serp_json":
 		if special_result:
 			return jsonify({"text": do_i_use, "featured_serp": special_result})
