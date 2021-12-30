@@ -100,21 +100,28 @@ def results_page():
 
 	query_params = ""
 	
-	if "site:" in request.args.get("query"):
-		query_params += "&site={}".format(query_values_in_list[-1].replace("%", ""))
+	if query_values_in_list.get("site"):
+		query_params += "&site={}".format(query_values_in_list.get("site").replace("%", ""))
 
 	if request.args.get("query").startswith("discover"):
 		query_params += "&discover=true"
 
 	if "js:none" in request.args.get("query"):
 		query_params += "&js=false"
+
+	if query_values_in_list.get("category"):
+		query_params += "&category={}".format(query_values_in_list.get("category"))
+
+	if query_values_in_list.get("mf2prop"):
+		query_params += "&mf2_property={}".format(query_values_in_list.get("mf2prop"))
 	
 	rows = session.get("https://es-indieweb-search.jamesg.blog/?pw={}&q={}&sort={}&from={}&minimal={}{}".format(
 		config.ELASTICSEARCH_PASSWORD,
 		cleaned_value_for_query.replace("who is", "").replace("code", "").replace("discover ", "").strip(),
 		order, str(pagination),
 		minimal,
-		query_params)).json()
+		query_params)
+	).json()
 
 	num_of_results = rows["hits"]["total"]["value"]
 	rows = rows["hits"]["hits"]
@@ -195,7 +202,7 @@ def results_page():
 		return jsonify({"results": [r["_source"] for r in rows]})
 
 	# show one result if a featured snippet is available, even if there are no other results to show
-	print(do_i_use)
+	
 	if not special_result and not do_i_use and int(num_of_results) == 0:
 		num_of_results = 0
 		out_of_bounds_page = True

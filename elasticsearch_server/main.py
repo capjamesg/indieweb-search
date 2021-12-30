@@ -46,19 +46,22 @@ def autosuggest():
 def home():
     pw = config.ELASTICSEARCH_PASSWORD
 
+    # get accepted query params
     query = request.args.get("q")
     domain_param = request.args.get("domain")
     discover = request.args.get("discover")
     from_num = request.args.get("from")
     contains_js = request.args.get("js")
+    site = request.args.get("site")
+    inurl = request.args.get("inurl")
+    category = request.args.get("category")
+    mf2_property = request.args.get("mf2_property")
 
     if not from_num:
         from_num = 1
 
     if request.args.get("pw") != pw:
         return abort(401)
-
-    site = request.args.get("site")
 
     query = query.replace("what is ", "").replace("who is ", "")
 
@@ -77,8 +80,6 @@ def home():
             query = query + " AND (url:{})".format(site)
         elif site and len(site) == 0:
             query = "(url:{})".format(site)
-
-        inurl = request.args.get("inurl")
 
         if inurl and len(inurl) > 0:
             query = query + " AND (url:{})".format(inurl)
@@ -99,6 +100,18 @@ def home():
 
     if contains_js and contains_js == "false":
         query = query + " AND (js:false)"
+
+    if category:
+        category_list = category.split(",")
+        category_string = " (AND (category:{}) OR".format(category_list).strip(" OR") + ")"
+
+        query = query + category_string
+
+    if mf2_property:
+        mf2_property_list = mf2_property.split(",")
+        mf2_property_string = " (AND (mf2_property:{}) OR".format(mf2_property_list).strip(" OR") + ")"
+
+        query = query + mf2_property_string
 
     if discover and discover == "true":
         query = query + " AND (is_homepage:true)"
@@ -208,7 +221,7 @@ def remove_from_index():
         data = request.get_json()
 
         # remove from elasticsearch
-        res = es.delete(index="pages", doc_type="page", id=data["id"])
+        es.delete(index="pages", doc_type="page", id=data["id"])
 
         return jsonify({"status": "ok"})
     else:

@@ -51,11 +51,23 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 
 	page_as_h_entry = None
 
+	mf2_property_type = None
+
 	for item in h_entry_object["items"]:
 		if item["type"] and item["type"] == ["h-entry"]:
 			page_as_h_entry = item
 
-	page_as_h_entry = None
+			if item.get("category"):
+				category = ", ".join(item["category"])
+
+			if item.get("like-of"):
+				mf2_property_type = "like-of"
+			elif item.get("repost-of"):
+				mf2_property_type = "repost-of"
+			elif item.get("bookmark-of"):
+				mf2_property_type = "bookmark-of"
+
+			break
 
 	if nofollow_all == True:
 		nofollow_all = "true"
@@ -130,7 +142,8 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 		"thin_content": thin_content,
 		"contains_javascript": contains_javascript,
 		"page_hash": hash,
-		"special_snippet": special_snippet
+		"special_snippet": special_snippet,
+		"mf2_property_type": mf2_property_type
 	}
 
 	if page_as_h_entry != None:
