@@ -46,11 +46,11 @@ def results_page():
 
 	query_with_handled_spaces = request.args.get("query").replace("--", "").replace("  ", " ").strip()
 
-	allowed_chars = [" ", '"', ":", "-", "/", ".", "="]
-
-	query_values_in_list, query_with_handled_spaces = search_helpers.handle_advanced_search(query_with_handled_spaces)
+	allowed_chars = [" ", '"', ":", "-", "/", ".", "=", ","]
 
 	cleaned_value_for_query = ''.join(e for e in query_with_handled_spaces if e.isalnum() or e in allowed_chars).strip()
+
+	query_values_in_list, query_with_handled_spaces = search_helpers.handle_advanced_search(query_with_handled_spaces)
 
 	if cleaned_value_for_query.startswith("xray https://") or cleaned_value_for_query.startswith("xray http://"):
 		return redirect("https://xray.p3k.io/parse?url={}".format(cleaned_value_for_query.replace("xray ", "")))
@@ -202,7 +202,7 @@ def results_page():
 		return jsonify({"results": [r["_source"] for r in rows]})
 
 	# show one result if a featured snippet is available, even if there are no other results to show
-	
+
 	if not special_result and not do_i_use and int(num_of_results) == 0:
 		num_of_results = 0
 		out_of_bounds_page = True
