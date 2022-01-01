@@ -11,6 +11,18 @@ html {
     font-family: "Helvetica Neue", Helvetica, sans-serif;
 }
 
+.topic_cloud {
+  margin-top: 10px;
+}
+
+.topic_cloud li {
+  background-color: lightcyan;
+  padding: 15px;
+  border-radius: 10px;
+  margin: 10px;
+  display: inline;
+}
+
 main {
     max-width: 100vh;
     width: 85%;

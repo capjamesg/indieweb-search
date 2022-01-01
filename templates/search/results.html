@@ -143,4 +143,16 @@
     <p>The icons in the direct answer at the top of this page are from Paul Robert Lloyd's <a href="https://github.com/paulrobertlloyd/socialmediaicons">socialmediaicons</a> collection.</p>
     {% endif %}
   {% endblock %}
+  <script>
+    var query_field = document.getElementById('query');
+    
+    // listen for . key press and escape keypress
+    document.addEventListener('keydown', function(e) {
+      if (e.keyCode == 190) {
+        query_field.focus();
+      } else if (e.keyCode == 17) {
+        query_field.value = "";
+      }
+    });
+  </script>
 </section>
