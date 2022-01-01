@@ -101,9 +101,6 @@ def add_to_database(full_url, published_on, doc_title, meta_description, heading
 	# use p-name in place of title tag if one is available
 	if page_content.select(".p-name"):
 		title = page_content.select(".p-name")[0].text
-		if title.strip(" ") != "" and len(title) > 5:
-			if len(title.split(" ")) > 10:
-				title = title.split(" ", 10)[0] + "..."
 	else:
 		title = doc_title
 
