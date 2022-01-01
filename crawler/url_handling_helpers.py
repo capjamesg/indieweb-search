@@ -2,6 +2,7 @@ import requests
 import datetime
 import logging
 import config
+import indieweb_utils
 
 def parse_canonical(canonical, full_url, url, iterate_list_of_urls, discovered_urls):
 	"""
@@ -97,20 +98,20 @@ def find_feeds(page_desc_soup, full_url, site):
 			if feed_item and feed_item["href"].startswith("/"):
 				# get site domain
 				domain = full_url.split("/")[2]
-				feed_url = full_url.split("/")[0] + "//" + domain + feed_item["href"]
+				feed_url = indieweb_utils.canonicalize_url(full_url.split("/")[0] + "//" + domain + feed_item["href"])
 
 				if feed_url and feed_url not in feed_urls:
-					feeds, feed_urls = save_feed(site, full_url, feed_item["href"], feed_item.get("type"), feeds, feed_urls)
+					feeds, feed_urls = save_feed(site, full_url, feed_url, feed_item.get("type"), feeds, feed_urls)
 					
 			elif feed_item and feed_item["href"].startswith("http"):
 				if feed_item["href"] not in feed_urls and feed_item["href"].split("/")[2] == full_url.split("/")[2]:
-					feeds, feed_urls = save_feed(site, full_url, feed_item["href"], feed_item.get("type"), feeds, feed_urls)
+					feeds, feed_urls = save_feed(site, full_url, feed_url, feed_item.get("type"), feeds, feed_urls)
 					
 				elif feed_item["href"] not in feed_urls and feed_item["href"].split("/")[2] != full_url.split("/")[2]:
 					print("found feed {}, but it points to a different domain, not saving".format(feed_item["href"]))
 					logging.info("found feed {}, but it points to a different domain, not saving".format(feed_item["href"]))
 			else:
-				feeds, feed_urls = save_feed(site, full_url, full_url.strip("/") + "/" + feed_item["href"], feed_item.get("type"), feeds, feed_urls)
+				feeds, feed_urls = save_feed(site, full_url, full_url.strip("/") + "/" + feed_url feed_item.get("type"), feeds, feed_urls)
 
 	# check if page has h-feed class on it
 	# if a h-feed class is present, mark page as feed
