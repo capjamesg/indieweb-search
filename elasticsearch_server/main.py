@@ -65,7 +65,7 @@ def home():
 
     query = query.replace("what is ", "").replace("who is ", "")
 
-    query = query.strip().replace(" ", " AND ")
+    query = query.strip().replace(" ", " AND ").strip("AND").strip()
 
     final_query = ""
 
@@ -117,7 +117,34 @@ def home():
         query = query + " AND (is_homepage:true)"
         fields = ["h_card"]
     else:
-        fields = ["title^2", "description^1.5", "url^1.3", "category^0", "published^0", "keywords^0", "text^2.5", "h1^1.7", "h2^1.5", "h3^1.2", "h4^0.5", "h5^0.75", "h6^0.25", "domain^3"]
+        fields = [
+            "title^1.7",
+            "description^1.5",
+            "url^1.3",
+            "category^0",
+            "published^0",
+            "keywords^0",
+            "text^1.8",
+            "h1^1.7",
+            "h2^0.5",
+            "h3^0.5",
+            "h4^0.5",
+            "h5^0.75",
+            "h6^0.25",
+            "domain^2"
+        ]
+
+    # query += " AND (word_count > '450')"
+
+    print(query)
+
+    print(query)
+
+    print(query)
+
+    print(query)
+
+    print(query)
 
     search_param = {
         "from": int(from_num),
@@ -134,7 +161,7 @@ def home():
                 },
                 "script": {
                     "source": """
-                        return _score + Math.log((1 + (doc['incoming_links'].value)) * 6) + Math.log((1 + (doc['word_count'].value / 10)));
+                        return _score + Math.log((1 + (doc['incoming_links'].value)) * 5);
                     """
                 },
             },

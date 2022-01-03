@@ -20,7 +20,7 @@ html {
   padding: 15px;
   border-radius: 10px;
   margin: 10px;
-  display: inline;
+  display: inline-block;
 }
 
 main {

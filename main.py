@@ -207,7 +207,6 @@ def results_page():
 		num_of_results = 0
 		out_of_bounds_page = True
 	else:
-		num_of_results = 1
 		out_of_bounds_page = False
 		
 	return render_template("search/results.html",

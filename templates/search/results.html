@@ -62,6 +62,7 @@
                 </p>
               {% endif %}
               {% endif %}
+              {{ results[r]['_source']['word_count'] }}
               {{ results[r]['_source']['published_on'] }}
               <p class="p-summary">
                 {% if results[r]['_source']['meta_description']|length > 0 %}
