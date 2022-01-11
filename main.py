@@ -239,16 +239,8 @@ def changelog():
 
 @main.route("/advanced")
 def advanced_search():
-	count_request = requests.get("https://es-indieweb-search.jamesg.blog/count").json()
-
-	count = count_request["es_count"]["count"]
-
-	domains = count_request["domains"]
-
 	return render_template(
 		"search/advanced_search.html",
-		count=count,
-		domains=domains,
 		title="IndieWeb Search Advanced Search Options"
 	)
 

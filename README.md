@@ -4,7 +4,9 @@ This repository contains the source code for the IndieWeb Search crawler, web ap
 
 The search engine is available at [indieweb-search.jamesg.blog](https://indieweb-search.jamesg.blog).
 
-Further documentation on the search engine is available on the [IndieWeb wiki](https://indieweb.org/IndieWeb_Search).
+This document contains the main documentation for IndieWeb Search.
+
+Further high-level project notes on the search engine is available on the [IndieWeb wiki](https://indieweb.org/IndieWeb_Search).
 
 ## Screenshot
 
@@ -162,8 +164,7 @@ All IndieWeb Search results are marked up with a h-feed containing h-entry objec
 
 - [jf2 Feed](https://indieweb.org/jf2)
 - [JSON Feed](https://www.jsonfeed.org)
-
-RSS feeds are not currently supported for search result pages.
+- RSS Feed
 
 ### Feed API
 

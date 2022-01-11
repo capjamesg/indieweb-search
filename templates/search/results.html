@@ -62,8 +62,6 @@
                 </p>
               {% endif %}
               {% endif %}
-              {{ results[r]['_source']['word_count'] }}
-              {{ results[r]['_source']['published_on'] }}
               <p class="p-summary">
                 {% if results[r]['_source']['meta_description']|length > 0 %}
                   {{ results[r]['_source']['meta_description'] }}
@@ -90,8 +88,7 @@
               (special_result and results[r]['_source']['domain'] == special_result.breadcrumb.split("/")[2]) or r == 0) or not
               (results[r]['_source']["special_snippet"] and results[r]['_source']["special_snippet"] != {}) %}
             </div>
-            {% endif %}
-            {% if results[r+1] and results[r]['_source']['domain'] != results[r+1]['_source']['domain'] %}
+            {% elif results[r+1] and results[r]['_source']['domain'] != results[r+1]['_source']['domain'] %}
               </div>
               </li>
             {% elif results[r]['_source']["special_snippet"] and results[r]['_source']["special_snippet"] != {} %}
@@ -102,6 +99,7 @@
               </li>
             {% elif r - 1 != -1 and results[r-1] and results[r-1]['_source']['domain'] == results[r]['_source']['domain'] %}
               </div>
+            </li>
             {% endif %}
         {% endif %}
         {% endfor %}
@@ -136,7 +134,7 @@
       </ol>
     {% endif %}
     <p>You can follow this page in any <a href="https://indieweb.org/Microsub#Clients">Microsub reader</a> that supports reading h-feeds.</p>
-    <p>This page also has JSON Feed and JF2 alternative feeds.</p>
+    <p>You can also follow this page in a feed reader that can read RSS, JSON Feed, or jf2 posts.</p>
     {% if "atlas.p3k.io" in do_i_use %}
     <p>The map at the top of this search result is provided by the <a href="https://atlas.p3k.io">p3k Atlas API</a>.</p>
     {% endif %}
