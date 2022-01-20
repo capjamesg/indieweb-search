@@ -1,9 +1,8 @@
 from flask import render_template, request, redirect, send_from_directory, jsonify, Blueprint
-from .direct_answers import choose_direct_answer
-from .direct_answers import search_result_features
+from direct_answers import choose_direct_answer
+from direct_answers import search_result_features
 import indieweb_utils
-from spellchecker import SpellChecker
-from . import search_helpers, config, search_page_feeds
+import search_helpers, config, search_page_feeds
 import requests
 import json
 import math
@@ -11,8 +10,6 @@ import spacy
 import mf2py
 
 main = Blueprint("main", __name__, static_folder="static", static_url_path="")
-
-spell = SpellChecker()
 
 nlp = spacy.load('en_core_web_sm')
 
@@ -147,25 +144,28 @@ def results_page():
 
 	if len(rows) == 0:
 		out_of_bounds_page = True
+		final_query = cleaned_value_for_query
 
-		identify_mistakes = spell.unknown(cleaned_value.split('"')[-1].split(" "))
+		# this code doesn't work right now
 
-		final_query = ""
+		# identify_mistakes = spell.unknown(cleaned_value.split('"')[-1].split(" "))
 
-		suggestion = False
+		# final_query = ""
 
-		cleaned_items = cleaned_value.split('"')[-1].split(" ")
+		# suggestion = False
 
-		for w in range(0, len(cleaned_items)):
-			if cleaned_items[w] in identify_mistakes and cleaned_items[w] != "":
-				final_query += spell.correction(cleaned_items[w]) + " "
-				suggestion = True
+		# cleaned_items = cleaned_value.split('"')[-1].split(" ")
 
-				final_query = " " + final_query
-			else:
-				final_query += cleaned_items[w] + " "
+		# for w in range(0, len(cleaned_items)):
+		# 	if cleaned_items[w] in identify_mistakes and cleaned_items[w] != "":
+		# 		final_query += spell.correction(cleaned_items[w]) + " "
+		# 		suggestion = True
 
-		final_query = "".join(cleaned_value.split('"')[:-1]) + '" ' + final_query
+		# 		final_query = " " + final_query
+		# 	else:
+		# 		final_query += cleaned_items[w] + " "
+
+		# final_query = "".join(cleaned_value.split('"')[:-1]) + '" ' + final_query
 			
 	else:
 		out_of_bounds_page = False
@@ -223,7 +223,8 @@ def results_page():
 		suggestion_made=suggestion,
 		special_result=special_result,
 		do_i_use=do_i_use,
-		title="Search results for '{}' query".format(cleaned_value))
+		title="Search results for '{}' query".format(cleaned_value)
+	)
 
 @main.route("/robots.txt")
 def robots():

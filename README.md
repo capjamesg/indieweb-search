@@ -77,11 +77,10 @@ The official indieweb-search engine uses indieweb-search as the user agent. Plea
 
 To run the web application, execute these commands:
 
-    export FLASK_APP=.
     flask seed build-tables
-    flask run
+    python3 wsgi.py
 
-You will not be able to run the web application without having a server running the `elasticsearch_server.py` that has some indexed files.
+You will not be able to perform a search query on the web application without having a server running the `elasticsearch_server.py` that has some indexed files.
 
 ## Running the Elasticsearch Application
 
@@ -308,7 +307,7 @@ This project makes use of the following technologies:
 - pytextrank
 - pyspellchecker
 - feedparser
-- indieweb_utils
+- indieweb-utils
 
 ## Acknowledgements
 

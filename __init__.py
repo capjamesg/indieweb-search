@@ -1,5 +1,5 @@
 from flask import Flask, render_template
-from .config import SENTRY_DSN, SENTRY_SERVER_NAME
+from config import SENTRY_DSN, SENTRY_SERVER_NAME
 import os
 
 # set up sentry for error handling
@@ -22,7 +22,7 @@ def create_app():
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
     # blueprint for non-auth parts of app
-    from .main import main as main_blueprint
+    from main import main as main_blueprint
 
     app.register_blueprint(main_blueprint)
 

@@ -111,7 +111,7 @@ def find_feeds(page_desc_soup, full_url, site):
 					print("found feed {}, but it points to a different domain, not saving".format(feed_item["href"]))
 					logging.info("found feed {}, but it points to a different domain, not saving".format(feed_item["href"]))
 			else:
-				feeds, feed_urls = save_feed(site, full_url, full_url.strip("/") + "/" + feed_url feed_item.get("type"), feeds, feed_urls)
+				feeds, feed_urls = save_feed(site, full_url, full_url.strip("/") + "/" + feed_url, feed_item.get("type"), feeds, feed_urls)
 
 	# check if page has h-feed class on it
 	# if a h-feed class is present, mark page as feed

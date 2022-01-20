@@ -5,14 +5,17 @@
   </head>
   <body>
     <main>
-      <a href="#main" class="accessibility_label">Skip to main content</a>
+      <a href="#main" class="accessibility_label_top">Skip to main content</a>
       <nav id="top_navigation">
         <p><a href="/">IndieWeb Search</a></p>
-        <ul>
+        <ul id="desktop_menu">
             <li><a href="/about">About</a></li>
             <li><a href="/stats">Statistics</a></li>
             <li><a href="/changelog">Changelog</a></li>
             <li><a href="https://indieweb.org">IndieWeb.org</a></li>
+        </ul>
+        <ul id="mobile_menu">
+            <li><a onclick="trigger_modal('settings')">Menu</a></li>
         </ul>
       </nav>
       <script>
@@ -51,11 +54,38 @@
             localStorage.setItem('darkmode', 'true');
           }
         }
+
+        function trigger_modal(id) {
+            var modal = document.getElementById(id);
+            if (modal.style.display == "none") {
+                modal.style.display = "block";
+            } else {
+                modal.style.display = "none";
+            }
+        }
       </script>
       <div id="main">
           {% block content %}
           {% endblock %}
       </div>
+      <section class="mobile_modal" style="display: none;" id="settings">
+        <h2>IndieWeb Search</h2>
+        <span class="close" onclick="trigger_modal('settings');">&times;</span>
+        <ul>
+          <li>
+            <a href="/about">About</a>
+          </li>
+          <li>
+            <a href="/stats">Statistics</a>
+          </li>
+          <li>
+            <a href="/changelog">Changelog</a>
+          </li>
+          <li>
+            <a href="https://indieweb.org">IndieWeb.org</a>
+          </li>
+        </ul>
+      </section>
       <p>Have some feedback? <a href="https://github.com/capjamesg/indieweb-search">File an issue on the project GitHub page.</a></p>
       <p class="accessibility_label"><a href="#main">Go Back to the Top</a></p>
     </main>

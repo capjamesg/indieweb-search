@@ -16,11 +16,12 @@ html {
 }
 
 .topic_cloud li {
-  background-color: lightcyan;
+  background-color: white;
   padding: 15px;
   border-radius: 10px;
   margin: 10px;
   display: inline-block;
+  border: 1px solid lightgrey;
 }
 
 main {
@@ -47,6 +48,14 @@ li p {
   max-width: 35em;
 }
 
+#desktop_menu {
+  display: block;
+}
+
+#mobile_menu {
+  display: none;
+}
+
 input[type="submit"] {
   padding: 10px;
   border: none;
@@ -55,6 +64,31 @@ input[type="submit"] {
   border-radius: 10px;
   min-width: 25%;
   appearance: none;
+  border: 1px solid lightgrey;
+}
+
+.mobile_modal {
+  top: 0;
+  left: 0;
+  padding: 20px;
+  width: 100%;
+  height: 100%;
+  position: fixed;
+  background-color: white;
+  text-align: center;
+}
+
+.mobile_modal ul {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+.mobile_modal ul li a {
+  width: 100%;
+  min-height: 60px;
+  border: none;
+  font-size: 20px;
+  display: block;
 }
 
 .search input[type="submit"] {
@@ -155,6 +189,27 @@ p, li, h2, h3 {
     line-height: 1.5em;
 }
 
+/* skip link hiding code from https://www.a11ymatters.com/pattern/skip-link/ */
+.accessibility_label_top {
+  position: fixed;
+  top: -200px;
+}
+.accessibility_label_top:focus {
+  top: 0;
+  left: 50%;
+  padding: 10px;
+}
+.accessibility_label {
+  position: fixed;
+  bottom: -200px;
+}
+.accessibility_label:focus {
+  bottom: 0 !important;
+  left: 50%;
+  padding: 10px;
+  z-index: 1;
+}
+
 @media print {
     html {
         background-color: white;
@@ -225,7 +280,7 @@ li {
   border: 5px dotted royalblue;
   padding: 10px;
 }
-@media only screen and (max-width: 600px) {
+@media only screen and (max-width: 900px) {
   .serp-item {
     width: 100%;
   }
@@ -234,6 +289,12 @@ li {
   }
   #query {
     margin-top: 15px;
+  }
+  #mobile_menu {
+    display: block;
+  }
+  #desktop_menu {
+    display: none;
   }
 }
 .tab, ol {

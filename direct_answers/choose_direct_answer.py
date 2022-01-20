@@ -1,5 +1,5 @@
 from . import search_result_features
-from .. import config
+import config
 
 def choose_featured_snippet(cleaned_value, cleaned_value_for_query, rows, special_result, full_query_with_full_stops, session, nlp):
 	search_for_snippet = False
