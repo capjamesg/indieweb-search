@@ -1,0 +1,17 @@
+{
+    "short_name": "IndieWeb Search",
+    "name": "IndieWeb Search",
+    "icons": [
+      {
+        "src": "/icons/indieweb.png",
+        "type": "image/png",
+        "sizes": "512x512"
+      }
+    ],
+    "start_url": "/",
+    "background_color": "#FFEFD5",
+    "display": "standalone",
+    "scope": "/",
+    "theme_color": "#FFEFD5",
+    "description": "A search engine for IndieWeb and related websites"
+  }
