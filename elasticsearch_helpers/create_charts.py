@@ -1,13 +1,15 @@
+import csv
+import datetime
+
 import matplotlib.pyplot as plt
 import pandas as pd
-from config import ROOT_DIRECTORY
 from elasticsearch import Elasticsearch
-import datetime
-import csv
 
-es = Elasticsearch(['http://localhost:9200'])
+from config import ROOT_DIRECTORY
 
-total_docs_today = int(es.count(index='pages')['count'])
+es = Elasticsearch(["http://localhost:9200"])
+
+total_docs_today = int(es.count(index="pages")["count"])
 
 today = datetime.datetime.now().strftime("%Y-%m-%d")
 
@@ -20,6 +22,7 @@ domain_count = len(domains)
 with open("stats.csv", "a") as stats_file:
     writer = csv.writer(stats_file)
     writer.writerow([total_docs_today, today, domain_count])
+
 
 def calculate_index_size():
     df = pd.read_csv(ROOT_DIRECTORY + "/stats.csv")
@@ -53,6 +56,7 @@ def calculate_index_size():
 
     plt.savefig(ROOT_DIRECTORY + "/static/index_size.png")
 
+
 def calculate_domains_indexed():
     df = pd.read_csv(ROOT_DIRECTORY + "/stats.csv")
 
@@ -80,6 +84,7 @@ def calculate_domains_indexed():
     plt.legend()
 
     plt.savefig(ROOT_DIRECTORY + "/static/domain_index_size.png")
+
 
 calculate_index_size()
 

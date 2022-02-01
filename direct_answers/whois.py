@@ -1,10 +1,17 @@
-import mf2py
 import os
 
-def parse_whois(original_cleaned_value, soup, url, original_url): 
-    if "who is" in original_cleaned_value or (("." in original_cleaned_value and \
-        len(original_cleaned_value.split(".")[0]) > 3 and len(original_cleaned_value.split(".")[0]) > 1 \
-            and len(original_cleaned_value.split(" ")) == 1)):
+import mf2py
+
+
+def parse_whois(original_cleaned_value, soup, url, original_url):
+    if "who is" in original_cleaned_value or (
+        (
+            "." in original_cleaned_value
+            and len(original_cleaned_value.split(".")[0]) > 3
+            and len(original_cleaned_value.split(".")[0]) > 1
+            and len(original_cleaned_value.split(" ")) == 1
+        )
+    ):
         mf2s = mf2py.parse(doc=soup)["items"]
 
         h_card = ""
@@ -16,7 +23,12 @@ def parse_whois(original_cleaned_value, soup, url, original_url):
 
         if h_card == "":
             for item in mf2s:
-                if item.get("type") and item.get("type")[0] == "h-entry" and item.get("properties") and item.get("properties").get("author"):
+                if (
+                    item.get("type")
+                    and item.get("type")[0] == "h-entry"
+                    and item.get("properties")
+                    and item.get("properties").get("author")
+                ):
                     h_card = item.get("properties").get("author")[0]
                     break
 
@@ -34,7 +46,7 @@ def parse_whois(original_cleaned_value, soup, url, original_url):
                 name = ""
 
             photo = h_card["properties"].get("photo")
-            
+
             if photo and photo[0].startswith("/"):
                 photo = url.strip("/") + "/" + h_card["properties"].get("photo")[0]
             elif photo and photo[0].startswith("http"):
@@ -47,7 +59,14 @@ def parse_whois(original_cleaned_value, soup, url, original_url):
                 photo = ""
 
             for key, value in h_card["properties"].items():
-                if key != "photo" and key != "email" and key != "logo" and key != "url" and key !="uid" and type(value[0]) == str:
+                if (
+                    key != "photo"
+                    and key != "email"
+                    and key != "logo"
+                    and key != "url"
+                    and key != "uid"
+                    and type(value[0]) == str
+                ):
                     if value[0].startswith("/"):
                         value[0] = url.strip("/") + "/" + value[0]
                     elif value[0].startswith("http"):
@@ -55,38 +74,49 @@ def parse_whois(original_cleaned_value, soup, url, original_url):
                     elif value[0].startswith("//"):
                         value[0] = url.strip("/") + "/" + value[0]
                     elif value[0].startswith("./"):
-                        value[0] = "<a href='{}'>{}</a>".format(url.strip("./") + "/" + value[0], url.strip("./") + "/" + value[0])
+                        value[0] = "<a href='{}'>{}</a>".format(
+                            url.strip("./") + "/" + value[0],
+                            url.strip("./") + "/" + value[0],
+                        )
 
-                    to_show += "<p><b>{}</b>: {}</p>".format(key.title().replace("-", " "), value[0])
+                    to_show += "<p><b>{}</b>: {}</p>".format(
+                        key.title().replace("-", " "), value[0]
+                    )
                 elif key == "email" and "@" in value[0]:
                     # @ must be in email for it to be valid
                     to_show += "<p><b>{}</b>: <a href='{}'>{}</a></p>".format(
                         key.title(),
                         "mailto:{}".format(value[0].replace("mailto:", "")),
-                        value[0].replace("mailto:", "")
+                        value[0].replace("mailto:", ""),
                     )
                 elif key == "url":
                     if value[0].strip() == "":
-                        to_show  += "<p><b>{}</b>: <a href='{}'>{}</a></p>".format("URL", original_url, original_url)
+                        to_show += "<p><b>{}</b>: <a href='{}'>{}</a></p>".format(
+                            "URL", original_url, original_url
+                        )
                     else:
                         if not value[0].startswith("http"):
                             value[0] = url.strip("/") + "/" + value[0].strip("/")
 
-                        to_show += "<p><b>{}</b>: <a href='{}'>{}</a></p>".format("URL", value[0], value[0].strip("/"))
+                        to_show += "<p><b>{}</b>: <a href='{}'>{}</a></p>".format(
+                            "URL", value[0], value[0].strip("/")
+                        )
 
             if soup.find("h1"):
                 title = soup.find("h1").text
             else:
                 title = url
-                
-            return "<img src='{}' height='100' width='100' style='float: right;'><p>{}</p>".format(photo, to_show), \
-                {
-                    "type": "direct_answer",
-                    "breadcrumb": original_url,
-                    "title": title
-                }
+
+            return "<img src='{}' height='100' width='100' style='float: right;'><p>{}</p>".format(
+                photo, to_show
+            ), {
+                "type": "direct_answer",
+                "breadcrumb": original_url,
+                "title": title,
+            }
 
     return None, None
+
 
 def parse_social(original_cleaned_value, soup, url, original_url):
     if original_cleaned_value.endswith("social"):
@@ -101,13 +131,30 @@ def parse_social(original_cleaned_value, soup, url, original_url):
                     link_type = link.text.strip()
 
                     # find file in static/icons
-                    if link_type and link_type != "" and os.path.isfile("static/icons/" + link_type.lower() + "-16x16" + ".png"):
-                        image = "<img src='/static/icons/" + link_type.lower() + "-16x16" + ".png' height='15' width='15' style='display: inline;'>"
-                        to_show += "<li>{}<a href='{}'> {}</a></li>".format(image, link.get("href"), link_type)
+                    if (
+                        link_type
+                        and link_type != ""
+                        and os.path.isfile(
+                            "static/icons/" + link_type.lower() + "-16x16" + ".png"
+                        )
+                    ):
+                        image = (
+                            "<img src='/static/icons/"
+                            + link_type.lower()
+                            + "-16x16"
+                            + ".png' height='15' width='15' style='display: inline;'>"
+                        )
+                        to_show += "<li>{}<a href='{}'> {}</a></li>".format(
+                            image, link.get("href"), link_type
+                        )
                     elif link_type and link_type != "":
-                        to_show += "<li><a href='{}'>{}</a></li>".format(link.get("href"), link_type)
+                        to_show += "<li><a href='{}'>{}</a></li>".format(
+                            link.get("href"), link_type
+                        )
                     else:
-                        to_show += "<li><a href='{}'>{}</a></li>".format(link.get("href"), link.get("href"))
+                        to_show += "<li><a href='{}'>{}</a></li>".format(
+                            link.get("href"), link.get("href")
+                        )
 
             if soup.find("h1"):
                 title = soup.find("h1").text
@@ -119,14 +166,16 @@ def parse_social(original_cleaned_value, soup, url, original_url):
 
             return """<h3>{} Social Links</h3><ul>{}</ul><details><br><summary>How to show up here</summary>
                 You can have social links show up by entering 'yourdomainname.com social' into the search engine as long as you have rel=me links set up on your home page.
-                Learn how to do this on the <a href='https://indieweb.org/rel-me'>IndieWeb wiki</a>.</details>""".format(title, to_show), \
-                {
-                    "type": "direct_answer",
-                    "breadcrumb": original_url,
-                    "title": title
-                }
+                Learn how to do this on the <a href='https://indieweb.org/rel-me'>IndieWeb wiki</a>.</details>""".format(
+                title, to_show
+            ), {
+                "type": "direct_answer",
+                "breadcrumb": original_url,
+                "title": title,
+            }
 
     return None, None
+
 
 def parse_get_rel(original_cleaned_value, soup, original_url):
     # get all feeds on a page
@@ -137,19 +186,24 @@ def parse_get_rel(original_cleaned_value, soup, original_url):
         to_show = ""
 
         for link in rel_values:
-            to_show += "<li>{}: <a href='{}'>{}</a></li>".format("".join(link.get("rel")), link.get("href"), link.get("href"))
+            to_show += "<li>{}: <a href='{}'>{}</a></li>".format(
+                "".join(link.get("rel")), link.get("href"), link.get("href")
+            )
 
         if to_show == "":
             to_show = "No rel links were found on this site's home page."
 
-        return "<h3>'Rel' Attributes for {}</h3><ul>{}</ul>".format(original_url.replace("https://", "").replace("http://", "").strip("/"), to_show), \
-            {
-                "type": "direct_answer",
-                "breadcrumb": original_url,
-                "title": soup.find_all("h1")[0].text
-            }
+        return "<h3>'Rel' Attributes for {}</h3><ul>{}</ul>".format(
+            original_url.replace("https://", "").replace("http://", "").strip("/"),
+            to_show,
+        ), {
+            "type": "direct_answer",
+            "breadcrumb": original_url,
+            "title": soup.find_all("h1")[0].text,
+        }
 
     return None, None
+
 
 def parse_feed(original_cleaned_value, soup, url, original_url):
     # get all feeds on a page
@@ -161,7 +215,9 @@ def parse_feed(original_cleaned_value, soup, url, original_url):
         h_feed = soup.select(".h-feed")
 
         if h_feed:
-            to_show += "<li><b>Microformats h-feed</b>: <a href='{}'>{}</li>".format(url, url)
+            to_show += "<li><b>Microformats h-feed</b>: <a href='{}'>{}</li>".format(
+                url, url
+            )
 
         if len(feeds) > 0:
             to_show = ""
@@ -175,24 +231,22 @@ def parse_feed(original_cleaned_value, soup, url, original_url):
                         if link_type != None:
                             link_type = link_type[0]
 
-                            to_show += "<li><b>{} feed</b>: <a href='{}'>{}</a></li>".format(
-                                link_type,
-                                link.get("href"),
-                                link.get("href")
+                            to_show += (
+                                "<li><b>{} feed</b>: <a href='{}'>{}</a></li>".format(
+                                    link_type, link.get("href"), link.get("href")
+                                )
                             )
                         elif link_type == "application/json":
                             link_type = "JSON"
 
-                            to_show += "<li><b>{} feed</b>: <a href='{}'>{}</a></li>".format(
-                                link_type,
-                                link.get("href"),
-                                link.get("href")
+                            to_show += (
+                                "<li><b>{} feed</b>: <a href='{}'>{}</a></li>".format(
+                                    link_type, link.get("href"), link.get("href")
+                                )
                             )
                     else:
                         to_show += "<li><b>Feed</b>: <a href='{}'>{}</a></li>".format(
-                            link.get("href"),
-                            link.get("href"),
-                            link.get("href")
+                            link.get("href"), link.get("href"), link.get("href")
                         )
 
             if soup.find("h1"):
@@ -203,14 +257,14 @@ def parse_feed(original_cleaned_value, soup, url, original_url):
             if to_show == "":
                 to_show = "No feeds were found on this site's home page."
 
-            return "<h3>{} Feeds</h3><ul>{}</ul>".format(title, to_show), \
-                {
-                    "type": "direct_answer",
-                    "breadcrumb": original_url,
-                    "title": title
-                }
+            return "<h3>{} Feeds</h3><ul>{}</ul>".format(title, to_show), {
+                "type": "direct_answer",
+                "breadcrumb": original_url,
+                "title": title,
+            }
 
     return None, None
+
 
 def parse_address(original_cleaned_value, soup, url, original_url):
     # get all addresses on a page
@@ -230,7 +284,7 @@ def parse_address(original_cleaned_value, soup, url, original_url):
                 "p-locality",
                 "p-region",
                 "p-postal-code",
-                "p-country-name"
+                "p-country-name",
             ]
 
             for i in supported_properties:
@@ -245,11 +299,10 @@ def parse_address(original_cleaned_value, soup, url, original_url):
             if to_show == "":
                 to_show = "No addresses were found on this site's home page."
 
-            return "<h3>{} Addresses</h3><ul>{}</ul>".format(title, to_show), \
-                {
-                    "type": "direct_answer",
-                    "breadcrumb": original_url,
-                    "title": title
-                }
+            return "<h3>{} Addresses</h3><ul>{}</ul>".format(title, to_show), {
+                "type": "direct_answer",
+                "breadcrumb": original_url,
+                "title": title,
+            }
 
     return None, None

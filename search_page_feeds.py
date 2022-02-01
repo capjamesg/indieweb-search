@@ -1,5 +1,6 @@
-from flask import jsonify
 from feedgen.feed import FeedGenerator
+from flask import jsonify
+
 
 def process_h_card(row):
     item = {
@@ -9,7 +10,7 @@ def process_h_card(row):
     if row["_source"]["h_card"]:
         if row["_source"]["h_card"].get("name"):
             item["name"] = row["_source"]["h_card"]["name"][0]
-        
+
         if row["_source"]["h_card"].get("url"):
             item["url"] = row["_source"]["h_card"]["url"][0]
 
@@ -20,21 +21,29 @@ def process_h_card(row):
 
     return item
 
+
 def process_rss_feed(rows, cleaned_value, page, format):
     fg = FeedGenerator()
 
-    fg.id("https://es-indieweb-search.jamesg.blog/results?query={}&page={}&format={}".format(cleaned_value, page, format))
+    fg.id(
+        "https://es-indieweb-search.jamesg.blog/results?query={}&page={}&format={}".format(
+            cleaned_value, page, format
+        )
+    )
     fg.title("IndieWeb Search Results for {}".format(cleaned_value))
 
-    author = {
-        "name": "IndieWeb Search"
-    }
+    author = {"name": "IndieWeb Search"}
     fg.author(author)
 
-    fg.link(href="https://es-indieweb-search.jamesg.blog/results?query={}&page={}&format={}".format(cleaned_value, page, format), rel="self")
+    fg.link(
+        href="https://es-indieweb-search.jamesg.blog/results?query={}&page={}&format={}".format(
+            cleaned_value, page, format
+        ),
+        rel="self",
+    )
     fg.logo("https://es-indieweb-search.jamesg.blog/favicon.ico")
     fg.subtitle("IndieWeb Search Results for {}".format(cleaned_value))
-    
+
     for row in rows:
         fe = fg.add_entry()
 
@@ -46,9 +55,9 @@ def process_rss_feed(rows, cleaned_value, page, format):
             h_card = process_h_card(row)
 
             if h_card.get("name"):
-                fe.author({ "name": h_card})
+                fe.author({"name": h_card})
             else:
-                fe.author({ "name": row["_source"]["domain" ]})
+                fe.author({"name": row["_source"]["domain"]})
 
         if row["_source"]["published_on"] != "":
             fe.published(row["_source"]["published_on"])
@@ -57,13 +66,14 @@ def process_rss_feed(rows, cleaned_value, page, format):
 
     return fg.rss_str(pretty=True)
 
+
 def process_json_feed(rows, cleaned_value, page, format):
     result = []
 
     author = {
         "name": "IndieWeb Search",
         "url": "https://es-indieweb-search.jamesg.blog",
-        "avatar": "https://es-indieweb-search.jamesg.blog/favicon.ico"
+        "avatar": "https://es-indieweb-search.jamesg.blog/favicon.ico",
     }
 
     for row in rows:
@@ -86,14 +96,17 @@ def process_json_feed(rows, cleaned_value, page, format):
         result.append(item)
 
     final_feed = {
-        "feed_url": "https://es-indieweb-search.jamesg.blog/results?query={}&page={}&format={}".format(cleaned_value, page, format),
+        "feed_url": "https://es-indieweb-search.jamesg.blog/results?query={}&page={}&format={}".format(
+            cleaned_value, page, format
+        ),
         "title": "IndieWeb Search Results for {}".format(cleaned_value),
         "home_page_url": "https://es-indieweb-search.jamesg.blog",
         "author": author,
-        "items": result
+        "items": result,
     }
 
     return jsonify(final_feed)
+
 
 def process_jf2_feed(rows):
     results = []
@@ -107,8 +120,8 @@ def process_jf2_feed(rows):
             "title": row["_source"]["title"],
             "content": {
                 "text": row["_source"]["page_text"],
-                "html": row["_source"]["page_content"]
-            }
+                "html": row["_source"]["page_content"],
+            },
         }
 
         if row["_source"]["h_card"]:

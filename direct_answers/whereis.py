@@ -1,6 +1,7 @@
 import mf2py
 import requests
 
+
 def parse_geo(soup):
     h_geo = soup.select(".h-geo")
 
@@ -13,8 +14,16 @@ def parse_geo(soup):
         long = h_geo.select(".p-longitude")
 
         if lat and long:
-            r = requests.get("https://atlas.p3k.io/map/img?marker[]=lat:{};lng:{};icon:small-blue-cutout&basemap=gray&width=600&height=240&zoom=14".format(lat[0]["value"], long[0]["value"]))
+            r = requests.get(
+                "https://atlas.p3k.io/map/img?marker[]=lat:{};lng:{};icon:small-blue-cutout&basemap=gray&width=600&height=240&zoom=14".format(
+                    lat[0]["value"], long[0]["value"]
+                )
+            )
 
-            return "<img src='{}' style='float: right;' />".format("https://atlas.p3k.io/map/img?marker[]=lat:{};lng:{};icon:small-blue-cutout&basemap=gray&width=600&height=240&zoom=14".format(lat, long))
+            return "<img src='{}' style='float: right;' />".format(
+                "https://atlas.p3k.io/map/img?marker[]=lat:{};lng:{};icon:small-blue-cutout&basemap=gray&width=600&height=240&zoom=14".format(
+                    lat, long
+                )
+            )
 
     return None

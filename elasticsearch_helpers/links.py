@@ -1,23 +1,25 @@
-from elasticsearch import Elasticsearch
-from bs4 import BeautifulSoup
 import csv
 import json
 
-es = Elasticsearch(['http://localhost:9200'])
+from bs4 import BeautifulSoup
+from elasticsearch import Elasticsearch
+
+es = Elasticsearch(["http://localhost:9200"])
 
 # Function from https://simplernerd.com/elasticsearch-scroll-python/
 # All credit to them for the function
 def scroll(es, index, body, scroll, size, **kw):
     page = es.search(index=index, body=body, scroll=scroll, size=size, **kw)
-    scroll_id = page['_scroll_id']
-    hits = page['hits']['hits']
+    scroll_id = page["_scroll_id"]
+    hits = page["hits"]["hits"]
     while len(hits):
         yield hits
         page = es.scroll(scroll_id=scroll_id, scroll=scroll)
-        scroll_id = page['_scroll_id']
-        hits = page['hits']['hits']
+        scroll_id = page["_scroll_id"]
+        hits = page["hits"]["hits"]
 
-body = {"query": {"match_all": {}}} 
+
+body = {"query": {"match_all": {}}}
 
 count = 0
 
@@ -30,8 +32,8 @@ link_microformat_instances = {}
 
 overall_count = 0
 
-with open('links.csv', 'w+') as f:
-    for hits in scroll(es, 'pages', body, '3m', 40):
+with open("links.csv", "w+") as f:
+    for hits in scroll(es, "pages", body, "3m", 40):
         # overall_count += 1
 
         # if overall_count == 10:
@@ -39,57 +41,71 @@ with open('links.csv', 'w+') as f:
 
         for h in hits:
             # don't count links on pages that specified nofollow in the X-Robots-Tag header
-            if h["_source"].get("page_is_nofollow") and h["_source"].get("page_is_nofollow") == "true":
+            if (
+                h["_source"].get("page_is_nofollow")
+                and h["_source"].get("page_is_nofollow") == "true"
+            ):
                 continue
 
             try:
-                soup = BeautifulSoup(h['_source']['page_content'], 'lxml')
+                soup = BeautifulSoup(h["_source"]["page_content"], "lxml")
             except:
-                soup = BeautifulSoup(h['_source']['page_content'], 'html5lib')
+                soup = BeautifulSoup(h["_source"]["page_content"], "html5lib")
 
-            links = soup.find_all('a')
+            links = soup.find_all("a")
 
             print(str(count) + " " + h["_source"]["url"])
-            
+
             count += 1
 
-            domain = h["_source"]["url"].split('/')[2].lower()
+            domain = h["_source"]["url"].split("/")[2].lower()
 
             if "tumblr.com" in domain:
                 # delete
-                es.delete(index='pages', id=h["_id"])
+                es.delete(index="pages", id=h["_id"])
 
             # check for nofollow or none meta values
-            check_if_no_index = soup.find("meta", {"name":"robots"})
+            check_if_no_index = soup.find("meta", {"name": "robots"})
 
-            if check_if_no_index and check_if_no_index.get("content") and ("noindex" in check_if_no_index.get("content") or "none" in check_if_no_index.get("content")):
-                print("all links on {} marked as nofollow, skipping".format(h["_source"]["url"]))
+            if (
+                check_if_no_index
+                and check_if_no_index.get("content")
+                and (
+                    "noindex" in check_if_no_index.get("content")
+                    or "none" in check_if_no_index.get("content")
+                )
+            ):
+                print(
+                    "all links on {} marked as nofollow, skipping".format(
+                        h["_source"]["url"]
+                    )
+                )
                 continue
 
             links_on_page = {}
             for l in links:
-                if l.has_attr('href'):
+                if l.has_attr("href"):
                     # skip nofollow links
                     if l.has_attr("rel") and "nofollow" in l["rel"]:
                         continue
-                    link = l['href'].split("?")[0].replace("#", "")
+                    link = l["href"].split("?")[0].replace("#", "")
                     if l["href"].startswith("/"):
-                        link = "https://" + h["_source"]["domain"] + l.get('href')
+                        link = "https://" + h["_source"]["domain"] + l.get("href")
                     elif l["href"].startswith("//"):
-                        link = "https:" + l.get('href')
+                        link = "https:" + l.get("href")
                     elif l["href"].startswith("http"):
-                        link = l.get('href')
+                        link = l.get("href")
                     else:
-                        link = "https://" + h["_source"]["domain"] + "/" + l.get('href')
+                        link = "https://" + h["_source"]["domain"] + "/" + l.get("href")
 
                     original_link = link
-                    
+
                     # all links are treated as https:// so links are grouped together
                     link = link.replace("http://", "https://")
 
                     # trailing slashes are removed so links are grouped together
                     link = link.strip("/")
-                        
+
                     # don't count the same link twice
                     if links_on_page.get(link):
                         continue
@@ -130,11 +146,11 @@ with open('links.csv', 'w+') as f:
                         link_microformat_instances[mf2_attribute] += 1
                     else:
                         link_microformat_instances[mf2_attribute] = 1
-                        
+
                     link = link.lower()
 
                     try:
-                        link_domain = link.split('/')[2].replace("www.", "").lower()
+                        link_domain = link.split("/")[2].replace("www.", "").lower()
 
                         if domain_links.get(link_domain):
                             domain_links[link_domain] += weight + 1
@@ -146,12 +162,12 @@ with open('links.csv', 'w+') as f:
                             continue
                     except:
                         continue
-                    
+
                     csv.writer(f).writerow([h["_source"]["url"], link, link_domain])
 
 # write domain_links to file
 # may be a useful metric for determining overall domain authority
-with open('domain_links.json', 'w+') as f:
+with open("domain_links.json", "w+") as f:
     json.dump(domain_links, f)
 
 with open("all_domains.txt", "w+") as f:
@@ -183,13 +199,13 @@ for line in open("links.csv", "r"):
         print("error with link")
 
 # write links to all_links_final.json
-with open('all_links_final.json', 'w+') as f:
+with open("all_links_final.json", "w+") as f:
     json.dump(links, f)
 
-with open('all_links_final.json', 'r') as f:
+with open("all_links_final.json", "r") as f:
     links = json.load(f)
 
-count = 0 
+count = 0
 
 with open("all_domains.txt", "r") as file:
     domain_list = file.read().splitlines()
@@ -210,15 +226,11 @@ for link, link_count in links.items():
     # checking if each link in the "links.csv" file is in the index is inefficient and slow
     if domains.get(link_domain) == None:
         continue
-    
+
     while found == "no":
         search_param = {
             "query": {
-                "term": {
-                    "url.keyword": {
-                        "value": link.replace("http://", "https://")
-                    }
-                }
+                "term": {"url.keyword": {"value": link.replace("http://", "https://")}}
             }
         }
 
@@ -228,44 +240,51 @@ for link, link_count in links.items():
             found = "yes"
 
         # look for a link in all variations
-        tests = [link.replace("https://", "http://"), link.replace("http://", "https://").strip("/"), 
-            link.replace("https://", "http://").strip("/"), link.replace("www.", ""), link.replace("www.", "").strip("/"),
-            link.replace("www.", "").strip("/").replace("https://", "http://"), link.replace("www.", "").strip("/").replace("https://", "http://")]
+        tests = [
+            link.replace("https://", "http://"),
+            link.replace("http://", "https://").strip("/"),
+            link.replace("https://", "http://").strip("/"),
+            link.replace("www.", ""),
+            link.replace("www.", "").strip("/"),
+            link.replace("www.", "").strip("/").replace("https://", "http://"),
+            link.replace("www.", "").strip("/").replace("https://", "http://"),
+        ]
 
         for t in tests:
-            search_param = {
-                "query": {
-                    "term": {
-                        "url.keyword": {
-                            "value": t
-                        }
-                    }
-                }
-            }
+            search_param = {"query": {"term": {"url.keyword": {"value": t}}}}
 
             response = es.search(index="pages", body=search_param)
 
             if len(response["hits"]["hits"]) > 0:
                 found = "yes"
                 break
-        
+
         print("No results for " + link + ", skipping")
-        
+
         found = "none"
-        
+
     if found == "none":
         continue
-    
+
     try:
-        link_domain = link.split('/')[2].lower().replace("www.", "")
+        link_domain = link.split("/")[2].lower().replace("www.", "")
 
         referring_domains = domain_links.get(link_domain)
     except:
         referring_domains = 0
 
-    es.update(index="pages", id=response['hits']['hits'][0]['_id'], body={"doc": {"incoming_links": link_count, "referring_domains_to_site": referring_domains}})
+    es.update(
+        index="pages",
+        id=response["hits"]["hits"][0]["_id"],
+        body={
+            "doc": {
+                "incoming_links": link_count,
+                "referring_domains_to_site": referring_domains,
+            }
+        },
+    )
 
-    full_link = response['hits']['hits'][0]['_source']['url']
+    full_link = response["hits"]["hits"][0]["_source"]["url"]
 
     print(full_link)
 
@@ -282,11 +301,11 @@ link_value = [i for i in links.values()]
 
 top_ten = [[origin, value] for origin, value in zip(link_origin, link_value)][:10]
 
-with open('top_ten_links.csv', 'w+') as f:
+with open("top_ten_links.csv", "w+") as f:
     csv.writer(f).writerows(top_ten)
 
 print("calculated top 10 linked assets")
 print("done")
 
-with open('link_microformat_instances.json', 'w+') as f:
+with open("link_microformat_instances.json", "w+") as f:
     json.dump(link_microformat_instances, f)

@@ -1,5 +1,7 @@
 from datetime import datetime
+
 from pytz import timezone
+
 
 def get_timezone(query):
     # time, timezone 1, timezone 2
@@ -54,7 +56,7 @@ def get_timezone(query):
 
     if primary_time != None:
         primary_time = datetime.strptime(primary_time, "%H:%M")
-        
+
         visitor_timezone = visitor_timezone.localize(primary_time)
 
         visitor_timezone.replace(second=0)
@@ -74,13 +76,17 @@ def get_timezone(query):
     final_time = ":".join(final_time)
 
     if primary_time != None:
-        message = "{} ({}) in {} is {}.".format(primary_time.strftime("%H:%M"), primary_timezone, secondary_timezone, final_time)
+        message = "{} ({}) in {} is {}.".format(
+            primary_time.strftime("%H:%M"),
+            primary_timezone,
+            secondary_timezone,
+            final_time,
+        )
     else:
         message = "The time in {} is {}.".format(secondary_timezone, final_time)
 
-    return message, \
-        {
-            "type": "direct_answer",
-            "breadcrumb": "https://indieweb-search.jamesg.blog",
-            "title": "IndieWeb Search Direct Answer"
-        }
+    return message, {
+        "type": "direct_answer",
+        "breadcrumb": "https://indieweb-search.jamesg.blog",
+        "title": "IndieWeb Search Direct Answer",
+    }

@@ -4,7 +4,7 @@ def parse_review(original_cleaned_value, soup, url, post):
 
         if h_review:
             h_review = h_review[0]
-            
+
             name = h_review.select(".p-name")[0].text
 
             if not name:
@@ -26,9 +26,12 @@ def parse_review(original_cleaned_value, soup, url, post):
             else:
                 review = ""
 
-            return "<h3>Review of {}</h3><p>Rating: {}</p><p>{}</p>".format(name, rating, review), {"type": "direct_answer", "breadcrumb": url, "title": post["title"]}
+            return "<h3>Review of {}</h3><p>Rating: {}</p><p>{}</p>".format(
+                name, rating, review
+            ), {"type": "direct_answer", "breadcrumb": url, "title": post["title"]}
 
     return None, None
+
 
 def parse_aggregate_review(original_cleaned_value, soup, url, post):
     if "aggregate review" in original_cleaned_value:
@@ -44,12 +47,25 @@ def parse_aggregate_review(original_cleaned_value, soup, url, post):
 
             to_show += "<p>" + h_review.select(".p-item")[0].text + "</p>"
 
-            supported_properties = ["p-average", "p-best", "p-worst", "p-count", "p-votes"]
+            supported_properties = [
+                "p-average",
+                "p-best",
+                "p-worst",
+                "p-count",
+                "p-votes",
+            ]
 
             for property in supported_properties:
                 if h_review.select(".{}".format(property)):
-                    to_show += "<li><b>{}</b>{}</li>".format(property.replace("p-", "").title(), h_review.select(".{}".format(property))[0].text)
+                    to_show += "<li><b>{}</b>{}</li>".format(
+                        property.replace("p-", "").title(),
+                        h_review.select(".{}".format(property))[0].text,
+                    )
 
-            return "<h3>Aggregate review of {}</h3><ul>{}</ul>".format(to_show), {"type": "direct_answer", "breadcrumb": url, "title": post["title"]}
+            return "<h3>Aggregate review of {}</h3><ul>{}</ul>".format(to_show), {
+                "type": "direct_answer",
+                "breadcrumb": url,
+                "title": post["title"],
+            }
 
     return None, None

@@ -25,8 +25,8 @@ html {
 }
 
 main {
-    max-width: 100vh;
-    width: 85%;
+    max-width: 75%;
+    width: 75%;
     margin: auto;
     margin-top: 10px;
 }
@@ -280,12 +280,19 @@ li {
   border: 5px dotted royalblue;
   padding: 10px;
 }
+#query {
+  width: 100%;
+}
 @media only screen and (max-width: 900px) {
   .serp-item {
     width: 100%;
   }
   .hide-on-mobile {
     display: none;
+  }
+  main {
+    width: 100%;
+    max-width: 100%;
   }
   #query {
     margin-top: 15px;

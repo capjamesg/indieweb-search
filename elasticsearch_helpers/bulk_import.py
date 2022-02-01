@@ -1,20 +1,23 @@
-from elasticsearch import Elasticsearch, helpers
 import sqlite3
 
-es = Elasticsearch(['http://localhost:9200'])
+from elasticsearch import Elasticsearch, helpers
+
+es = Elasticsearch(["http://localhost:9200"])
 
 connection = sqlite3.connect("search.db")
 
+
 def change_to_json(database_result):
     columns = [column[0] for column in database_result.description]
-    
+
     result = [dict(zip(columns, row)) for row in database_result]
 
     return result
 
+
 # get last indexed document
 
-id = int(es.count(index='pages')['count'])
+id = int(es.count(index="pages")["count"])
 
 with connection:
     cursor = connection.cursor()
@@ -25,11 +28,7 @@ with connection:
 
     doc = change_to_json(pages)
 
-    print('processed doc')
+    print("processed doc")
 
-    resp = helpers.bulk(
-        es,
-        doc,
-        index = "pages"
-        )
+    resp = helpers.bulk(es, doc, index="pages")
     print("finished {}".format(id))

@@ -1,16 +1,17 @@
 # networkx experimentation and link graph plotting tests
 # not in active use for the search engine but left here for reference
 
+import sqlite3
+
 import matplotlib.pyplot as plt
 import networkx as nx
 import pandas as pd
-import sqlite3
-from nltk import FreqDist
-from networkx.drawing.nx_agraph import graphviz_layout
-
 import spacy
+from networkx.drawing.nx_agraph import graphviz_layout
+from nltk import FreqDist
 
 nlp = spacy.load("en_core_web_md")
+
 
 def plot_keyword_frequency():
     connection = sqlite3.connect("search.db")
@@ -30,6 +31,7 @@ def plot_keyword_frequency():
 
     distribution.plot(20)
 
+
 def plot_linkrot_by_date():
     plt.figure()
 
@@ -39,9 +41,13 @@ def plot_linkrot_by_date():
 
     plt.ylabel("Number of URLs")
 
-    pd.read_csv("data/external_link_status.csv").groupby(["status_code"]).count()["url"].plot(kind="line")
+    pd.read_csv("data/external_link_status.csv").groupby(["status_code"]).count()[
+        "url"
+    ].plot(kind="line")
 
-    pd.read_csv("data/external_link_status.csv").groupby(["status_code"]).count()["url"].plot(kind="line")
+    pd.read_csv("data/external_link_status.csv").groupby(["status_code"]).count()[
+        "url"
+    ].plot(kind="line")
 
     # df = df[df["status_code"] == 200]
 
@@ -50,6 +56,7 @@ def plot_linkrot_by_date():
     plt.show()
 
     plt.savefig("charts/linkrot_by_date.png")
+
 
 def keyword_knowledge_graph():
     keywords = []
@@ -88,7 +95,9 @@ def keyword_knowledge_graph():
 
     plt.show()
 
-    print([n for n in G.neighbors("coffee") if "coffee" in n.lower() and n.islower()][:7])
+    print(
+        [n for n in G.neighbors("coffee") if "coffee" in n.lower() and n.islower()][:7]
+    )
     # get coffee edge
     # for n in G.neighbors(to_check):
     #     print(n)
@@ -96,9 +105,10 @@ def keyword_knowledge_graph():
     #     if nlp(n).similarity(nlp(to_check)):
     #         print(nlp(n).similarity(nlp(to_check)))
 
-    #plt.show()
+    # plt.show()
 
     return G
+
 
 def show_error_codes():
     df = pd.read_csv("data/external_link_status.csv")
@@ -114,6 +124,7 @@ def show_error_codes():
     plt.show()
 
     plt.save("static/error_codes.png")
+
 
 def get_internal_link_count():
     # Read out.csv into dataframe
@@ -148,6 +159,7 @@ def get_internal_link_count():
     print(pr)
 
     # print(sorted(GA.degree, key=lambda x: x[1], reverse=True)[0:5])
+
 
 def get_link_graph(type_of_graph, url):
     # Read out.csv into dataframe
@@ -186,7 +198,11 @@ def get_link_graph(type_of_graph, url):
 
         for i in range(0, len(namespaces)):
             # Exclude last value in namespace if its parent is numeric
-            if namespaces[i-1] and namespaces[i-1].isnumeric() and i == len(namespaces) - 1:
+            if (
+                namespaces[i - 1]
+                and namespaces[i - 1].isnumeric()
+                and i == len(namespaces) - 1
+            ):
                 continue
 
             unique_namespaces.add(namespaces[i])
@@ -198,14 +214,16 @@ def get_link_graph(type_of_graph, url):
                 print(namespaces[i])
                 continue
 
-            if namespaces[i-1]:
-                GA.add_edge(namespaces[i-1], "/" + namespaces[i-1] + "/" + namespaces[i])
+            if namespaces[i - 1]:
+                GA.add_edge(
+                    namespaces[i - 1], "/" + namespaces[i - 1] + "/" + namespaces[i]
+                )
             else:
                 GA.add_edge("/", namespaces[i])
-            if in_namespace.get(namespaces[i-1]):
-                in_namespace[namespaces[i-1]] = in_namespace[namespaces[i-1]] + 1
+            if in_namespace.get(namespaces[i - 1]):
+                in_namespace[namespaces[i - 1]] = in_namespace[namespaces[i - 1]] + 1
             else:
-                in_namespace[namespaces[i-1]] = 1
+                in_namespace[namespaces[i - 1]] = 1
 
     print(in_namespace)
 
@@ -261,6 +279,7 @@ def get_link_graph(type_of_graph, url):
 
     # plt.savefig("graph.png")
 
+
 def get_external_link_graph():
     # Read out.csv into dataframe
     df = pd.read_csv("data/all_links.csv")
@@ -288,6 +307,7 @@ def get_external_link_graph():
     figure.set_size_inches(8, 6)
 
     plt.savefig("graph.png")
+
 
 # show_error_codes()
 

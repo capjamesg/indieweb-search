@@ -1,23 +1,24 @@
-import requests
-import mf2py
-import datetime
-import feedparser
-import microformats2
-from time import mktime
-from crawler.url_handling import crawl_urls
 import concurrent.futures
+import datetime
 import logging
-import config
 import os
+from time import mktime
 
+import feedparser
+import mf2py
+import microformats2
+import requests
 # ignore insecure request warning
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
+
+import config
+from crawler.url_handling import crawl_urls
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 HEADERS = {
     "Authorization": config.ELASTICSEARCH_API_TOKEN,
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
 }
 
 # move results.json to a file with a datetime stamp
@@ -25,9 +26,12 @@ if os.path.isfile("results.json"):
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     os.rename("results.json", "results-{}.json".format(now))
 
-feeds = requests.post("https://es-indieweb-search.jamesg.blog/feeds", headers=HEADERS).json()
+feeds = requests.post(
+    "https://es-indieweb-search.jamesg.blog/feeds", headers=HEADERS
+).json()
 
 feeds_parsed = {}
+
 
 def poll_feeds(f):
     url = f[1]
@@ -41,10 +45,10 @@ def poll_feeds(f):
     feeds_parsed[url.lower()] = ""
 
     # request will return 304 if feed has not changed based on provided etag
-    r = requests.get(url, headers={'If-None-Match': feed_etag.strip()})
+    r = requests.get(url, headers={"If-None-Match": feed_etag.strip()})
 
     # get etag
-    etag = r.headers.get('etag')
+    etag = r.headers.get("etag")
 
     if r.status_code == 304:
         print("Feed {} unchanged".format(url))
@@ -53,18 +57,22 @@ def poll_feeds(f):
         print("{} status code returned while retrieving {}".format(r.status_code, url))
         return url, etag, None
 
-    if r.headers.get('content-type'):
-        content_type = r.headers['content-type']
+    if r.headers.get("content-type"):
+        content_type = r.headers["content-type"]
     else:
         content_type = ""
 
     print("polling " + url)
 
-    site_url = "https://" + url.split("/")[2] 
+    site_url = "https://" + url.split("/")[2]
 
-    allowed_xml_content_types = ['application/rss+xml', 'application/atom+xml']
+    allowed_xml_content_types = ["application/rss+xml", "application/atom+xml"]
 
-    if content_type in allowed_xml_content_types or mime_type in allowed_xml_content_types or mime_type == "feed":
+    if (
+        content_type in allowed_xml_content_types
+        or mime_type in allowed_xml_content_types
+        or mime_type == "feed"
+    ):
         feed = feedparser.parse(url)
 
         etag = feed.get("etag", "")
@@ -78,7 +86,9 @@ def poll_feeds(f):
 
         last_modified = feed.get("modified_parsed", None)
 
-        if last_modified and datetime.datetime.fromtimestamp(mktime(last_modified)) < datetime.datetime.now() - datetime.timedelta(hours=12):
+        if last_modified and datetime.datetime.fromtimestamp(
+            mktime(last_modified)
+        ) < datetime.datetime.now() - datetime.timedelta(hours=12):
             print("{} has not been modified in the last 12 hours, skipping".format(url))
             return url, etag, None
 
@@ -87,17 +97,46 @@ def poll_feeds(f):
             session = requests.Session()
 
             if entry.get("link"):
-                crawl_urls({entry.link: ""}, [], 0, [], [], {}, [entry.link], site_url, 1, entry.link, [], [], entry.link.split("/")[2], session, {}, [], "", False, [], 0)
+                crawl_urls(
+                    {entry.link: ""},
+                    [],
+                    0,
+                    [],
+                    [],
+                    {},
+                    [entry.link],
+                    site_url,
+                    1,
+                    entry.link,
+                    [],
+                    [],
+                    entry.link.split("/")[2],
+                    session,
+                    {},
+                    [],
+                    "",
+                    False,
+                    [],
+                    0,
+                )
 
             print("crawled {} url".format(entry.link))
 
         # update etag
         f[2] = etag
 
-        modify_feed = requests.post("https://es-indieweb-search.jamesg.blog/update_feed", headers=HEADERS, json={"item": f})
+        modify_feed = requests.post(
+            "https://es-indieweb-search.jamesg.blog/update_feed",
+            headers=HEADERS,
+            json={"item": f},
+        )
 
         if modify_feed.status_code != 200:
-            print("{} status code returned while modifying {}".format(modify_feed.status_code, url))
+            print(
+                "{} status code returned while modifying {}".format(
+                    modify_feed.status_code, url
+                )
+            )
         else:
             print("updated etag for {}".format(url))
 
@@ -105,7 +144,11 @@ def poll_feeds(f):
         mf2_raw = mf2py.parse(r.text)
 
         for item in mf2_raw["items"]:
-            if item.get("type") and item.get("type")[0] == "h-feed" and item.get("children"):
+            if (
+                item.get("type")
+                and item.get("type")[0] == "h-feed"
+                and item.get("children")
+            ):
                 for child in item["children"]:
                     jf2 = microformats2.to_jf2(child)
                     if jf2.get("url"):
@@ -117,7 +160,28 @@ def poll_feeds(f):
 
                         session = requests.Session()
 
-                        crawl_urls({jf2["url"]: ""}, [], 0, [], [], {}, [jf2["url"]], site_url, 10, jf2["url"], feeds, feed_url_list, jf2["url"].split("/")[2], session, {}, [], "", False, [], 0)
+                        crawl_urls(
+                            {jf2["url"]: ""},
+                            [],
+                            0,
+                            [],
+                            [],
+                            {},
+                            [jf2["url"]],
+                            site_url,
+                            10,
+                            jf2["url"],
+                            feeds,
+                            feed_url_list,
+                            jf2["url"].split("/")[2],
+                            session,
+                            {},
+                            [],
+                            "",
+                            False,
+                            [],
+                            0,
+                        )
 
                         print("crawled {} url".format(jf2["url"]))
 
@@ -130,7 +194,28 @@ def poll_feeds(f):
             for item in items:
                 if item.get("url"):
                     session = requests.Session()
-                    crawl_urls({item["url"]: ""}, [], 0, [], [], {}, [item["url"]], site_url, 10, item["url"], feeds, feed_url_list, item["url"].split("/")[2], session, {}, [], "", False, [], 0)
+                    crawl_urls(
+                        {item["url"]: ""},
+                        [],
+                        0,
+                        [],
+                        [],
+                        {},
+                        [item["url"]],
+                        site_url,
+                        10,
+                        item["url"],
+                        feeds,
+                        feed_url_list,
+                        item["url"].split("/")[2],
+                        session,
+                        {},
+                        [],
+                        "",
+                        False,
+                        [],
+                        0,
+                    )
 
                     print("crawled {} url".format(item["url"]))
 
@@ -139,20 +224,26 @@ def poll_feeds(f):
 
         expire_date = f[4]
 
-        if f[5] != True or datetime.datetime.now() > datetime.datetime.strptime(expire_date, "%Y-%m-%dT%H:%M:%S.%fZ"):
+        if f[5] != True or datetime.datetime.now() > datetime.datetime.strptime(
+            expire_date, "%Y-%m-%dT%H:%M:%S.%fZ"
+        ):
             # random string of 20 letters and numbers
             # each websub endpoint needs to be different
 
-            headers = {
-                "Authorization": config.ELASTICSEARCH_API_TOKEN
-            }
+            headers = {"Authorization": config.ELASTICSEARCH_API_TOKEN}
 
-            r = requests.post("https://es-indieweb-search.jamesg.blog/create_websub", headers=headers, data={"website_url": url})
+            r = requests.post(
+                "https://es-indieweb-search.jamesg.blog/create_websub",
+                headers=headers,
+                data={"website_url": url},
+            )
 
             r = requests.post(
                 url,
-                headers={'Content-Type': 'application/x-www-form-urlencoded'},
-                data="hub.mode=subscribe&sub.topic={}&hub.callback=https://es-indieweb-search.jamesg.blog/websub/{}".format(url, r.get_json()["key"])
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                data="hub.mode=subscribe&sub.topic={}&hub.callback=https://es-indieweb-search.jamesg.blog/websub/{}".format(
+                    url, r.get_json()["key"]
+                ),
             )
 
             print("sent websub request to {}".format(url))
@@ -161,8 +252,9 @@ def poll_feeds(f):
 
     if etag == None:
         etag = ""
-        
+
     return url, etag, f
+
 
 feeds_by_page = {}
 
@@ -193,19 +285,20 @@ for key, value in feeds_by_page.items():
 
 print(len(feed_url_list))
 
+
 def process_feeds():
     feeds_indexed = 0
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
         futures = [executor.submit(poll_feeds, item) for item in feeds]
-        
+
         while len(futures) > 0:
             for future in concurrent.futures.as_completed(futures):
                 feeds_indexed += 1
 
                 print("FEEDS INDEXED: {}".format(feeds_indexed))
                 logging.info("FEEDS INDEXED: {}".format(feeds_indexed))
-                
+
                 try:
                     url, etag, full_item = future.result()
 
@@ -217,8 +310,11 @@ def process_feeds():
 
                 futures.remove(future)
 
+
 def process_crawl_queue_from_websub():
-    r = requests.get("https://es-indieweb-search.jamesg.blog/crawl_queue", headers=HEADERS)
+    r = requests.get(
+        "https://es-indieweb-search.jamesg.blog/crawl_queue", headers=HEADERS
+    )
 
     pages_indexed = 0
 
@@ -227,8 +323,26 @@ def process_crawl_queue_from_websub():
     domains_indexed = {}
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
-        futures = [executor.submit(crawl_urls, {item: ""}, [], 0, [], [], {}, [], "https://" + item, 1, item, feeds, feed_url_list, False) for item in to_crawl]
-        
+        futures = [
+            executor.submit(
+                crawl_urls,
+                {item: ""},
+                [],
+                0,
+                [],
+                [],
+                {},
+                [],
+                "https://" + item,
+                1,
+                item,
+                feeds,
+                feed_url_list,
+                False,
+            )
+            for item in to_crawl
+        ]
+
         while len(futures) > 0:
             for future in concurrent.futures.as_completed(futures):
                 pages_indexed += 1
@@ -242,7 +356,9 @@ def process_crawl_queue_from_websub():
                     domains_indexed[domain] = domains_indexed.get(domain, 0) + 1
 
                     if domains_indexed[domain] > 50:
-                        print("50 urls have been crawled on {}, skipping".format(domain))
+                        print(
+                            "50 urls have been crawled on {}, skipping".format(domain)
+                        )
                         continue
 
                     url_indexed, discovered = future.result()
@@ -250,12 +366,13 @@ def process_crawl_queue_from_websub():
                     if url_indexed == None:
                         futures = []
                         break
-                    
+
                 except Exception as e:
                     print(e)
                     pass
 
                 futures.remove(future)
+
 
 def process_sitemaps():
     r = requests.get("https://es-indieweb-search.jamesg.blog/sitemaps", headers=headers)
@@ -280,8 +397,26 @@ def process_sitemaps():
             continue
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
-        futures = [executor.submit(crawl_urls, {item: ""}, [], 0, [], [], {}, [], "https://" + item, 1, item, feeds, feed_url_list, False) for item in sitemap_urls]
-        
+        futures = [
+            executor.submit(
+                crawl_urls,
+                {item: ""},
+                [],
+                0,
+                [],
+                [],
+                {},
+                [],
+                "https://" + item,
+                1,
+                item,
+                feeds,
+                feed_url_list,
+                False,
+            )
+            for item in sitemap_urls
+        ]
+
         while len(futures) > 0:
             for future in concurrent.futures.as_completed(futures):
                 pages_indexed += 1
@@ -300,6 +435,7 @@ def process_sitemaps():
                     pass
 
                 futures.remove(future)
+
 
 process_feeds()
 # process_crawl_queue_from_websub()

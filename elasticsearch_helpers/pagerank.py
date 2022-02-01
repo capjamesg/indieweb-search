@@ -1,9 +1,11 @@
-from warcio.archiveiterator import ArchiveIterator
-from crawler import page_info, url_handling
 import sqlite3
-from bs4 import BeautifulSoup
+
 import networkx as nx
 import tldextract
+from bs4 import BeautifulSoup
+from warcio.archiveiterator import ArchiveIterator
+
+from crawler import page_info, url_handling
 
 connection = sqlite3.connect("search.db")
 
@@ -26,14 +28,16 @@ with connection:
         domains[".".join(part for part in name if part)] = ""
 
     for d in domains:
-        all_pages_in_domain = cursor.execute("SELECT url, page_content FROM posts WHERE url LIKE ?", ("%" + d + "%",)).fetchall()
+        all_pages_in_domain = cursor.execute(
+            "SELECT url, page_content FROM posts WHERE url LIKE ?", ("%" + d + "%",)
+        ).fetchall()
 
         for page in all_pages_in_domain:
-            page_desc_soup = BeautifulSoup(page[1], 'lxml')
-            
+            page_desc_soup = BeautifulSoup(page[1], "lxml")
+
             G.add_node(page[0])
 
-            all_links = page_desc_soup.find_all('a')
+            all_links = page_desc_soup.find_all("a")
 
             for link in all_links:
                 try:
@@ -54,4 +58,10 @@ with connection:
     cursor = connection.cursor()
     for url, page_rank in pr.items():
         print(url, page_rank)
-        cursor.execute("UPDATE posts SET pagerank = ? WHERE url = ?", (page_rank, url, ))
+        cursor.execute(
+            "UPDATE posts SET pagerank = ? WHERE url = ?",
+            (
+                page_rank,
+                url,
+            ),
+        )
