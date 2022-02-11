@@ -151,7 +151,7 @@ def results_page():
     if not page:
         page = 1
 
-    if not page.isdigit():
+    if not str(page).isdigit():
         return redirect("/")
 
     if int(page) > 1:
