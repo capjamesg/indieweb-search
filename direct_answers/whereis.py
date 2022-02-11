@@ -1,15 +1,15 @@
-import mf2py
-import requests
+from bs4 import BeautifulSoup
+from typing import Tuple, Dict, Any
 
 
-def parse_geo(soup):
+def parse_geo(soup: BeautifulSoup) -> Tuple[str, Dict[str, Any]]:
     h_geo = soup.select(".h-geo")
 
     if not h_geo:
         h_geo = soup.select(".p-location")
 
     if len(h_geo) == 0:
-        return None
+        return None, None
 
     h_geo = h_geo[0]
     lat = h_geo.select(".p-latitude")
@@ -21,3 +21,5 @@ def parse_geo(soup):
                 lat, long
             )
         )
+
+    return None, None

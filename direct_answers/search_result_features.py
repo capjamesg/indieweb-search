@@ -5,8 +5,10 @@ import random
 import nltk
 from bs4 import BeautifulSoup
 
-from . import entity_type_map as entity_types
 from . import events, recipes, reviews, whatis, whois
+from .entity_type_map import entity_types
+import spacy
+from typing import Tuple, Dict, Any
 
 
 @functools.lru_cache()
@@ -28,8 +30,8 @@ def search_for_strong_memo(soup, cleaned_value):
 
 
 def generate_featured_snippet(
-    cleaned_value, special_result, nlp, url=None, post=None, direct=False
-):
+    cleaned_value: str, special_result: str, nlp: spacy, url: str = None, post: dict = None, direct: bool = False
+) -> Tuple[str, Dict[str, Any]]:
     # Generate a featured snippet for the search result
     if url is None:
         return "", special_result

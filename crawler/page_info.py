@@ -1,16 +1,21 @@
 import datetime
+from typing import Tuple
 
 from bs4 import BeautifulSoup
 
 
-def get_page_info(page_text, page_desc_soup, page_url, homepage_meta_description):
+def get_page_info(
+    page_desc_soup: BeautifulSoup, page_url: str, homepage_meta_description: str
+) -> Tuple[str, str, str, bool]:
     """
     Scrapes page information for index and returns it to be added to the index later.
 
-    :param page_text: The text on a web page
     :param page_desc_soup: The BeautifulSoup object of the HTML page
+    :type page_desc_soup: BeautifulSoup
     :param page_url: The full URL of the page on which the feed was found
+    :type page_url: str
     :param homepage_meta_description: The meta description of the homepage
+    :type homepage_meta_description: str
     """
 
     contains_hfeed = page_desc_soup.find(class_="h-feed")
@@ -20,7 +25,7 @@ def get_page_info(page_text, page_desc_soup, page_url, homepage_meta_description
         h_entries = contains_hfeed.find_all(class_="h-entry")
 
         if len(h_entries) > 5 and page_url.count("/") > 4:
-            return page_text, page_desc_soup, [], "", "", True
+            return [], "", "", True
 
         # get date of first hentry
         if len(h_entries) > 0:
@@ -36,8 +41,6 @@ def get_page_info(page_text, page_desc_soup, page_url, homepage_meta_description
                     and page_url.count("/") > 3
                 ):
                     return (
-                        page_text,
-                        page_desc_soup,
                         first_hentry_date.get("datetime"),
                         "",
                         "",
@@ -181,8 +184,6 @@ def get_page_info(page_text, page_desc_soup, page_url, homepage_meta_description
         doc_title = page_url
 
     return (
-        page_text,
-        page_desc_soup,
         published_on,
         final_meta_description,
         doc_title,

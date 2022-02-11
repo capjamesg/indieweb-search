@@ -2,17 +2,23 @@ import config
 
 from . import search_result_features
 from .entity_type_map import keyword_values
+import spacy
+import requests
+from typing import Tuple, Dict, Any
 
 
 def choose_featured_snippet(
-    cleaned_value,
-    cleaned_value_for_query,
-    rows,
-    special_result,
-    full_query_with_full_stops,
-    session,
-    nlp,
-):
+    cleaned_value: str,
+    cleaned_value_for_query: str,
+    rows: list,
+    full_query_with_full_stops: list,
+    session: requests.Session,
+    nlp: spacy,
+) -> Tuple[str, Dict[str, Any]]:
+    """
+    Choose the snippet that is most relevant to the search term.
+    """
+
     search_for_snippet = False
 
     featured_serp_contents = ""

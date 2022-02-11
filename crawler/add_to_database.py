@@ -1,15 +1,20 @@
 import datetime
 import json
 import logging
+from typing import List
 
 import indieweb_utils
 import mf2py
-from bs4 import Comment
+import requests
+from bs4 import BeautifulSoup, Comment
 
 import crawler.identify_special_snippet as identify_special_snippet
 
 
-def get_featured_image(page_content: BeautifulSoup):
+def get_featured_image(page_content: BeautifulSoup) -> str:
+    """
+    Retrieve the featured image for a page (if one is available).
+    """
     # get featured image if one is available
     # may be presented in featured snippets
     featured_image = None
@@ -32,7 +37,10 @@ def get_featured_image(page_content: BeautifulSoup):
     return featured_image
 
 
-def remove_scripts_and_comments(page_content):
+def remove_scripts_and_comments(page_content: BeautifulSoup) -> BeautifulSoup:
+    """
+    Remove script and comment tags from the page content.
+    """
     # remove script and style tags from page_content
 
     for script in page_content(["script", "style"]):
@@ -47,7 +55,10 @@ def remove_scripts_and_comments(page_content):
     return page_content
 
 
-def identify_page_type(h_entry_object):
+def identify_page_type(h_entry_object: dict) -> List[dict, str, str]:
+    """
+    Retrieve the name of an mf2 property on a page and the main post type for the page.
+    """
     page_as_h_entry = ""
     mf2_property_type = None
     post_type = ""
@@ -75,7 +86,10 @@ def identify_page_type(h_entry_object):
     return mf2_property_type, post_type, category
 
 
-def get_favicon(page_content):
+def get_favicon(page_content: BeautifulSoup) -> str:
+    """
+    Get the favicon for a page.
+    """
     # get site favicon
     favicon = page_content.find("link", rel="shortcut icon")
 
@@ -92,22 +106,25 @@ def get_favicon(page_content):
 
 
 def add_to_database(
-    full_url,
-    published_on,
-    doc_title,
-    meta_description,
-    heading_info,
-    page,
-    pages_indexed,
-    page_content,
-    outgoing_links,
-    crawl_budget,
-    nofollow_all,
-    main_page_content,
-    original_h_card,
-    hash,
-    thin_content=False,
-):
+    full_url: str,
+    published_on: str,
+    doc_title: str,
+    meta_description: str,
+    heading_info: dict,
+    page: requests.Response,
+    pages_indexed: int,
+    page_content: str,
+    outgoing_links: int,
+    crawl_budget: int,
+    nofollow_all: bool,
+    main_page_content: BeautifulSoup,
+    original_h_card: dict,
+    hash: str,
+    thin_content: bool = False,
+) -> int:
+    """
+    Finish processing a page and save it to a results.json file.
+    """
 
     # the program will try to populate all of these values before indexing a document
     category = None

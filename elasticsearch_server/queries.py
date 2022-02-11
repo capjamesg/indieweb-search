@@ -1,4 +1,4 @@
-def get_default_search_param(query, fields):
+def get_default_search_param(query: str, fields: str) -> dict:
     search_param = {
         # use script to calculate score
         "query": {
@@ -22,7 +22,7 @@ def get_default_search_param(query, fields):
     return search_param
 
 
-def get_date_ordered_query(query, order):
+def get_date_ordered_query(query: str, order: str) -> dict:
     search_param = {
         "query": {
             "query_string": {
@@ -52,7 +52,7 @@ def get_date_ordered_query(query, order):
     return search_param
 
 
-def get_auto_suggest_query(query):
+def get_auto_suggest_query(query: str) -> dict:
     search_param = {
         "suggest": {
             "text": query,

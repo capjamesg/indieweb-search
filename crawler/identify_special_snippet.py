@@ -1,7 +1,9 @@
+from typing import Tuple
+
 import mf2py
 
 
-def find_snippet(page_content, h_card):
+def find_snippet(page_content: str, h_card: dict) -> Tuple[dict, dict]:
     """
     Take h-entry object and see if it is eligible for a special h- snippet.
 

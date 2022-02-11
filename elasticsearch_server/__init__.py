@@ -14,8 +14,7 @@ def create_app():
 
     app.register_blueprint(main_blueprint)
 
-    from .database_methods import \
-        database_methods as database_methods_blueprint
+    from .database_methods import database_methods as database_methods_blueprint
 
     app.register_blueprint(database_methods_blueprint)
 

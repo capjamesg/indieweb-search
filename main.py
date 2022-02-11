@@ -5,8 +5,14 @@ import indieweb_utils
 import mf2py
 import requests
 import spacy
-from flask import (Blueprint, jsonify, redirect, render_template, request,
-                   send_from_directory)
+from flask import (
+    Blueprint,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    send_from_directory,
+)
 
 import config
 import search.search_helpers as search_helpers

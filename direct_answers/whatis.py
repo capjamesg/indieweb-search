@@ -1,4 +1,7 @@
-def parse_what_is(original_cleaned_value, soup, url, direct):
+from typing import Tuple, Dict, Any
+from bs4 import BeautifulSoup
+
+def parse_what_is(original_cleaned_value: str, soup: BeautifulSoup, url: str, direct: bool) -> Tuple[str, Dict[str, Any]]:
     # if "what is" in original_cleaned_value
     if not (
         "what is" in original_cleaned_value

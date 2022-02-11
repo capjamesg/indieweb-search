@@ -1,9 +1,10 @@
 from datetime import datetime
 
 from pytz import timezone
+from typing import Tuple, Dict, Any
 
 
-def get_timezone(query):
+def get_timezone(query: str) -> Tuple[str, Dict[str, Any]]:
     # time, timezone 1, timezone 2
 
     primary_time = [item for item in query.split() if ":" in item]

@@ -3,10 +3,13 @@ import datetime
 import logging
 
 import indieweb_utils
+
 # import cProfile
 import mf2py
 import requests
 from bs4 import BeautifulSoup
+from typing import List
+
 # ignore warning about http:// connections
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
@@ -44,7 +47,7 @@ discovered_urls = {}
 headers = {"Authorization": config.ELASTICSEARCH_API_TOKEN}
 
 
-def process_domain(site, reindex):
+def process_domain(site: str, reindex: str) -> List[int, dict, list, str]:
     """
     Processes a domain and executes a function that crawls all pages on the domain.
     This function keeps track of URLs that have been crawled, the hashes of pages that have been crawled
@@ -126,14 +129,11 @@ def process_domain(site, reindex):
             else:
                 final_urls[canonicalized_url] = ""
 
-    if reindex:
-        return 100, final_urls, namespaces_to_ignore, protocol
-    else:
-        # crawl budget is now 15,000
-        return 15000, final_urls, namespaces_to_ignore, protocol
+    # crawl budget is 15,000 URLs
+    return 15000, final_urls, namespaces_to_ignore, protocol
 
 
-def get_feeds(site):
+def get_feeds(site: str) -> list:
     """
     Returns a list of feed URLs for a given site.
     """
@@ -168,7 +168,7 @@ def get_feeds(site):
     return feeds
 
 
-def build_index(site, reindex=False):
+def build_index(site: str, reindex: bool = False) -> List[int, list]:
     # do not index IPs
     # sites must have a domain name to qualify for inclusion in the index
     if site.replace(".", "").isdigit():
@@ -184,7 +184,7 @@ def build_index(site, reindex=False):
     if len(final_urls) == 0:
         final_urls[f"{protocol}{site}"] = ""
 
-    iterate_list_of_urls = list(final_urls.keys())
+    crawl_queue = list(final_urls.keys())
 
     print(f"processing {site}. crawl budget: {crawl_budget}")
 
@@ -212,7 +212,7 @@ def build_index(site, reindex=False):
 
     homepage_meta_description = ""
 
-    for url in iterate_list_of_urls:
+    for url in crawl_queue:
         crawl_depth = 0
 
         if crawl_depths.get("url"):
@@ -239,7 +239,7 @@ def build_index(site, reindex=False):
             links,
             external_links,
             discovered_urls,
-            iterate_list_of_urls,
+            crawl_queue,
             site,
             crawl_budget,
             url,
@@ -279,7 +279,7 @@ def build_index(site, reindex=False):
                     f"{site} average crawl speed is {len(average_crawl_speed) / len(average_crawl_speed)}, stopping crawl \n"
                 )
 
-            iterate_list_of_urls = []
+            crawl_queue = []
 
         indexed += 1
 
@@ -301,7 +301,7 @@ def build_index(site, reindex=False):
         for key, value in discovered.items():
             if not indexed_list.get(key):
                 print(f"{key} not indexed, added")
-                iterate_list_of_urls.append(key)
+                crawl_queue.append(key)
 
             crawl_depths[key] = value
 

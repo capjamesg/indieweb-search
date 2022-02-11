@@ -3,8 +3,10 @@ import os
 import indieweb_utils
 import mf2py
 
+from bs4 import BeautifulSoup
+from typing import Tuple, Dict, Any
 
-def parse_whois(original_cleaned_value, soup, url, original_url):
+def parse_whois(original_cleaned_value: str, soup: BeautifulSoup, url: str, original_url: str) -> Tuple[str, Dict[str, Any]]:
     if "who is" in original_cleaned_value or (
         (
             "." in original_cleaned_value
@@ -117,7 +119,7 @@ def parse_whois(original_cleaned_value, soup, url, original_url):
     return None, None
 
 
-def parse_social(original_cleaned_value, soup, url, original_url):
+def parse_social(original_cleaned_value: str, soup: BeautifulSoup, url: str, original_url: str) -> Tuple[str, Dict[str, Any]]:
     if original_cleaned_value.endswith("social"):
         # get all rel=me links
         rel_me_links = soup.find_all("a", {"rel": "me"})
@@ -180,7 +182,7 @@ def parse_social(original_cleaned_value, soup, url, original_url):
     return None, None
 
 
-def parse_get_rel(original_cleaned_value, soup, original_url):
+def parse_get_rel(original_cleaned_value: str, soup: BeautifulSoup, original_url: str) -> Tuple[str, Dict[str, Any]]:
     # get all feeds on a page
     if not original_cleaned_value.endswith("get rel"):
         return None, None
@@ -208,7 +210,7 @@ def parse_get_rel(original_cleaned_value, soup, original_url):
     }
 
 
-def parse_feed(original_cleaned_value, soup, url, original_url):
+def parse_feed(original_cleaned_value: str, soup: BeautifulSoup, url: str, original_url: str) -> Tuple[str, Dict[str, Any]]:
     # get all feeds on a page
     if not original_cleaned_value.endswith("inspect feed"):
         return None, None
@@ -264,7 +266,7 @@ def parse_feed(original_cleaned_value, soup, url, original_url):
     }
 
 
-def parse_address(original_cleaned_value, soup, url, original_url):
+def parse_address(original_cleaned_value: str, soup: BeautifulSoup, url: str, original_url: str) -> Tuple[str, Dict[str, Any]]:
     # get all addresses on a page
     if not original_cleaned_value.endswith("address"):
         return None, None

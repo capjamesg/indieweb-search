@@ -1,4 +1,7 @@
-def parse_review(original_cleaned_value, soup, url, post):
+from bs4 import BeautifulSoup
+from typing import Tuple, Dict, Any
+
+def parse_review(original_cleaned_value: str, soup: BeautifulSoup, url: str, post: dict) -> Tuple[str, Dict[str, Any]]:
     if not "review" in original_cleaned_value:
         return None, None
 
@@ -35,7 +38,7 @@ def parse_review(original_cleaned_value, soup, url, post):
     ), {"type": "direct_answer", "breadcrumb": url, "title": post["title"]}
 
 
-def parse_aggregate_review(original_cleaned_value, soup, url, post):
+def parse_aggregate_review(original_cleaned_value: str, soup: BeautifulSoup, url: str, post: dict) -> Tuple[str, Dict[str, Any]]:
     if not "aggregate review" in original_cleaned_value:
         return None, None
 

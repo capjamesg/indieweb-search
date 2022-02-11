@@ -1,20 +1,21 @@
 import datetime
 import logging
+from typing import List
 
 
 def page_link_discovery(
-    links,
-    final_urls,
-    iterate_list_of_urls,
-    page_being_processed,
-    all_links,
-    external_links,
-    discovered_urls,
-    site_url,
-    crawl_depth,
-):
+    links: list,
+    final_urls: list,
+    crawl_queue: list,
+    page_being_processed: str,
+    all_links: list,
+    external_links: list,
+    discovered_urls: list,
+    site_url: str,
+    crawl_depth: int,
+) -> List[list, list, list, list, list]:
     """
-    Finds all the links on the page and adds them to the list of links to crawl.
+    Find all the links on the page and adds them to the list of links to crawl.
     """
 
     discovered_urls = {}
@@ -138,9 +139,9 @@ def page_link_discovery(
             print("indexing queue now contains " + full_link)
             final_urls[full_link] = ""
 
-            iterate_list_of_urls.append(full_link)
+            crawl_queue.append(full_link)
 
             # add 1 to crawl depth
             discovered_urls[full_link] = crawl_depth + 1
 
-    return final_urls, iterate_list_of_urls, all_links, external_links, discovered_urls
+    return final_urls, crawl_queue, all_links, external_links, discovered_urls

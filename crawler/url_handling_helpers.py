@@ -1,21 +1,25 @@
 import datetime
 import logging
+from typing import List
 from urllib.parse import urlparse as parse_url
 
 import indieweb_utils
 import requests
+from bs4 import BeautifulSoup
 
 import config
 
 
-def parse_canonical(canonical, full_url, url, iterate_list_of_urls, discovered_urls):
+def parse_canonical(
+    canonical: str, full_url: str, url: str, crawl_queue: list, discovered_urls: list
+) -> bool:
     """
     Check if a URL is canonical.
 
     :param canonical: The canonical URL
     :param full_url: The full URL of a resource
     :param url: The URL
-    :param iterate_list_of_urls: The list of URLs to iterate through
+    :param crawl_queue: The list of URLs to iterate through
     :param discovered_urls: The list of URLs discovered
 
     :return: The canonical URL
@@ -54,7 +58,7 @@ def parse_canonical(canonical, full_url, url, iterate_list_of_urls, discovered_u
         else:
             canonical_url = url
 
-            iterate_list_of_urls.append(canonical_url)
+            crawl_queue.append(canonical_url)
 
             discovered_urls[canonical_url] = f"CANONICAL {full_url}"
 
@@ -69,11 +73,13 @@ def parse_canonical(canonical, full_url, url, iterate_list_of_urls, discovered_u
     return False
 
 
-def check_remove_url(full_url):
+def check_remove_url(full_url: str) -> None:
     """
     Check if a URL should be removed.
 
     :param full_url: The full URL of a resource to check
+    :type full_url: str
+    :return: None
     """
     check_if_indexed = requests.post(
         f"https://es-indieweb-search.jamesg.blog/check?url={full_url}",
@@ -93,7 +99,14 @@ def check_remove_url(full_url):
         logging.info(f"removed {full_url} from index as it is no longer valid")
 
 
-def save_feed(site, full_url, feed_url, feed_type, feeds, feed_urls):
+def save_feed(
+    site: str,
+    full_url: str,
+    feed_url: str,
+    feed_type: str,
+    feeds: list,
+    feed_urls: list,
+) -> List[list, list]:
     """
     Add a feed to the list of feeds found on a website.
 
@@ -104,7 +117,8 @@ def save_feed(site, full_url, feed_url, feed_type, feeds, feed_urls):
     :param feeds: The list of feeds found on the site
     :param feed_urls: The list of feed URLs found on the site
 
-    :return: The list of feeds found on the site
+    :return: The list of feeds found on the site and the list of feed URLs found on the site
+    :rtype: list, list
     """
     supported_protocols = ["http", "https"]
 
@@ -147,13 +161,20 @@ def save_feed(site, full_url, feed_url, feed_type, feeds, feed_urls):
     return feeds, feed_urls
 
 
-def find_feeds(page_desc_soup, full_url, site):
+def find_feeds(
+    page_desc_soup: BeautifulSoup, full_url: str, site: str
+) -> List[list, list]:
     """
     Find the feeds provided in HTTP headers and on a HTML web page.
 
     :param page_desc_soup: The BeautifulSoup object of the HTML page
+    :type page_desc_soup: BeautifulSoup
     :param full_url: The full URL of the page on which the feed was found
+    :type full_url: str
     :param site: The site being crawled
+    :type site: str
+    :return: The list of feeds found on the site and the list of feed URLs found on the site
+    :rtype: list, list
     """
     if not page_desc_soup.find_all("link", {"rel": "alternate"}):
         return

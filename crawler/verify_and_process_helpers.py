@@ -1,13 +1,35 @@
 import datetime
+from typing import List, Tuple
 
 import requests
+from bs4 import BeautifulSoup
 
 import config
 import crawler.find_base_url_path as find_base_url_path
 import crawler.url_handling_helpers as url_handling_helpers
 
 
-def parse_link_headers(page_test, full_url, iterate_list_of_urls, discovered_urls):
+def parse_link_headers(
+    page_test: requests.Response,
+    full_url: str,
+    crawl_queue: list,
+    discovered_urls: dict,
+) -> bool:
+    """
+    Check if page is canonical according to its link headers.
+
+    :param page_test: the response object from the request
+    :type page_test: requests.Response
+    :param full_url: the full url of the page
+    :type full_url: str
+    :param crawl_queue: the crawl queue
+    :type crawl_queue: list
+    :param discovered_urls: the discovered urls
+    :type discovered_urls: dict
+
+    :return: True if the page is canonical, False if not
+    :rtype: bool
+    """
     if not page_test.headers.get("link"):
         return False
 
@@ -32,7 +54,7 @@ def parse_link_headers(page_test, full_url, iterate_list_of_urls, discovered_url
             canonical,
             full_url,
             link["url"],
-            iterate_list_of_urls,
+            crawl_queue,
             discovered_urls,
         )
 
@@ -42,7 +64,20 @@ def parse_link_headers(page_test, full_url, iterate_list_of_urls, discovered_url
     return False
 
 
-def check_for_redirect_url(page_test, full_url, site_url):
+def check_for_redirect_url(page_test: requests.Response, full_url: str, site_url: str) -> str:
+    """
+    Check if the page is a redirect.
+
+    :param page_test: the response object from the request
+    :type page_test: requests.Response
+    :param full_url: the full url of the page
+    :type full_url: str
+    :param site_url: the site url
+    :type site_url: str
+
+    :return: the redirect url if the page is a redirect, the full url if not
+    :rtype: str
+    """
     if (
         page_test.history
         and page_test.history[-1].url
@@ -71,33 +106,41 @@ def check_for_redirect_url(page_test, full_url, site_url):
     return full_url
 
 
-def initial_url_checks(full_url, feeds, crawl_depth, average_crawl_speed, url):
+def initial_url_checks(full_url: str) -> None:
+    """
+    Check if a URL is eligible to be crawled.
+
+    :param full_url: the full url of the page
+    :type full_url: str
+
+    :return: None
+    :rtype: None
+    """
     if len(full_url) > 125:
         print(f"{full_url} url too long, skipping")
-        return url, {}, False, feeds, None, crawl_depth, average_crawl_speed
+        raise Exception
 
     if "javascript:" in full_url:
         print(f"{full_url} marked as noindex because it is a javascript resource")
-        return url, {}, False, feeds, None, crawl_depth, average_crawl_speed
+        raise Exception
 
     if "/wp-json/" in full_url:
         print(f"{full_url} marked as noindex because it is a wordpress api resource")
-        return url, {}, False, feeds, None, crawl_depth, average_crawl_speed
+        raise Exception
 
     if "?s=" in full_url:
-        # print("{} marked as noindex because it is a search result".format(full_url))
         print(f"{full_url} marked as noindex because it is a search result")
-        return url, {}, False, feeds, None, crawl_depth, average_crawl_speed
+        raise Exception
 
     # there are a few wikis in the crawl and special pages provide very little value to the search index
     if "/Special:" in full_url:
         print(f"{full_url} is a MediaWiki special page, will not crawl")
-        return url, {}, False, feeds, hash, crawl_depth, average_crawl_speed
+        raise Exception
 
     if "/page/" in full_url and full_url.split("/")[-1].isdigit():
         print(f"{full_url} marked as follow, noindex because it is a page archive")
         url_handling_helpers.check_remove_url(full_url)
-        return url, {}, False, feeds, hash, crawl_depth, average_crawl_speed
+        raise Exception
 
     if (
         "/tags/" in full_url
@@ -112,11 +155,23 @@ def initial_url_checks(full_url, feeds, crawl_depth, average_crawl_speed, url):
                 full_url
             )
         )
-        url_handling_helpers.check_remove_url(full_url)
-        return url, {}, False, feeds, hash, crawl_depth, average_crawl_speed
+        raise Exception
 
 
-def check_if_url_is_noindexed(page_desc_soup, full_url):
+def check_if_url_is_noindexed(
+    page_desc_soup: BeautifulSoup, full_url: str
+) -> List[bool, bool]:
+    """
+    Check if a URL has been marked as noindex.
+
+    :param page_desc_soup: the page contents
+    :type page_desc_soup: BeautifulSoup
+    :param full_url: the full url of the page
+    :type full_url: str
+
+    :return: a list of booleans, the first is if the page is noindexed, the second is if the page is nofollow
+    :rtype: List[bool, bool]
+    """
     check_if_no_index = page_desc_soup.find("meta", {"name": "robots"})
 
     if (
@@ -146,26 +201,21 @@ def check_if_url_is_noindexed(page_desc_soup, full_url):
     return check_if_no_index, nofollow_all
 
 
-def get_main_page_text(page_desc_soup):
-    thin_content = False
+def get_main_page_text(page_desc_soup: str) -> BeautifulSoup:
+    """
+    Get the main body of a page from its BeautifulSoup object.
 
-    # 20 word minimum will prevent against short notes
+    :param page_desc_soup: the page contents
+    :type page_desc_soup: BeautifulSoup
+
+    :return: the main body of the page
+    :rtype: BeautifulSoup
+    """
+
     if page_desc_soup.select(".e-content"):
         page_text = page_desc_soup.select(".e-content")[0]
-        # print(page_text)
-        # if len(page_text.get_text().split(" ")) < 75:
-        #     print("content on {} is thin (under 75 words in e-content), marking as thin_content".format(full_url))
-        #     print("content on {} is thin (under 75 words in e-content), marking as thin_content".format(full_url))
-        #     thin_content = True
-
     elif page_desc_soup.select(".h-entry"):
         page_text = page_desc_soup.select(".h-entry")[0]
-        # print(page_text)
-        # if len(page_text.get_text().split(" ")) < 75:
-        #     print("content on {} is thin (under 75 words in h-entry), marking as thin_content".format(full_url))
-        #     print("content on {} is thin (under 75 words in h-entry), marking as thin_content".format(full_url))
-        #     thin_content = True
-
     elif page_desc_soup.find("main"):
         page_text = page_desc_soup.find("main")
     elif page_desc_soup.find("div", {"id": "main"}):
@@ -183,12 +233,21 @@ def get_main_page_text(page_desc_soup):
     else:
         page_text = page_desc_soup.find("body")
 
-    return page_text, thin_content
+    return page_text
 
 
 def initial_head_request(
-    full_url, feeds, crawl_depth, average_crawl_speed, url, session, site_url
+    full_url: str,
+    feeds: list,
+    crawl_depth: int,
+    average_crawl_speed: list,
+    url: str,
+    session: requests.Session,
+    site_url: str,
 ):
+    """
+    Make initial head request to a url.
+    """
     nofollow_all = False
 
     try:
@@ -257,7 +316,10 @@ def initial_head_request(
         return url, {}, False, feeds, None, crawl_depth, average_crawl_speed
 
 
-def filter_adult_content(page_desc_soup, full_url):
+def filter_adult_content(page_desc_soup: BeautifulSoup, full_url: str) -> bool:
+    """
+    Check if a page is marked as adult content per the rating meta tag.
+    """
     if page_desc_soup.find("meta", {"name": "rating"}):
         if (
             page_desc_soup.find("meta", {"name": "rating"}).get("content") == "adult"
@@ -268,9 +330,10 @@ def filter_adult_content(page_desc_soup, full_url):
             raise Exception
 
 
-def verify_content_type_is_valid(page_test, full_url):
-    # only index html documents
-
+def verify_content_type_is_valid(page_test: requests.Response, full_url: str) -> bool:
+    """
+    Verify the content on a page is HTML.
+    """
     if (
         page_test.headers
         and page_test.headers.get("content-type")
@@ -283,15 +346,18 @@ def verify_content_type_is_valid(page_test, full_url):
 
 
 def check_meta_equiv_refresh(
-    url,
-    feeds,
-    hash,
-    crawl_depth,
-    average_crawl_speed,
-    page_desc_soup,
-    discovered_urls,
-    full_url,
-):
+    url: str,
+    feeds: list,
+    hash: str,
+    crawl_depth: int,
+    average_crawl_speed: list,
+    page_desc_soup: BeautifulSoup,
+    discovered_urls: dict,
+    full_url: str,
+) -> Tuple[str, list, bool, list, str, int, list]:
+    """
+    Check if a page has a meta equiv refresh tag.
+    """
     if page_desc_soup.find("meta", attrs={"http-equiv": "refresh"}):
         refresh_url = (
             page_desc_soup.find("meta", attrs={"http-equiv": "refresh"})["content"]
@@ -328,22 +394,25 @@ def check_meta_equiv_refresh(
 
 
 def handle_redirect(
-    page,
-    final_urls,
-    iterate_list_of_urls,
-    url,
-    feeds,
-    crawl_depth,
-    average_crawl_speed,
-    discovered_urls,
-    full_url,
-):
+    page: requests.Session,
+    final_urls: list,
+    crawl_queue: list,
+    url: str,
+    feeds: list,
+    crawl_depth: int,
+    average_crawl_speed: list,
+    discovered_urls: dict,
+    full_url: list,
+) -> Tuple[str, list, bool, list, str, int, list]:
+    """
+    Handle a redirect response from a page.
+    """
     redirected_to = page.headers["Location"]
 
-    if redirected_to:
+    if not redirected_to:
         final_urls[redirected_to] = ""
 
-        iterate_list_of_urls.append(redirected_to)
+        crawl_queue.append(redirected_to)
 
         # don't index a url if it was redirected from a canonical and wants to redirect again
         if discovered_urls.get(full_url) and discovered_urls.get(full_url).startswith(
@@ -369,10 +438,29 @@ def handle_redirect(
 
         discovered_urls[redirected_to] = redirected_to
 
-    return url, {}, False, feeds
+    return (
+        url,
+        discovered_urls,
+        False,
+        feeds,
+        None,
+        crawl_depth,
+        average_crawl_speed,
+    )
 
 
-def get_web_page(session, full_url):
+def get_web_page(session: requests.Session, full_url: str) -> requests.Response:
+    """
+    Retrieve a web page using a HTTP GET request.
+
+    :param session: A requests session object.
+    :type session: requests.Session
+    :param full_url: The full url of the page to retrieve.
+    :type full_url: str
+
+    :return: A requests response object.
+    :rtype: requests.Response
+    """
     try:
         page = session.get(
             full_url,
@@ -409,7 +497,26 @@ def get_web_page(session, full_url):
     return page
 
 
-def link_discovery_processing(page, site, full_url, feeds, feed_urls):
+def link_discovery_processing(
+    page: requests.Response, site: str, full_url: str, feeds: list, feed_urls: list
+) -> Tuple[list, list]:
+    """
+    Process the headers in a link and look for websub hubs and feeds.
+
+    :param page: A requests response object.
+    :type page: requests.Response
+    :param site: The site URL.
+    :type site: str
+    :param full_url: The full url of the page being processed.
+    :type full_url: str
+    :param feeds: A list of feeds found on the page.
+    :type feeds: list
+    :param feed_urls: A list of feed urls found on the page.
+    :type feed_urls: list
+
+    :return: A list of feeds found on the page and a list of feed urls found on the page.
+    :rtype: Tuple[list, list]
+    """
     # check for feed with rel alternate
     # only support rss and atom right now
 
@@ -418,78 +525,79 @@ def link_discovery_processing(page, site, full_url, feeds, feed_urls):
     # parse link headers
     link_headers = page.headers.get("Link")
 
-    if link_headers:
-        link_headers = link_headers.split(",")
+    if not link_headers:
+        return feeds, feed_urls
 
-        for link_header in link_headers:
-            if 'rel="hub"' in link_header and len(feeds) < 25:
-                websub_hub = link_header.split(";")[0].strip().strip("<").strip(">")
+    link_headers = link_headers.split(",")
 
-                feeds.append(
-                    {
-                        "website_url": site,
-                        "page_url": full_url,
-                        "feed_url": websub_hub,
-                        "mime_type": "websub",
-                        "etag": "NOETAG",
-                        "discovered": datetime.datetime.now().strftime("%Y-%m-%d"),
-                    }
+    for link_header in link_headers:
+        if 'rel="hub"' in link_header and len(feeds) < 25:
+            websub_hub = link_header.split(";")[0].strip().strip("<").strip(">")
+
+            feeds.append(
+                {
+                    "website_url": site,
+                    "page_url": full_url,
+                    "feed_url": websub_hub,
+                    "mime_type": "websub",
+                    "etag": "NOETAG",
+                    "discovered": datetime.datetime.now().strftime("%Y-%m-%d"),
+                }
+            )
+
+            feed_urls.append(full_url.strip("/"))
+
+            print(f"{websub_hub} is a websub hub, will save to feeds.json")
+
+        if 'rel="alternate"' in link_header and len(feeds) < 25:
+            original_feed_url = (
+                link_header.split(";")[0].strip().strip("<").strip(">").lower()
+            )
+
+            if original_feed_url in feed_urls:
+                continue
+
+            # get feed type
+            if 'type="' in link_header:
+                feed_type = link_header.split('type="')[1].split('"')[0]
+            else:
+                feed_type = "feed"
+
+            if original_feed_url.startswith("/"):
+                # get site domain
+                domain = full_url.split("/")[2]
+                feed_url = full_url.split("/")[0] + "//" + domain + original_feed_url
+
+                if feed_url and feed_url not in feed_urls:
+                    feeds, feed_urls = url_handling_helpers.save_feed(
+                        site,
+                        full_url,
+                        original_feed_url,
+                        feed_type,
+                        feeds,
+                        feed_urls,
+                    )
+            elif original_feed_url.startswith("http"):
+                if (
+                    original_feed_url not in feed_urls
+                    and original_feed_url.split("/")[2] == full_url.split("/")[2]
+                ):
+                    feeds, feed_urls = url_handling_helpers.save_feed(
+                        site,
+                        full_url,
+                        original_feed_url,
+                        feed_type,
+                        feeds,
+                        feed_urls,
+                    )
+            else:
+                feeds, feed_urls = url_handling_helpers.save_feed(
+                    site,
+                    full_url,
+                    original_feed_url,
+                    feed_type,
+                    feeds,
+                    feed_urls,
                 )
-
-                feed_urls.append(full_url.strip("/"))
-
-                print(f"{websub_hub} is a websub hub, will save to feeds.json")
-
-            if 'rel="alternate"' in link_header and len(feeds) < 25:
-                original_feed_url = (
-                    link_header.split(";")[0].strip().strip("<").strip(">").lower()
-                )
-
-                if original_feed_url and original_feed_url not in feed_urls:
-                    # get feed type
-                    if 'type="' in link_header:
-                        feed_type = link_header.split('type="')[1].split('"')[0]
-                    else:
-                        feed_type = "feed"
-
-                    if original_feed_url.startswith("/"):
-                        # get site domain
-                        domain = full_url.split("/")[2]
-                        feed_url = (
-                            full_url.split("/")[0] + "//" + domain + original_feed_url
-                        )
-
-                        if feed_url and feed_url not in feed_urls:
-                            feeds, feed_urls = url_handling_helpers.save_feed(
-                                site,
-                                full_url,
-                                original_feed_url,
-                                feed_type,
-                                feeds,
-                                feed_urls,
-                            )
-                    elif original_feed_url.startswith("http"):
-                        if (
-                            original_feed_url not in feed_urls
-                            and original_feed_url.split("/")[2]
-                            == full_url.split("/")[2]
-                        ):
-                            feeds, feed_urls = url_handling_helpers.save_feed(
-                                site,
-                                full_url,
-                                original_feed_url,
-                                feed_type,
-                                feeds,
-                                feed_urls,
-                            )
-                    else:
-                        feeds, feed_urls = url_handling_helpers.save_feed(
-                            site,
-                            full_url,
-                            original_feed_url,
-                            feed_type,
-                            feeds,
-                            feed_urls,
-                        )
 
     return feeds, feed_urls

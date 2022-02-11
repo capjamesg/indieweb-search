@@ -1,13 +1,19 @@
 import logging
+from typing import List
 
 import requests
 
 import config
 
 
-def find_robots_directives(site_url):
+def find_robots_directives(site_url: str) -> List[list, list, str]:
     """
     Finds the robots.txt file on a website, reads the contents, then follows directives.
+
+    :param site_url: The url of the site to find the robots.txt file on.
+    :type site_url: str
+    :return: A list of the allowed and disallowed paths, all URLs in the sitemap, and the protocol used by the site.
+    :rtype: List[List[str], List[str], str]
     """
 
     protocol = "https://"

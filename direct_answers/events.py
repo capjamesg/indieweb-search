@@ -2,8 +2,10 @@ import datetime
 
 from .whereis import parse_geo
 
+from bs4 import BeautifulSoup
+from typing import Tuple, Dict, Any
 
-def parse_event(original_cleaned_value, soup, url, post):
+def parse_event(original_cleaned_value: str, soup: BeautifulSoup, url: str, post: dict) -> Tuple[str, Dict[str, Any]]:
     if not "event" in original_cleaned_value and not soup.select(".h-event"):
         return None, None
 

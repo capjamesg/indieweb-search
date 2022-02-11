@@ -17,3 +17,20 @@ to_delete = [
     "md5_hash",
     "important_phrases",
 ]
+
+default_fields = [
+    "title^1.7",
+    "description^1.5",
+    "url^1.3",
+    "category^0",
+    "published^0",
+    "keywords^0",
+    "text^1.8",
+    "h1^1.7",
+    "h2^0.5",
+    "h3^0.5",
+    "h4^0.5",
+    "h5^0.75",
+    "h6^0.25",
+    "domain^2",
+]

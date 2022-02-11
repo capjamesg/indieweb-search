@@ -4,7 +4,9 @@ import logging
 from urllib.parse import urlparse as parse_url
 
 import indieweb_utils
+import requests
 from bs4 import BeautifulSoup
+from typing import Tuple
 
 import crawler.add_to_database as add_to_database
 import crawler.discovery as page_link_discovery
@@ -15,16 +17,33 @@ import crawler.verify_and_process_helpers as verify_and_process_helpers
 yesterday = datetime.datetime.today() - datetime.timedelta(days=1)
 
 
-def find_base_url_path(url):
+def find_base_url_path(url: str) -> str:
     """
     Finds the base path of a URL.
+
+    :param url: The URL whose base path is to be found
+    :type url: str
+
+    :return: The base path of the URL
+    :rtype: str
     """
     url = url.strip("/").replace("http://", "https://").split("?")[0].lower()
 
     return url
 
 
-def filter_nofollow_links(page_desc_soup, nofollow_all):
+def filter_nofollow_links(page_desc_soup: BeautifulSoup, nofollow_all: bool) -> list:
+    """
+    Filter out nofollow links on a page.
+
+    :param page_desc_soup: The BeautifulSoup object of the page description
+    :type page_desc_soup: BeautifulSoup
+    :param nofollow_all: Whether the page has been classified as "nofollow all links"
+    :type nofollow_all: bool
+
+    :return: The list of links on the page
+    :rtype: list
+    """
     if nofollow_all is False:
         links = [
             l
@@ -38,7 +57,18 @@ def filter_nofollow_links(page_desc_soup, nofollow_all):
     return links
 
 
-def check_if_content_is_thin(word_count, number_of_links):
+def check_if_content_is_thin(word_count: int, number_of_links: int) -> bool:
+    """
+    Determine whether the content on a page should be classified as "thin".
+
+    :param word_count: The number of words in the page
+    :type word_count: int
+    :param number_of_links: The number of links on the page
+    :type number_of_links: int
+
+    :return: Whether the content on the page should be classified as "thin"
+    :rtype: bool
+    """
     thin_content = False
 
     # if the ratio of words to links < 3:1, do not index
@@ -56,27 +86,27 @@ def check_if_content_is_thin(word_count, number_of_links):
 
 
 def crawl_urls(
-    final_urls,
-    namespaces_to_ignore,
-    pages_indexed,
-    all_links,
-    external_links,
-    discovered_urls,
-    iterate_list_of_urls,
-    site_url,
-    crawl_budget,
-    url,
-    feeds,
-    feed_urls,
-    site,
-    session,
-    web_page_hashes,
-    average_crawl_speed,
-    homepage_meta_description,
-    link_discovery=True,
-    h_card=[],
-    crawl_depth=0,
-):
+    final_urls: list,
+    namespaces_to_ignore: list,
+    pages_indexed: int,
+    all_links: list,
+    external_links: list,
+    discovered_urls: dict,
+    crawl_queue: list,
+    site_url: str,
+    crawl_budget: int,
+    url: str,
+    feeds: list,
+    feed_urls: list,
+    site: str,
+    session: requests.Session,
+    web_page_hashes: list,
+    average_crawl_speed: list,
+    homepage_meta_description: str,
+    link_discovery: bool = True,
+    h_card: list = [],
+    crawl_depth: int = 0,
+) -> Tuple[str, dict, bool, list, str, int, list]:
     """
     Crawls URLs in list, adds URLs to index, and returns updated list.
     """
@@ -91,9 +121,11 @@ def crawl_urls(
 
     full_url = indieweb_utils.canonicalize_url(url, url_domain).lower()
 
-    verify_and_process_helpers.initial_url_checks(
-        full_url, feeds, crawl_depth, average_crawl_speed, url
-    )
+    try:
+        verify_and_process_helpers.initial_url_checks(full_url)
+    except:
+        url_handling_helpers.check_remove_url(full_url)
+        return url, {}, False, feeds, hash, crawl_depth, average_crawl_speed
 
     # Only get URLs that match namespace exactly
     in_matching_namespace = [
@@ -111,7 +143,7 @@ def crawl_urls(
     )
 
     has_canonical = verify_and_process_helpers.parse_link_headers(
-        page_test, full_url, iterate_list_of_urls, discovered_urls
+        page_test, full_url, crawl_queue, discovered_urls
     )
 
     if has_canonical == True:
@@ -133,7 +165,7 @@ def crawl_urls(
         return verify_and_process_helpers.handle_redirect(
             page,
             final_urls,
-            iterate_list_of_urls,
+            crawl_queue,
             url,
             feeds,
             crawl_depth,
@@ -196,7 +228,7 @@ def crawl_urls(
         canonical = find_base_url_path(canonical_url)
 
         is_canonical = url_handling_helpers.parse_canonical(
-            canonical, full_url, canonical_url, iterate_list_of_urls, discovered_urls
+            canonical, full_url, canonical_url, crawl_queue, discovered_urls
         )
 
         if is_canonical:
@@ -242,14 +274,14 @@ def crawl_urls(
 
         (
             final_urls,
-            iterate_list_of_urls,
+            crawl_queue,
             all_links,
             external_links,
             discovered_urls,
         ) = page_link_discovery.page_link_discovery(
             links,
             final_urls,
-            iterate_list_of_urls,
+            crawl_queue,
             full_url,
             all_links,
             external_links,
@@ -258,9 +290,7 @@ def crawl_urls(
             crawl_depth,
         )
 
-    page_text, thin_content = verify_and_process_helpers.get_main_page_text(
-        page_desc_soup
-    )
+    page_text = verify_and_process_helpers.get_main_page_text(page_desc_soup)
 
     if page_text is None:
         return (
@@ -283,14 +313,12 @@ def crawl_urls(
     # Only index if noindex attribute is not present
 
     (
-        page_text,
-        page_desc_soup,
         published_on,
         meta_description,
         doc_title,
         noindex,
     ) = crawler.page_info.get_page_info(
-        page_text, page_desc_soup, full_url, homepage_meta_description
+        page_desc_soup, full_url, homepage_meta_description
     )
 
     if noindex:

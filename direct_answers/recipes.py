@@ -1,4 +1,7 @@
-def parse_recipe(original_cleaned_value, soup, url, post):
+from bs4 import BeautifulSoup
+from typing import Tuple, Dict, Any
+
+def parse_recipe(original_cleaned_value: str, soup: BeautifulSoup, url: str, post: dict) -> Tuple[str, Dict[str, Any]]:
     if not "recipe" in original_cleaned_value:
         return None, None
 
