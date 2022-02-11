@@ -8,22 +8,16 @@ def parse_geo(soup):
     if not h_geo:
         h_geo = soup.select(".p-location")
 
-    if len(h_geo) > 0:
-        h_geo = h_geo[0]
-        lat = h_geo.select(".p-latitude")
-        long = h_geo.select(".p-longitude")
+    if len(h_geo) == 0:
+        return None
 
-        if lat and long:
-            r = requests.get(
-                "https://atlas.p3k.io/map/img?marker[]=lat:{};lng:{};icon:small-blue-cutout&basemap=gray&width=600&height=240&zoom=14".format(
-                    lat[0]["value"], long[0]["value"]
-                )
+    h_geo = h_geo[0]
+    lat = h_geo.select(".p-latitude")
+    long = h_geo.select(".p-longitude")
+
+    if lat and long:
+        return "<img src='{}' style='float: right;' />".format(
+            "https://atlas.p3k.io/map/img?marker[]=lat:{};lng:{};icon:small-blue-cutout&basemap=gray&width=600&height=240&zoom=14".format(
+                lat, long
             )
-
-            return "<img src='{}' style='float: right;' />".format(
-                "https://atlas.p3k.io/map/img?marker[]=lat:{};lng:{};icon:small-blue-cutout&basemap=gray&width=600&height=240&zoom=14".format(
-                    lat, long
-                )
-            )
-
-    return None
+        )

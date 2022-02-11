@@ -67,12 +67,12 @@ def verify(url):
     except:
         es.delete(index="pages", id=h["_id"])
 
-        print("deleted {}".format(url))
+        print(f"deleted {url}")
 
     if r.status_code == 404 or r.status_code == 410 or r.status_code == 500:
         es.delete(index="pages", id=h["_id"])
 
-        print("deleted {}".format(url))
+        print(f"deleted {url}")
 
 
 with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:

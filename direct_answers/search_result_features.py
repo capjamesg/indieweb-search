@@ -5,6 +5,7 @@ import random
 import nltk
 from bs4 import BeautifulSoup
 
+from . import entity_type_map as entity_types
 from . import events, recipes, reviews, whatis, whois
 
 
@@ -30,7 +31,7 @@ def generate_featured_snippet(
     cleaned_value, special_result, nlp, url=None, post=None, direct=False
 ):
     # Generate a featured snippet for the search result
-    if url == None:
+    if url is None:
         return "", special_result
 
     original_url = url
@@ -111,94 +112,75 @@ def generate_featured_snippet(
 
     all_locations = []
 
-    do_i_use, response = recipes.parse_recipe(original_cleaned_value, soup, url, post)
+    featured_serp_contents, response = recipes.parse_recipe(
+        original_cleaned_value, soup, url, post
+    )
 
-    if do_i_use != None and response != None:
-        return do_i_use, response
+    if featured_serp_contents is not None and response is not None:
+        return featured_serp_contents, response
 
-    do_i_use, response = reviews.parse_review(original_cleaned_value, soup, url, post)
+    featured_serp_contents, response = reviews.parse_review(
+        original_cleaned_value, soup, url, post
+    )
 
-    if do_i_use != None and response != None:
-        return do_i_use, response
+    if featured_serp_contents is not None and response is not None:
+        return featured_serp_contents, response
 
-    do_i_use, response = events.parse_event(original_cleaned_value, soup, url, post)
+    featured_serp_contents, response = events.parse_event(
+        original_cleaned_value, soup, url, post
+    )
 
-    if do_i_use != None and response != None:
-        return do_i_use, response
+    if featured_serp_contents is not None and response is not None:
+        return featured_serp_contents, response
 
-    do_i_use, response = whatis.parse_what_is(original_cleaned_value, soup, url, direct)
+    featured_serp_contents, response = whatis.parse_what_is(
+        original_cleaned_value, soup, url, direct
+    )
 
-    if do_i_use != None and response != None:
-        return do_i_use, response
+    if featured_serp_contents is not None and response is not None:
+        return featured_serp_contents, response
 
-    do_i_use, response = whois.parse_whois(
+    featured_serp_contents, response = whois.parse_whois(
         original_cleaned_value, soup, url, original_url
     )
 
-    if do_i_use != None and response != None:
-        return do_i_use, response
+    if featured_serp_contents is not None and response is not None:
+        return featured_serp_contents, response
 
-    do_i_use, response = whois.parse_social(
+    featured_serp_contents, response = whois.parse_social(
         original_cleaned_value, soup, url, original_url
     )
 
-    if do_i_use != None and response != None:
-        return do_i_use, response
+    if featured_serp_contents is not None and response is not None:
+        return featured_serp_contents, response
 
-    do_i_use, response = whois.parse_get_rel(original_cleaned_value, soup, original_url)
+    featured_serp_contents, response = whois.parse_get_rel(
+        original_cleaned_value, soup, original_url
+    )
 
-    if do_i_use != None and response != None:
-        return do_i_use, response
+    if featured_serp_contents is not None and response is not None:
+        return featured_serp_contents, response
 
-    do_i_use, response = whois.parse_feed(
+    featured_serp_contents, response = whois.parse_feed(
         original_cleaned_value, soup, url, original_url
     )
 
-    if do_i_use != None and response != None:
-        return do_i_use, response
+    if featured_serp_contents is not None and response is not None:
+        return featured_serp_contents, response
 
-    do_i_use, response = whois.parse_address(
+    featured_serp_contents, response = whois.parse_address(
         original_cleaned_value, soup, url, original_url
     )
 
-    if do_i_use != None and response != None:
-        return do_i_use, response
+    if featured_serp_contents is not None and response is not None:
+        return featured_serp_contents, response
 
     # check if cleaned value refers to an ent type
-    ent_types = {
-        "founder": "PERSON",
-        "owner": "PERSON",
-        "editor": "PERSON",
-        "author": "PERSON",
-        "producer": "PERSON",
-        "writer": "PERSON",
-        "cafes": "GPE",
-        "location": "GPE",
-        "city": "GPE",
-        "country": "GPE",
-        "state": "GPE",
-        "county": "GPE",
-        "opened": "DATE",
-        "established": "DATE",
-        "founded": "DATE",
-        "started": "DATE",
-        "closed": "DATE",
-        "when": "DATE",
-        "where": "GPE",
-        "cost": "MONEY",
-        "price": "MONEY",
-        "money": "MONEY",
-        "price range": "MONEY",
-        "area": "GPE",
-        "time": "TIME",
-        "starting": "TIME",
-    }
-
     ent_type = "NONE"
 
     for word in cleaned_value.split(" "):
-        if ent_types.get(word.lower()):
-            ent_type = ent_types.get(word.lower())
+        if entity_types.get(word.lower()):
+            ent_type = entity_types.get(word.lower())
             if ent_type == "GPE":
                 all_locations = [
                     w
@@ -272,7 +254,7 @@ def generate_featured_snippet(
         and "what is" in original_cleaned_value.lower()
     ):
         try:
-            do_i_use = c.concordance_list(cleaned_value, width=50)
+            featured_serp_contents = c.concordance_list(cleaned_value, width=50)
 
             # check if in h2
 
@@ -297,7 +279,7 @@ def generate_featured_snippet(
                     else:
                         break
 
-                return "<b>{}</b><br>{}".format(in_h2[0].text, location_of_tag_final), {
+                return f"<b>{in_h2[0].text}</b><br>{location_of_tag_final}", {
                     "type": "direct_answer",
                     "breadcrumb": url,
                     "title": soup.find("h1").text,
@@ -314,8 +296,8 @@ def generate_featured_snippet(
             location_of_tag = all_locs[0]
 
             if len(all_locs) > 0:
-                do_i_use = "<b>" + str(all_locs[0].text) + "</b>"
-                return do_i_use, {
+                featured_serp_contents = "<b>" + str(all_locs[0].text) + "</b>"
+                return featured_serp_contents, {
                     "type": "direct_answer",
                     "breadcrumb": url,
                     "title": soup.find("h1").text,
@@ -366,39 +348,39 @@ def generate_featured_snippet(
                 first_five_children = all_lis[start : position_in__parent_list + 3]
 
                 if len(all_lis) == 4:
-                    do_i_use = (
+                    featured_serp_contents = (
                         str(location_of_tag.find_parent().find_previous())
-                        + "<{}>".format(str(location_of_tag.find_parent().name))
+                        + f"<{str(location_of_tag.find_parent().name)}>"
                         + "".join(all_lis)
-                        + "</{}>".format(location_of_tag.find_parent().name)
+                        + f"</{location_of_tag.find_parent().name}>"
                         + "<p>...</p>"
                     )
                 elif len(list(location_of_tag.find_parent().children)) > 5:
-                    do_i_use = (
+                    featured_serp_contents = (
                         str(location_of_tag.find_parent().find_previous())
-                        + "<{}>".format(str(location_of_tag.find_parent().name))
+                        + f"<{str(location_of_tag.find_parent().name)}>"
                         + add_ellipses
                         + "".join(first_five_children)
                         + "<li>...</li>"
-                        + "</{}>".format(location_of_tag.find_parent().name)
+                        + f"</{location_of_tag.find_parent().name}>"
                     )
                 else:
-                    do_i_use = (
+                    featured_serp_contents = (
                         str(location_of_tag.find_parent().find_previous())
-                        + "<{}>".format(str(location_of_tag.find_parent().name))
+                        + f"<{str(location_of_tag.find_parent().name)}>"
                         + "".join(first_five_children)
-                        + "</{}>".format(location_of_tag.find_parent().name)
+                        + f"</{location_of_tag.find_parent().name}>"
                     )
             elif location_of_tag and (
                 location_of_tag.name == "h2" or location_of_tag.name == "h3"
             ):
-                do_i_use = (
+                featured_serp_contents = (
                     "<ul>"
-                    + "".join(["<li>{}</li>".format(h2.text) for h2 in list(all_locs)])
+                    + "".join([f"<li>{h2.text}</li>" for h2 in list(all_locs)])
                     + "</ul>"
                 )
             elif location_of_tag.name == "strong":
-                do_i_use = (
+                featured_serp_contents = (
                     "<b>"
                     + str(location_of_tag.text)
                     + "</b>"
@@ -410,15 +392,15 @@ def generate_featured_snippet(
                     for w in location_of_tag.split(". ")
                     if cleaned_value in w.text
                 ][0]
-                do_i_use = "<b>" + str(sentence) + "</b>"
+                featured_serp_contents = "<b>" + str(sentence) + "</b>"
             elif location_of_tag.find_parent().name != "article":
-                do_i_use = str(location_of_tag.find_parent().find_previous()) + str(
-                    location_of_tag.find_parent()
-                )
+                featured_serp_contents = str(
+                    location_of_tag.find_parent().find_previous()
+                ) + str(location_of_tag.find_parent())
             else:
-                do_i_use = ""
+                featured_serp_contents = ""
 
-            if len(BeautifulSoup(do_i_use, "lxml").get_text()) < 60:
+            if len(BeautifulSoup(featured_serp_contents, "lxml").get_text()) < 60:
                 return "", special_result
 
             special_result = {
@@ -428,16 +410,16 @@ def generate_featured_snippet(
                 "featured_image": post.get("featured_image"),
             }
         except:
-            do_i_use = ""
+            featured_serp_contents = ""
     else:
-        do_i_use = ""
+        featured_serp_contents = ""
 
     # Protect against direct answers that are too long
-    if len(do_i_use) > 400:
-        do_i_use = ""
+    if len(featured_serp_contents) > 400:
+        featured_serp_contents = ""
         special_result = {}
 
-    return do_i_use, special_result
+    return featured_serp_contents, special_result
 
 
 def aeropress_recipe():

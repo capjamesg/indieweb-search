@@ -24,7 +24,7 @@ HEADERS = {
 # move results.json to a file with a datetime stamp
 if os.path.isfile("results.json"):
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    os.rename("results.json", "results-{}.json".format(now))
+    os.rename("results.json", f"results-{now}.json")
 
 feeds = requests.post(
     "https://es-indieweb-search.jamesg.blog/feeds", headers=HEADERS
@@ -51,10 +51,10 @@ def poll_feeds(f):
     etag = r.headers.get("etag")
 
     if r.status_code == 304:
-        print("Feed {} unchanged".format(url))
+        print(f"Feed {url} unchanged")
         return url, etag, None
     elif r.status_code != 200:
-        print("{} status code returned while retrieving {}".format(r.status_code, url))
+        print(f"{r.status_code} status code returned while retrieving {url}")
         return url, etag, None
 
     if r.headers.get("content-type"):
@@ -81,7 +81,7 @@ def poll_feeds(f):
             return url, etag, None
 
         if etag == feed_etag:
-            print("{} has not changed since last poll, skipping".format(url))
+            print(f"{url} has not changed since last poll, skipping")
             return url, etag, None
 
         last_modified = feed.get("modified_parsed", None)
@@ -89,7 +89,7 @@ def poll_feeds(f):
         if last_modified and datetime.datetime.fromtimestamp(
             mktime(last_modified)
         ) < datetime.datetime.now() - datetime.timedelta(hours=12):
-            print("{} has not been modified in the last 12 hours, skipping".format(url))
+            print(f"{url} has not been modified in the last 12 hours, skipping")
             return url, etag, None
 
         for entry in feed.entries:
@@ -120,7 +120,7 @@ def poll_feeds(f):
                     0,
                 )
 
-            print("crawled {} url".format(entry.link))
+            print(f"crawled {entry.link} url")
 
         # update etag
         f[2] = etag
@@ -133,12 +133,10 @@ def poll_feeds(f):
 
         if modify_feed.status_code != 200:
             print(
-                "{} status code returned while modifying {}".format(
-                    modify_feed.status_code, url
-                )
+                f"{modify_feed.status_code} status code returned while modifying {url}"
             )
         else:
-            print("updated etag for {}".format(url))
+            print(f"updated etag for {url}")
 
     if mime_type == "h-feed":
         mf2_raw = mf2py.parse(r.text)
@@ -183,7 +181,7 @@ def poll_feeds(f):
                             0,
                         )
 
-                        print("crawled {} url".format(jf2["url"]))
+                        print(f"crawled {jf2['url']} url")
 
     elif mime_type == "application/json":
         # parse as JSON Feed per jsonfeed.org spec
@@ -217,14 +215,14 @@ def poll_feeds(f):
                         0,
                     )
 
-                    print("crawled {} url".format(item["url"]))
+                    print(f"crawled {item['url']} url")
 
     elif mime_type == "websub":
         # send request to renew websub if the websub subscription has expired
 
         expire_date = f[4]
 
-        if f[5] != True or datetime.datetime.now() > datetime.datetime.strptime(
+        if f[5] is False or datetime.datetime.now() > datetime.datetime.strptime(
             expire_date, "%Y-%m-%dT%H:%M:%S.%fZ"
         ):
             # random string of 20 letters and numbers
@@ -246,11 +244,11 @@ def poll_feeds(f):
                 ),
             )
 
-            print("sent websub request to {}".format(url))
+            print(f"sent websub request to {url}")
 
         pass
 
-    if etag == None:
+    if etag is None:
         etag = ""
 
     return url, etag, f
@@ -296,8 +294,8 @@ def process_feeds():
             for future in concurrent.futures.as_completed(futures):
                 feeds_indexed += 1
 
-                print("FEEDS INDEXED: {}".format(feeds_indexed))
-                logging.info("FEEDS INDEXED: {}".format(feeds_indexed))
+                print(f"FEEDS INDEXED: {feeds_indexed}")
+                logging.info(f"FEEDS INDEXED: {feeds_indexed}")
 
                 try:
                     url, etag, full_item = future.result()
@@ -347,8 +345,8 @@ def process_crawl_queue_from_websub():
             for future in concurrent.futures.as_completed(futures):
                 pages_indexed += 1
 
-                print("PAGES INDEXED: {}".format(pages_indexed))
-                logging.info("PAGES INDEXED: {}".format(pages_indexed))
+                print(f"PAGES INDEXED: {pages_indexed}")
+                logging.info(f"PAGES INDEXED: {pages_indexed}")
 
                 try:
                     domain = url_indexed.split("/")[2]
@@ -356,14 +354,12 @@ def process_crawl_queue_from_websub():
                     domains_indexed[domain] = domains_indexed.get(domain, 0) + 1
 
                     if domains_indexed[domain] > 50:
-                        print(
-                            "50 urls have been crawled on {}, skipping".format(domain)
-                        )
+                        print(f"50 urls have been crawled on {domain}, skipping")
                         continue
 
                     url_indexed, discovered = future.result()
 
-                    if url_indexed == None:
+                    if url_indexed is None:
                         futures = []
                         break
 
@@ -393,7 +389,7 @@ def process_sitemaps():
         domains_indexed[domain] = domains_indexed.get(domain, 0) + 1
 
         if domains_indexed[domain] > 50:
-            print("50 urls have been crawled on {}, skipping".format(domain))
+            print(f"50 urls have been crawled on {domain}, skipping")
             continue
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
@@ -421,13 +417,13 @@ def process_sitemaps():
             for future in concurrent.futures.as_completed(futures):
                 pages_indexed += 1
 
-                print("PAGES INDEXED: {}".format(pages_indexed))
-                logging.info("PAGES INDEXED: {}".format(pages_indexed))
+                print(f"PAGES INDEXED: {pages_indexed}")
+                logging.info(f"PAGES INDEXED: {pages_indexed}")
 
                 try:
                     url_indexed, _ = future.result()
 
-                    if url_indexed == None:
+                    if url_indexed is None:
                         futures = []
                         break
                 except Exception as e:

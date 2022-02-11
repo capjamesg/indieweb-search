@@ -23,11 +23,11 @@ def run_test_queries():
     with open(ROOT_DIRECTORY + "/data/test_queries.md", "w+") as f:
         for q in queries:
             r = requests.get(
-                'https://search.jamesg.blog/results?query="{}"&json=true'.format(q)
+                f'https://search.jamesg.blog/results?query="{q}"&json=true'
             )
 
-            to_show = ["{} - {}".format(item[0], item[2]) for item in r.json()]
+            to_show = [f"{item[0]} - {item[2]}" for item in r.json()]
 
-            f.write("**First results page for '{}' query**\n\n".format(q))
+            f.write(f"**First results page for '{q}' query**\n\n")
             for item in to_show:
-                f.write("- {}\n".format(item))
+                f.write(f"- {item}\n")

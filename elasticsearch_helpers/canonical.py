@@ -34,7 +34,7 @@ for hits in scroll(es, "pages", body, "2m", 20):
             ):
                 is_canonical = True
 
-        if is_canonical == False:
+        if is_canonical is False:
             # es.delete(index='pages', id=hit['_id'])
             print(count)
             print(hit["_source"]["url"])

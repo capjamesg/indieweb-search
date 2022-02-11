@@ -1,5 +1,6 @@
 import datetime
 import logging
+from urllib.parse import urlparse as parse_url
 
 import indieweb_utils
 import requests
@@ -19,7 +20,12 @@ def parse_canonical(canonical, full_url, url, iterate_list_of_urls, discovered_u
 
     :return: The canonical URL
     """
-    canonical_domain = canonical.split("/")[2]
+    if url == None:
+        return False
+
+    parsed_url = parse_url(url)
+
+    canonical_domain = parsed_url.netloc
 
     if canonical_domain.lower().replace("www.", "") != full_url.split("/")[
         2
@@ -50,7 +56,7 @@ def parse_canonical(canonical, full_url, url, iterate_list_of_urls, discovered_u
 
             iterate_list_of_urls.append(canonical_url)
 
-            discovered_urls[canonical_url] = "CANONICAL {}".format(full_url)
+            discovered_urls[canonical_url] = f"CANONICAL {full_url}"
 
             logging.info(
                 "{} has a canonical url of {}, skipping and added canonical URL to queue".format(
@@ -70,8 +76,8 @@ def check_remove_url(full_url):
     :param full_url: The full URL of a resource to check
     """
     check_if_indexed = requests.post(
-        "https://es-indieweb-search.jamesg.blog/check?url={}".format(full_url),
-        headers={"Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)},
+        f"https://es-indieweb-search.jamesg.blog/check?url={full_url}",
+        headers={"Authorization": f"Bearer {config.ELASTICSEARCH_API_TOKEN}"},
     ).json()
 
     if len(check_if_indexed) > 0:
@@ -81,12 +87,10 @@ def check_remove_url(full_url):
         }
         requests.post(
             "https://es-indieweb-search.jamesg.blog/remove-from-index",
-            headers={
-                "Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)
-            },
+            headers={"Authorization": f"Bearer {config.ELASTICSEARCH_API_TOKEN}"},
             json=data,
         )
-        logging.info("removed {} from index as it is no longer valid".format(full_url))
+        logging.info(f"removed {full_url} from index as it is no longer valid")
 
 
 def save_feed(site, full_url, feed_url, feed_type, feeds, feed_urls):
@@ -105,7 +109,7 @@ def save_feed(site, full_url, feed_url, feed_type, feeds, feed_urls):
     supported_protocols = ["http", "https"]
 
     if (
-        feed_url != None
+        feed_url is not None
         and ("://" in feed_url and feed_url.split("://")[0] not in supported_protocols)
         or (
             ":" in feed_url
@@ -138,7 +142,7 @@ def save_feed(site, full_url, feed_url, feed_type, feeds, feed_urls):
     )
     feed_urls.append(feed_url.strip("/"))
 
-    logging.info("found feed {}, will save".format(feed_url))
+    logging.info(f"found feed {feed_url}, will save")
 
     return feeds, feed_urls
 
@@ -151,62 +155,67 @@ def find_feeds(page_desc_soup, full_url, site):
     :param full_url: The full URL of the page on which the feed was found
     :param site: The site being crawled
     """
-    if page_desc_soup.find_all("link", {"rel": "alternate"}):
-        for feed_item in page_desc_soup.find_all("link", {"rel": "alternate"}):
-            if feed_item and feed_item["href"].startswith("/"):
-                # get site domain
-                domain = full_url.split("/")[2]
-                feed_url = indieweb_utils.canonicalize_url(
-                    full_url.split("/")[0] + "//" + domain + feed_item["href"]
-                )
+    if not page_desc_soup.find_all("link", {"rel": "alternate"}):
+        return
 
-                if feed_url and feed_url not in feed_urls:
-                    feeds, feed_urls = save_feed(
-                        site,
-                        full_url,
-                        feed_url,
-                        feed_item.get("type"),
-                        feeds,
-                        feed_urls,
-                    )
+    for feed_item in page_desc_soup.find_all("link", {"rel": "alternate"}):
+        if not feed_item:
+            continue
 
-            elif feed_item and feed_item["href"].startswith("http"):
-                if (
-                    feed_item["href"] not in feed_urls
-                    and feed_item["href"].split("/")[2] == full_url.split("/")[2]
-                ):
-                    feeds, feed_urls = save_feed(
-                        site,
-                        full_url,
-                        feed_url,
-                        feed_item.get("type"),
-                        feeds,
-                        feed_urls,
-                    )
+        if not feed_item["href"].startswith("/"):
+            # get site domain
+            domain = full_url.split("/")[2]
+            feed_url = indieweb_utils.canonicalize_url(
+                full_url.split("/")[0] + "//" + domain + feed_item["href"]
+            )
 
-                elif (
-                    feed_item["href"] not in feed_urls
-                    and feed_item["href"].split("/")[2] != full_url.split("/")[2]
-                ):
-                    print(
-                        "found feed {}, but it points to a different domain, not saving".format(
-                            feed_item["href"]
-                        )
-                    )
-                    logging.info(
-                        "found feed {}, but it points to a different domain, not saving".format(
-                            feed_item["href"]
-                        )
-                    )
-            else:
+            if feed_url and feed_url not in feed_urls:
                 feeds, feed_urls = save_feed(
                     site,
                     full_url,
-                    full_url.strip("/") + "/" + feed_url,
+                    feed_url,
                     feed_item.get("type"),
                     feeds,
                     feed_urls,
                 )
+
+        elif feed_item and feed_item["href"].startswith("http"):
+            if (
+                feed_item["href"] not in feed_urls
+                and feed_item["href"].split("/")[2] == full_url.split("/")[2]
+            ):
+                feeds, feed_urls = save_feed(
+                    site,
+                    full_url,
+                    feed_url,
+                    feed_item.get("type"),
+                    feeds,
+                    feed_urls,
+                )
+
+            elif (
+                feed_item["href"] not in feed_urls
+                and feed_item["href"].split("/")[2] != full_url.split("/")[2]
+            ):
+                print(
+                    "found feed {}, but it points to a different domain, not saving".format(
+                        feed_item["href"]
+                    )
+                )
+                logging.info(
+                    "found feed {}, but it points to a different domain, not saving".format(
+                        feed_item["href"]
+                    )
+                )
+        else:
+            feeds, feed_urls = save_feed(
+                site,
+                full_url,
+                full_url.strip("/") + "/" + feed_url,
+                feed_item.get("type"),
+                feeds,
+                feed_urls,
+            )
 
     # check if page has h-feed class on it
     # if a h-feed class is present, mark page as feed
@@ -224,7 +233,7 @@ def find_feeds(page_desc_soup, full_url, site):
         )
         feed_urls.append(full_url.strip("/"))
 
-        logging.info("{} is a h-feed, will save to feeds.json".format(full_url))
+        logging.info(f"{full_url} is a h-feed, will save to feeds.json")
 
     # check for websub hub
 
@@ -246,6 +255,6 @@ def find_feeds(page_desc_soup, full_url, site):
 
         feed_urls.append(full_url.strip("/"))
 
-        logging.info("{} is a websub hub, will save to feeds.json".format(full_url))
+        logging.info(f"{full_url} is a websub hub, will save to feeds.json")
 
     return feeds, feed_urls

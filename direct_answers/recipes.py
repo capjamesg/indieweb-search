@@ -1,30 +1,30 @@
 def parse_recipe(original_cleaned_value, soup, url, post):
-    if "recipe" in original_cleaned_value:
-        h_recipe = soup.select(".h-recipe")
+    if not "recipe" in original_cleaned_value:
+        return None, None
 
-        if h_recipe:
-            h_recipe = h_recipe[0]
+    h_recipe = soup.select(".h-recipe")
 
-            name = h_recipe.select(".p-name")
+    if not h_recipe:
+        return None, None
 
-            if not name:
-                name = soup.find("title")
+    h_recipe = h_recipe[0]
 
-            ingredients = [
-                "<li>" + x.text + "</li>" for x in h_recipe.select(".p-ingredient")
-            ]
+    name = h_recipe.select(".p-name")
 
-            instructions = h_recipe.select(".e-instructions")[0].find_all("li")
+    if not name:
+        name = soup.find("title")
 
-            instructions = ["<li>" + x.text + "</li>" for x in instructions]
+    ingredients = ["<li>" + x.text + "</li>" for x in h_recipe.select(".p-ingredient")]
 
-            if len(ingredients) > 0 and len(instructions) > 0:
-                return "<h3>Ingredients</h3><p>{}</p><h3>Instructions</h3><p>{}</p>".format(
-                    "".join(i for i in ingredients), "".join(i for i in instructions)
-                ), {
-                    "type": "direct_answer",
-                    "breadcrumb": url,
-                    "title": post["title"],
-                }
+    instructions = h_recipe.select(".e-instructions")[0].find_all("li")
 
-    return None, None
+    instructions = ["<li>" + x.text + "</li>" for x in instructions]
+
+    if len(ingredients) > 0 and len(instructions) > 0:
+        return "<h3>Ingredients</h3><p>{}</p><h3>Instructions</h3><p>{}</p>".format(
+            "".join(i for i in ingredients), "".join(i for i in instructions)
+        ), {
+            "type": "direct_answer",
+            "breadcrumb": url,
+            "title": post["title"],
+        }

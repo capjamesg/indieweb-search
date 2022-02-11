@@ -76,9 +76,7 @@ with open("links.csv", "w+") as f:
                 )
             ):
                 print(
-                    "all links on {} marked as nofollow, skipping".format(
-                        h["_source"]["url"]
-                    )
+                    f"all links on {h['_source']['url']} marked as nofollow, skipping"
                 )
                 continue
 
@@ -224,7 +222,7 @@ for link, link_count in links.items():
 
     # do not search elasticsearch if a domain is not in the index
     # checking if each link in the "links.csv" file is in the index is inefficient and slow
-    if domains.get(link_domain) == None:
+    if domains.get(link_domain) is None:
         continue
 
     while found == "no":

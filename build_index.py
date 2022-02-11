@@ -11,7 +11,8 @@ from bs4 import BeautifulSoup
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 import config
-import crawler.url_handling as url_handling
+import crawler.robots_handling as robots_handling
+import crawler.verify_and_process as verify_and_process
 from config import ROOT_DIRECTORY
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -19,9 +20,7 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 start_time = datetime.datetime.now()
 
 logging.basicConfig(
-    filename="logs/{}.log".format(
-        datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    ),
+    filename=f"logs/{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.log",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 
@@ -40,109 +39,9 @@ links = []
 # Dict to track newly discovered urls
 # Key = URL discovered
 # Value = Page to process
-
 discovered_urls = {}
 
-
-def find_robots_directives(site_url):
-    """
-    Finds the robots.txt file on a website, reads the contents, then follows directives.
-    """
-
-    protocol = "https://"
-
-    try:
-        r = requests.get(
-            "https://" + site_url,
-            headers=config.HEADERS,
-            timeout=5,
-            allow_redirects=True,
-            verify=False,
-        )
-    except Exception as e:
-        print(e)
-        pass
-
-    try:
-        r = requests.get(
-            "http://" + site_url,
-            headers=config.HEADERS,
-            timeout=5,
-            allow_redirects=True,
-            verify=False,
-        )
-        protocol = "http://"
-    except:
-        print(e)
-        print("error with {} url and site, skipping".format(site_url))
-        return
-
-    # get accept header
-    accept = r.headers.get("accept")
-
-    if accept:
-        headers = config.HEADERS
-        headers["accept"] = accept.split(",")[0]
-
-    # allow five redirects before raising an exception
-    session = requests.Session()
-    session.max_redirects = 5
-
-    try:
-        read_robots = session.get(
-            "{}{}/robots.txt".format(protocol, site_url),
-            headers=config.HEADERS,
-            timeout=5,
-            allow_redirects=True,
-            verify=False,
-        )
-    except requests.exceptions.RequestException as e:
-        logging.error("Error with site: {}".format(e))
-        return [], [], protocol
-    except requests.exceptions.ConnectionError:
-        logging.error("Connection error with site: {}".format(site_url))
-        return [], [], protocol
-    except:
-        # "Error: Could not find robots.txt file on {}".format(site_url))
-        logging.error("Error: Could not find robots.txt file on {}".format(site_url))
-        return [], [], protocol
-
-    if read_robots.status_code == 404:
-        logging.warning("Robots.txt not found on {}".format(site_url))
-        return [], ["{}{}/sitemap.xml".format(protocol, site_url)], protocol
-
-    namespaces_to_ignore = []
-
-    next_line_is_to_be_read = False
-
-    sitemap_urls = []
-
-    for processed_line in read_robots.content.decode("utf-8").split("\n"):
-        # Only read directives pointed at all user agents or my crawler user agent
-        if (
-            "User-agent: *" in processed_line
-            or "User-agent: indieweb-search" in processed_line
-        ):
-            next_line_is_to_be_read = True
-
-        if "Disallow:" in processed_line and next_line_is_to_be_read == True:
-            if processed_line == "Disallow: /*" or processed_line == "Disallow: *":
-                # print("All URLs disallowed. Crawl complete")
-                return namespaces_to_ignore, sitemap_urls, protocol
-            namespaces_to_ignore.append(processed_line.split(":")[1].strip())
-        elif "Sitemap:" in processed_line and next_line_is_to_be_read == True:
-            # Second : will be in the URL of the sitemap so it needs to be preserved
-            sitemap_url = (
-                processed_line.split(":")[1] + ":" + processed_line.split(":")[2]
-            )
-            sitemap_urls.append(sitemap_url.strip())
-        elif len(processed_line) == 0:
-            next_line_is_to_be_read = False
-
-    if sitemap_urls == []:
-        sitemap_urls.append("https://{}/sitemap.xml".format(site_url))
-
-    return namespaces_to_ignore, sitemap_urls, protocol
+headers = {"Authorization": config.ELASTICSEARCH_API_TOKEN}
 
 
 def process_domain(site, reindex):
@@ -153,7 +52,11 @@ def process_domain(site, reindex):
     """
     final_urls = {}
 
-    namespaces_to_ignore, sitemap_urls, protocol = find_robots_directives(site)
+    (
+        namespaces_to_ignore,
+        sitemap_urls,
+        protocol,
+    ) = robots_handling.find_robots_directives(site)
 
     if namespaces_to_ignore == "broken":
         return 0, [], site
@@ -172,16 +75,16 @@ def process_domain(site, reindex):
                 for sitemap in all_sitemaps:
                     sitemap_urls.append(sitemap.text)
                     # print("will crawl URLs in {} sitemap".format(sitemap.text))
-                    print("will crawl URLs in {} sitemap".format(sitemap.text))
+                    print(f"will crawl URLs in {sitemap.text} sitemap")
             else:
                 # print("will crawl URLs in {} sitemap".format(u))
-                print("will crawl URLs in {} sitemap".format(u))
+                print(f"will crawl URLs in {u} sitemap")
 
     sitemap_urls = list(set(sitemap_urls))
 
     # Added just to make sure the homepage is in the initial crawl queue
     if len(sitemap_urls) > 2:
-        final_urls["http://{}".format(site)] = ""
+        final_urls[f"http://{site}"] = ""
 
     for s in sitemap_urls:
         # Only URLs not already discovered will be added by this code
@@ -205,12 +108,10 @@ def process_domain(site, reindex):
         if r.status_code == 200:
             # print(r.text)
             # print("sitemaps added to database for {}".format(site))
-            print("sitemaps added to database for {}".format(site))
+            print(f"sitemaps added to database for {site}")
         else:
             # print("ERROR: sitemap not added for {} (status code {})".format(site, r.status_code))
-            logging.error(
-                "sitemap not added for {} (status code {})".format(site, r.status_code)
-            )
+            logging.error(f"sitemap not added for {site} (status code {r.status_code})")
 
         for u in urls:
             if "/tag/" in u.find("loc").text:
@@ -225,20 +126,17 @@ def process_domain(site, reindex):
             else:
                 final_urls[canonicalized_url] = ""
 
-    if reindex == True:
+    if reindex:
         return 100, final_urls, namespaces_to_ignore, protocol
     else:
         # crawl budget is now 15,000
         return 15000, final_urls, namespaces_to_ignore, protocol
 
 
-def build_index(site, reindex=False):
-    # do not index IPs
-    # sites must have a domain name to qualify for inclusion in the index
-    if site.replace(".", "").isdigit():
-        return site, []
-
-    headers = {"Authorization": config.ELASTICSEARCH_API_TOKEN}
+def get_feeds(site):
+    """
+    Returns a list of feed URLs for a given site.
+    """
 
     r = requests.post(
         "https://es-indieweb-search.jamesg.blog/feeds",
@@ -248,7 +146,7 @@ def build_index(site, reindex=False):
 
     if r.status_code == 200 and r.json() and not r.json().get("message"):
         # print("feeds retrieved for {}".format(site))
-        print("feeds retrieved for {}".format(site))
+        print(f"feeds retrieved for {site}")
         feeds = r.json()
     elif r.status_code == 200 and r.json() and r.json().get("message"):
         # print("Result from URL request to /feeds endpoint on elasticsearch server: {}".format(r.json()["message"]))
@@ -260,51 +158,49 @@ def build_index(site, reindex=False):
         feeds = []
     elif r.status_code == 200 and not r.json():
         # print("No feeds retrieved for {} but still 200 response".format(site))
-        print("No feeds retrieved for {} but still 200 response".format(site))
+        print(f"No feeds retrieved for {site} but still 200 response")
         feeds = []
     else:
         # print("ERROR: feeds not retrieved for {} (status code {})".format(site, r.status_code))
-        logging.error(
-            "feeds not retrieved for {} (status code {})".format(site, r.status_code)
-        )
+        logging.error(f"feeds not retrieved for {site} (status code {r.status_code})")
         feeds = []
 
-    feed_urls = feeds
+    return feeds
+
+
+def build_index(site, reindex=False):
+    # do not index IPs
+    # sites must have a domain name to qualify for inclusion in the index
+    if site.replace(".", "").isdigit():
+        return site, []
 
     # read crawl_queue.txt
     crawl_budget, final_urls, namespaces_to_ignore, protocol = process_domain(
         site, reindex
     )
 
-    if crawl_budget == 0:
-        return site, []
+    feeds = get_feeds(site)
 
     if len(final_urls) == 0:
-        final_urls["{}{}".format(protocol, site)] = ""
+        final_urls[f"{protocol}{site}"] = ""
 
     iterate_list_of_urls = list(final_urls.keys())
 
-    print("processing {}".format(site))
-
-    iterate_list_of_urls = ["https://jamesg.blog"]
+    print(f"processing {site}. crawl budget: {crawl_budget}")
 
     indexed = 0
     valid_count = 0
 
     indexed_list = {}
 
-    print("crawl budget: {}".format(crawl_budget))
-
-    print("{} urls part of initial crawl".format(len(iterate_list_of_urls)))
-
     all_feeds = []
     discovered_feeds_dict = {}
 
     try:
         h_card = mf2py.Parser(protocol + site, timeout=5, verify=False)
-    except:
+    except requests.exceptions.ConnectionError:
         h_card = []
-        print("no h-card could be found on {} home page".format(site))
+        print(f"no h-card could be found on {site} home page")
 
     session = requests.Session()
 
@@ -317,13 +213,13 @@ def build_index(site, reindex=False):
     homepage_meta_description = ""
 
     for url in iterate_list_of_urls:
+        crawl_depth = 0
+
         if crawl_depths.get("url"):
             crawl_depth = crawl_depths.get("url")
             if crawl_depth > 5:
                 # print("crawl depth for {} is {}".format(url, crawl_depth))
-                print("crawl depth for {} is {}".format(url, crawl_depth))
-        else:
-            crawl_depth = 0
+                print(f"crawl depth for {url} is {crawl_depth}")
 
         if indexed_list.get(url):
             continue
@@ -336,7 +232,7 @@ def build_index(site, reindex=False):
             web_page_hash,
             crawl_depth,
             average_crawl_speed,
-        ) = url_handling.crawl_urls(
+        ) = verify_and_process.crawl_urls(
             final_urls,
             namespaces_to_ignore,
             indexed,
@@ -348,7 +244,7 @@ def build_index(site, reindex=False):
             crawl_budget,
             url,
             [],
-            feed_urls,
+            feeds,
             site,
             session,
             web_page_hashes,
@@ -359,28 +255,36 @@ def build_index(site, reindex=False):
             crawl_depth,
         )
 
-        if valid == True:
+        if valid:
             valid_count += 1
 
-        if web_page_hash != None:
+        if web_page_hash is not None:
             web_page_hashes[web_page_hash] = url
 
         average_crawl_speed.extend(average_crawl_speed)
 
-        # if len(average_crawl_speed) > 100:
-        # 	average_crawl_speed = average_crawl_speed[:100]
+        if len(average_crawl_speed) > 100:
+            average_crawl_speed = average_crawl_speed[:100]
 
-        # if average_crawl_speed and len(average_crawl_speed) and (len(average_crawl_speed) / len(average_crawl_speed) > 4):
-        # 	print("average crawl speed is {}, stopping crawl".format(len(average_crawl_speed) / len(average_crawl_speed)))
-        # 	with open("failed.txt", "a") as f:
-        # 		f.write("{} average crawl speed is {}, stopping crawl \n".format(site, len(average_crawl_speed) / len(average_crawl_speed)))
+        if (
+            average_crawl_speed
+            and len(average_crawl_speed)
+            and (len(average_crawl_speed) / len(average_crawl_speed) > 4)
+        ):
+            print(
+                f"average crawl speed is {len(average_crawl_speed) / len(average_crawl_speed)}, stopping crawl"
+            )
+            with open("failed.txt", "a") as f:
+                f.write(
+                    f"{site} average crawl speed is {len(average_crawl_speed) / len(average_crawl_speed)}, stopping crawl \n"
+                )
 
-        # 	iterate_list_of_urls = []
+            iterate_list_of_urls = []
 
         indexed += 1
 
-        print("{}/{}".format(indexed, crawl_budget))
-        print("{} - {}/{}".format(site, indexed, crawl_budget))
+        print(f"{indexed}/{crawl_budget}")
+        print(f"{site} - {indexed}/{crawl_budget}")
 
         if indexed > crawl_budget:
             break
@@ -389,14 +293,14 @@ def build_index(site, reindex=False):
         web_page_hashes[web_page_hash] = url
 
         for f in discovered_feeds:
-            if discovered_feeds_dict.get(f.get("feed_url")) == None:
+            if discovered_feeds_dict.get(f.get("feed_url")) is None:
                 all_feeds.append(f)
-                feed_urls.append(f.get("feed_url"))
+                feeds.append(f.get("feed_url"))
                 discovered_feeds_dict[f.get("feed_url")] = True
 
         for key, value in discovered.items():
             if not indexed_list.get(key):
-                print("{} not indexed, added".format(key))
+                print(f"{key} not indexed, added")
                 iterate_list_of_urls.append(key)
 
             crawl_depths[key] = value
@@ -417,12 +321,10 @@ def build_index(site, reindex=False):
 
     if r.status_code == 200:
         # print("feeds updated in database for {}".format(site))
-        print("feeds updated database for {}".format(site))
+        print(f"feeds updated database for {site}")
     else:
         # print("ERROR: feeds not updated for {} (status code {})".format(site, r.status_code))
-        logging.error(
-            "feeds not updated for {} (status code {})".format(site, r.status_code)
-        )
+        logging.error(f"feeds not updated for {site} (status code {r.status_code})")
 
     del headers["Content-Type"]
 
@@ -435,13 +337,11 @@ def build_index(site, reindex=False):
     if r.status_code == 200:
         # print(r.text)
         # print("crawl recorded in database for {}".format(site))
-        print("crawl recorded in database for {}".format(site))
+        print(f"crawl recorded in database for {site}")
     else:
         # print("ERROR: crawl not recorded in database for {} (status code {})".format(site, r.status_code))
         logging.error(
-            "crawl not recorded in database for {} (status code {})".format(
-                site, r.status_code
-            )
+            f"crawl not recorded in database for {site} (status code {r.status_code})"
         )
 
     with open("crawl_queue.txt", "r") as f:
@@ -483,13 +383,13 @@ def main():
             for future in concurrent.futures.as_completed(futures):
                 sites_indexed += 1
 
-                print("SITES INDEXED: {}".format(sites_indexed))
-                logging.info("SITES INDEXED: {}".format(sites_indexed))
+                print(f"SITES INDEXED: {sites_indexed}")
+                logging.info(f"SITES INDEXED: {sites_indexed}")
 
                 try:
                     url_indexed, _ = future.result()
 
-                    if url_indexed == None:
+                    if url_indexed is None:
                         futures = []
                         break
                 except Exception as e:

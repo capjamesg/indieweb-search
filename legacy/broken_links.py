@@ -27,7 +27,7 @@ def check_for_invalid_links():
     print(len(external_links))
 
     for link in external_links:
-        print("trying {}".format(link))
+        print(f"trying {link}")
         try:
             get_link = requests.head(link, headers=config.HEADERS, timeout=5)
 

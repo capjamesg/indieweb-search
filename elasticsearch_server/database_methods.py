@@ -48,45 +48,42 @@ def get_feeds_for_url():
     ):
         abort(401)
 
-    if request.method == "POST":
-        website_url = request.form.get("website_url")
+    website_url = request.form.get("website_url")
 
-        if website_url:
-            database = mysql.connector.connect(
-                host="localhost",
-                user=config.MYSQL_DB_USER,
-                password=config.MYSQL_DB_PASSWORD,
-                database="feeds",
-            )
+    if website_url:
+        database = mysql.connector.connect(
+            host="localhost",
+            user=config.MYSQL_DB_USER,
+            password=config.MYSQL_DB_PASSWORD,
+            database="feeds",
+        )
 
-            cursor = database.cursor(buffered=True)
+        cursor = database.cursor(buffered=True)
 
-            cursor.execute("SELECT * FROM feeds WHERE website_url = %s", (website_url,))
+        cursor.execute("SELECT * FROM feeds WHERE website_url = %s", (website_url,))
 
-            cursor.close()
+        cursor.close()
 
-            if cursor.fetchall():
-                return jsonify(cursor.fetchall())
-            else:
-                return jsonify({"message": "No results matching this URL were found."})
+        if cursor.fetchall():
+            return jsonify(cursor.fetchall())
         else:
-            database = mysql.connector.connect(
-                host="localhost",
-                user=config.MYSQL_DB_USER,
-                password=config.MYSQL_DB_PASSWORD,
-                database="feeds",
-            )
-            cursor = database.cursor(buffered=True)
+            return jsonify({"message": "No results matching this URL were found."})
+    else:
+        database = mysql.connector.connect(
+            host="localhost",
+            user=config.MYSQL_DB_USER,
+            password=config.MYSQL_DB_PASSWORD,
+            database="feeds",
+        )
+        cursor = database.cursor(buffered=True)
 
-            cursor.execute("SELECT * FROM feeds")
+        cursor.execute("SELECT * FROM feeds")
 
-            item_to_return = cursor.fetchall()
+        item_to_return = cursor.fetchall()
 
-            cursor.close()
+        cursor.close()
 
-            return jsonify(item_to_return)
-
-    return jsonify({"message": "Method not allowed."}), 405
+        return jsonify(item_to_return)
 
 
 @database_methods.route("/save", methods=["POST"])
@@ -97,48 +94,45 @@ def save_feed():
     ):
         abort(401)
 
-    if request.method == "POST":
-        result = request.get_json()["feeds"]
+    result = request.get_json()["feeds"]
 
-        for r in result:
-            database = mysql.connector.connect(
-                host="localhost",
-                user=config.MYSQL_DB_USER,
-                password=config.MYSQL_DB_PASSWORD,
-                database="feeds",
-            )
-            cursor = database.cursor(buffered=True)
+    for r in result:
+        database = mysql.connector.connect(
+            host="localhost",
+            user=config.MYSQL_DB_USER,
+            password=config.MYSQL_DB_PASSWORD,
+            database="feeds",
+        )
+        cursor = database.cursor(buffered=True)
 
+        cursor.execute(
+            "SELECT * FROM feeds WHERE website_url = %s AND feed_url = %s AND mime_type = %s",
+            (r["website_url"], r["feed_url"], r["mime_type"]),
+        )
+
+        if cursor.fetchone():
+            # delete feed because it already exists to make room for the new feed
             cursor.execute(
-                "SELECT * FROM feeds WHERE website_url = %s AND feed_url = %s AND mime_type = %s",
+                "DELETE FROM feeds WHERE website_url = %s AND feed_url = %s AND mime_type = %s",
                 (r["website_url"], r["feed_url"], r["mime_type"]),
             )
 
-            if cursor.fetchone():
-                # delete feed because it already exists to make room for the new feed
-                cursor.execute(
-                    "DELETE FROM feeds WHERE website_url = %s AND feed_url = %s AND mime_type = %s",
-                    (r["website_url"], r["feed_url"], r["mime_type"]),
-                )
+        cursor.execute(
+            "INSERT INTO feeds (website_url, feed_url, etag, discovered, mime_type) VALUES (%s, %s, %s, %s, %s)",
+            (
+                r["website_url"],
+                r["feed_url"],
+                r["etag"],
+                r["discovered"],
+                r["mime_type"],
+            ),
+        )
 
-            cursor.execute(
-                "INSERT INTO feeds (website_url, feed_url, etag, discovered, mime_type) VALUES (%s, %s, %s, %s, %s)",
-                (
-                    r["website_url"],
-                    r["feed_url"],
-                    r["etag"],
-                    r["discovered"],
-                    r["mime_type"],
-                ),
-            )
+        database.commit()
 
-            database.commit()
+        cursor.close()
 
-            cursor.close()
-
-        return jsonify({"message": "Feeds successfully saved."})
-
-    return 200
+    return jsonify({"message": "Feeds successfully saved."})
 
 
 @database_methods.route("/create_crawled", methods=["POST"])
@@ -149,48 +143,43 @@ def create_crawled_site():
     ):
         abort(401)
 
-    if request.method == "POST":
-        url = request.form.get("url")
+    url = request.form.get("url")
 
-        if url:
-            database = mysql.connector.connect(
-                host="localhost",
-                user=config.MYSQL_DB_USER,
-                password=config.MYSQL_DB_PASSWORD,
-                database="feeds",
-            )
+    if not url:
+        return jsonify({"message": "No URL was provided."})
 
-            cursor = database.cursor(buffered=True)
+    database = mysql.connector.connect(
+        host="localhost",
+        user=config.MYSQL_DB_USER,
+        password=config.MYSQL_DB_PASSWORD,
+        database="feeds",
+    )
 
-            cursor.execute("SELECT * FROM crawled WHERE domain = %s", (url,))
+    cursor = database.cursor(buffered=True)
 
-            if cursor.fetchone():
-                cursor.close()
-                return jsonify({"message": "This site has already been crawled."})
-            else:
-                now = datetime.datetime.now()
-                # now to string
-                now_string = now.strftime("%Y-%m-%d %H:%M:%S")
+    cursor.execute("SELECT * FROM crawled WHERE domain = %s", (url,))
 
-                cursor.execute(
-                    "INSERT INTO crawled (domain, crawled_on) VALUES (%s, %s)",
-                    (
-                        url,
-                        now_string,
-                    ),
-                )
+    if cursor.fetchone():
+        cursor.close()
+        return jsonify({"message": "This site has already been crawled."})
+    else:
+        now = datetime.datetime.now()
+        # now to string
+        now_string = now.strftime("%Y-%m-%d %H:%M:%S")
 
-                database.commit()
+        cursor.execute(
+            "INSERT INTO crawled (domain, crawled_on) VALUES (%s, %s)",
+            (
+                url,
+                now_string,
+            ),
+        )
 
-                cursor.close()
+        database.commit()
 
-                return jsonify(
-                    {"message": "Site successfully added to the crawled table."}
-                )
-        else:
-            return jsonify({"message": "No URL was provided."})
+        cursor.close()
 
-    return jsonify({"message": "Method not allowed."}), 405
+        return jsonify({"message": "Site successfully added to the crawled table."})
 
 
 @database_methods.route("/create_sitemap", methods=["POST"])
@@ -201,41 +190,37 @@ def create_sitemap():
     ):
         abort(401)
 
-    if request.method == "POST":
-        # get json data
-        website_url = request.form.get("domain")
-        sitemap_url = request.form.get("sitemap_url")
+    # get json data
+    website_url = request.form.get("domain")
+    sitemap_url = request.form.get("sitemap_url")
 
-        if website_url:
-            database = mysql.connector.connect(
-                host="localhost",
-                user=config.MYSQL_DB_USER,
-                password=config.MYSQL_DB_PASSWORD,
-                database="feeds",
-            )
+    if not website_url:
+        return jsonify({"message": "No website URL was provided."})
+    database = mysql.connector.connect(
+        host="localhost",
+        user=config.MYSQL_DB_USER,
+        password=config.MYSQL_DB_PASSWORD,
+        database="feeds",
+    )
 
-            cursor = database.cursor(buffered=True)
+    cursor = database.cursor(buffered=True)
 
-            cursor.execute("SELECT * FROM sitemaps WHERE domain = %s", (website_url,))
+    cursor.execute("SELECT * FROM sitemaps WHERE domain = %s", (website_url,))
 
-            if cursor.fetchone():
-                cursor.close()
-                return jsonify({"message": "Sitemap already exists."})
-            else:
-                cursor.execute(
-                    "INSERT INTO sitemaps (domain, sitemap_url) VALUES (%s, %s)",
-                    (website_url, sitemap_url),
-                )
+    if cursor.fetchone():
+        cursor.close()
+        return jsonify({"message": "Sitemap already exists."})
+    else:
+        cursor.execute(
+            "INSERT INTO sitemaps (domain, sitemap_url) VALUES (%s, %s)",
+            (website_url, sitemap_url),
+        )
 
-                database.commit()
+        database.commit()
 
-                cursor.close()
+        cursor.close()
 
-                return jsonify({"message": "Sitemap successfully created."})
-        else:
-            return jsonify({"message": "No website URL was provided."})
-
-    return jsonify({"message": "Method not allowed."}), 405
+        return jsonify({"message": "Sitemap successfully created."})
 
 
 @database_methods.route("/create_websub", methods=["POST"])
@@ -246,41 +231,36 @@ def create_websub():
     ):
         abort(401)
 
-    if request.method == "POST":
-        result = request.get_json()
+    result = request.get_json()
 
-        database = mysql.connector.connect(
-            host="localhost",
-            user=config.MYSQL_DB_USER,
-            password=config.MYSQL_DB_PASSWORD,
-            database="feeds",
-        )
+    database = mysql.connector.connect(
+        host="localhost",
+        user=config.MYSQL_DB_USER,
+        password=config.MYSQL_DB_PASSWORD,
+        database="feeds",
+    )
 
-        cursor = database.cursor(buffered=True)
+    cursor = database.cursor(buffered=True)
 
-        cursor.execute("SELECT * FROM websub WHERE url = %s", (result["website_url"],))
+    cursor.execute("SELECT * FROM websub WHERE url = %s", (result["website_url"],))
 
-        if cursor.fetchone():
-            cursor.execute(
-                "DELETE FROM websub WHERE url = %s", (result["website_url"],)
-            )
+    if cursor.fetchone():
+        cursor.execute("DELETE FROM websub WHERE url = %s", (result["website_url"],))
 
-        random_string = "".join(
-            random.choice(string.ascii_letters + string.digits) for _ in range(20)
-        )
+    random_string = "".join(
+        random.choice(string.ascii_letters + string.digits) for _ in range(20)
+    )
 
-        cursor.execute(
-            "INSERT INTO websub (url, random_string) VALUES (%s, %s)",
-            (result["website_url"], random_string),
-        )
+    cursor.execute(
+        "INSERT INTO websub (url, random_string) VALUES (%s, %s)",
+        (result["website_url"], random_string),
+    )
 
-        database.commit()
+    database.commit()
 
-        cursor.close()
+    cursor.close()
 
-        return jsonify({"key": random_string})
-
-    return jsonify({"message": "Method not allowed."}), 405
+    return jsonify({"key": random_string})
 
 
 @database_methods.route("/update_feed", methods=["POST"])

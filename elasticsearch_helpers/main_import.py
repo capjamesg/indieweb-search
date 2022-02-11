@@ -21,12 +21,8 @@ with open("results.json") as f:
             obj = json.loads(line)
 
             check_if_indexed = requests.post(
-                "https://es-indieweb-search.jamesg.blog/check?url={}".format(
-                    obj["url"]
-                ),
-                headers={
-                    "Authorization": "Bearer {}".format(config.ELASTICSEARCH_API_TOKEN)
-                },
+                f"https://es-indieweb-search.jamesg.blog/check?url={obj['url']}",
+                headers={"Authorization": f"Bearer {config.ELASTICSEARCH_API_TOKEN}"},
                 timeout=5,
             ).json()
 

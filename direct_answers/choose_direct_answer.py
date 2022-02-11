@@ -1,6 +1,7 @@
 import config
 
 from . import search_result_features
+from .entity_type_map import keyword_values
 
 
 def choose_featured_snippet(
@@ -14,31 +15,16 @@ def choose_featured_snippet(
 ):
     search_for_snippet = False
 
-    do_i_use = ""
+    featured_serp_contents = ""
     special_result = {}
 
     query_divided = cleaned_value_for_query.split(" ")
-    keyword_values = {
-        "what is",
-        "code",
-        "markup",
-        "meetup",
-        "event",
-        "review",
-        "recipe",
-        "what are",
-        "what were",
-        "why",
-        "how",
-        "microformats",
-        "who is",
-    }
 
     for w in query_divided:
         if w in keyword_values:
             search_for_snippet = True
 
-    if search_for_snippet == True:
+    if search_for_snippet:
         # remove stopwords from query
         original = cleaned_value_for_query
         cleaned_value_for_query = (
@@ -83,12 +69,18 @@ def choose_featured_snippet(
             url = None
             source = None
 
-        do_i_use, special_result = search_result_features.generate_featured_snippet(
+        (
+            featured_serp_contents,
+            special_result,
+        ) = search_result_features.generate_featured_snippet(
             original, special_result, nlp, url, source
         )
 
-        if do_i_use == "" and len(rows) > 1:
-            do_i_use, special_result = search_result_features.generate_featured_snippet(
+        if featured_serp_contents == "" and len(rows) > 1:
+            (
+                featured_serp_contents,
+                special_result,
+            ) = search_result_features.generate_featured_snippet(
                 original,
                 special_result,
                 nlp,
@@ -104,7 +96,10 @@ def choose_featured_snippet(
         url = rows[0]["_source"]["url"]
         source = rows[0]["_source"]
 
-        do_i_use, special_result = search_result_features.generate_featured_snippet(
+        (
+            featured_serp_contents,
+            special_result,
+        ) = search_result_features.generate_featured_snippet(
             full_query_with_full_stops, special_result, nlp, url, source
         )
 
@@ -136,10 +131,10 @@ def choose_featured_snippet(
                 == cleaned_value.split(" ")[0]
             ):
                 (
-                    do_i_use,
+                    featured_serp_contents,
                     special_result,
                 ) = search_result_features.generate_featured_snippet(
                     full_query_with_full_stops, special_result, nlp, url, source
                 )
 
-    return do_i_use, special_result
+    return featured_serp_contents, special_result

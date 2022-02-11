@@ -50,7 +50,7 @@ def crawl_images(
             try:
                 if i.get("src") and i.get("src") not in image_urls:
                     if i["src"].startswith("/") and not i["src"].startswith("//"):
-                        image_url_to_get = "https://{}".format(site_url) + i["src"]
+                        image_url_to_get = f"https://{site_url}" + i["src"]
                     elif i["src"].startswith("//"):
                         image_url_to_get = "https:" + i["src"]
                     else:
@@ -168,9 +168,7 @@ def crawl_images(
                                 crawler.url_handling.log_error(
                                     image_url_to_get,
                                     200,
-                                    "Image size is {} bytes (too large).".format(
-                                        size_of_image
-                                    ),
+                                    f"Image size is {size_of_image} bytes (too large).",
                                     discovered_urls,
                                     broken_urls,
                                     full_url,
@@ -186,10 +184,8 @@ def crawl_images(
                                 full_url,
                             )
 
-                            print("{} does not exist.".format(image_url_to_get))
-                            logging.warning(
-                                "{} does not exist.".format(image_url_to_get)
-                            )
+                            print(f"{image_url_to_get} does not exist.")
+                            logging.warning(f"{image_url_to_get} does not exist.")
 
                             continue
 
@@ -208,7 +204,7 @@ def crawl_images(
                             if j.name == "figcaption":
                                 caption = j.text
 
-                    if i.get("alt") == None or i.get("alt") == "":
+                    if i.get("alt") is None or i.get("alt") == "":
                         crawler.url_handling.log_error(
                             image_url_to_get,
                             200,
@@ -222,16 +218,14 @@ def crawl_images(
                         crawler.url_handling.log_error(
                             image_url_to_get,
                             download_image.status_code,
-                            "Image alt text is {} characters (too long).".format(
-                                len(i["alt"])
-                            ),
+                            f"Image alt text is {len(i['alt'])} characters (too long).",
                             discovered_urls,
                             broken_urls,
                             full_url,
                         )
 
                     if check_if_indexed == 0:
-                        if published_on != None:
+                        if published_on is not None:
                             cursor.execute(
                                 "INSERT INTO images VALUES (?, ?, ?, ?, ?, ?, ?)",
                                 (
@@ -263,7 +257,7 @@ def crawl_images(
                                 image_url_to_get
                             )
                         )
-                        if published_on != None:
+                        if published_on is not None:
                             cursor.execute(
                                 "UPDATE images SET post_url = ?, alt_text = ?, image_src = ?, published = ? WHERE image_src = ?",
                                 (
@@ -289,11 +283,9 @@ def crawl_images(
                     images_indexed += 1
 
             except Exception as e:
-                print("error with processing {} image".format(image_url_to_get))
+                print(f"error with processing {image_url_to_get} image")
                 print(e)
-                logging.warning(
-                    "error with processing {} image".format(image_url_to_get)
-                )
+                logging.warning(f"error with processing {image_url_to_get} image")
                 logging.warning(e)
 
     return images_indexed

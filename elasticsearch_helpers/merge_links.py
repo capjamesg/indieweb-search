@@ -30,4 +30,4 @@ for url, value in pagerank_elasticsearch.items():
         failed += 1
         print(e)
 
-print("tried {}, failed {}".format(tried, failed))
+print(f"tried {tried}, failed {failed}")

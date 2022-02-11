@@ -113,7 +113,7 @@ def keyword_knowledge_graph():
 def show_error_codes():
     df = pd.read_csv("data/external_link_status.csv")
 
-    plt.suptitle("Error codes returned by external links (n={})".format(len(df)))
+    plt.suptitle(f"Error codes returned by external links (n={len(df)})")
 
     plt.xlabel("Error code")
 
@@ -146,7 +146,7 @@ def get_internal_link_count():
 
     GA = nx.from_pandas_edgelist(df, source="page_linking", target="link_to")
 
-    plt.title("jamesg.blog Link Graph (n={})".format(len(GA.nodes())))
+    plt.title(f"jamesg.blog Link Graph (n={len(GA.nodes())})")
 
     # nx.draw(GA, with_labels=True, node_color=["red" if node == "https://jamesg.blog" else "green" for node in GA.nodes()])
 

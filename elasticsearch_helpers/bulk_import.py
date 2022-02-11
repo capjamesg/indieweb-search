@@ -24,11 +24,11 @@ with connection:
 
     all_posts_count = cursor.execute("SELECT count(url) FROM posts").fetchone()
 
-    pages = cursor.execute("SELECT * FROM posts LIMIT 500 OFFSET {};".format(id))
+    pages = cursor.execute(f"SELECT * FROM posts LIMIT 500 OFFSET {id};")
 
     doc = change_to_json(pages)
 
     print("processed doc")
 
     resp = helpers.bulk(es, doc, index="pages")
-    print("finished {}".format(id))
+    print(f"finished {id}")

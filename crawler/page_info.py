@@ -1,36 +1,6 @@
 import datetime
 
 from bs4 import BeautifulSoup
-from nltk.corpus import stopwords
-from textblob import WordList
-
-stopwords = set(stopwords.words("english"))
-
-# Add the words below to the stopwords set
-excluded_words = {
-    "one",
-    "two",
-    "three",
-    "four",
-    "five",
-    "six",
-    "seven",
-    "eight",
-    "nine",
-    "ten",
-    "James",
-    "every",
-    "people",
-    "thing",
-    "first",
-}
-
-stopwords.update(excluded_words)
-
-full_stopwords_list = {}
-
-for word in stopwords:
-    full_stopwords_list[word] = ""
 
 
 def get_page_info(page_text, page_desc_soup, page_url, homepage_meta_description):
@@ -76,18 +46,21 @@ def get_page_info(page_text, page_desc_soup, page_url, homepage_meta_description
 
     published_on = page_desc_soup.find("time", attrs={"class": "dt-published"})
 
+    if type(published_on) == dict and published_on.get("datetime") is not None:
+        published_on = published_on["datetime"].split("T")[0]
+
     meta_description = ""
 
-    properties_to_check = [
+    properties_to_check = (
         ("name", "description"),
         ("name", "og:description"),
         ("property", "og:description"),
         ("name", "twitter:description"),
-    ]
+    )
 
     for key, value in properties_to_check:
         if (
-            page_desc_soup.find("meta", {key: value}) != None
+            page_desc_soup.find("meta", {key: value}) is not None
             and page_desc_soup.find("meta", {key: value}).get("content")
             and page_desc_soup.find("meta", {key: value})["content"] != ""
         ):
@@ -126,7 +99,7 @@ def get_page_info(page_text, page_desc_soup, page_url, homepage_meta_description
 
     if (
         meta_description == ""
-        or meta_description == None
+        or meta_description is None
         or len(meta_description) < 75
         or (
             homepage_meta_description != ""
@@ -150,7 +123,7 @@ def get_page_info(page_text, page_desc_soup, page_url, homepage_meta_description
 
     if (
         meta_description == ""
-        or meta_description == None
+        or meta_description is None
         or (
             homepage_meta_description != ""
             and meta_description == homepage_meta_description
@@ -160,10 +133,10 @@ def get_page_info(page_text, page_desc_soup, page_url, homepage_meta_description
 
         if h2 and len(h2) > 0:
             paragraph_to_use_for_meta_desc = h2[0].find_next("p")
-            if paragraph_to_use_for_meta_desc != None:
+            if paragraph_to_use_for_meta_desc is not None:
                 meta_description = paragraph_to_use_for_meta_desc.text
 
-    if meta_description == None:
+    if meta_description is None:
         meta_description = ""
 
     # do not index stub descriptions from the IndieWeb wiki
@@ -193,12 +166,16 @@ def get_page_info(page_text, page_desc_soup, page_url, homepage_meta_description
 
     final_meta_description = BeautifulSoup(final_meta_description, "lxml").text
 
-    if page_desc_soup.find("title") != None:
+    if page_desc_soup.find("title") is not None:
         doc_title = page_desc_soup.find("title").text
-    elif page_desc_soup.find("h1") != None:
+    elif page_desc_soup.find("h1") is not None:
         doc_title = page_desc_soup.find("h1").text
     else:
         doc_title = page_url
+
+    # use p-name in place of title tag if one is available
+    if page_desc_soup.select(".p-name"):
+        doc_title = page_desc_soup.select(".p-name")[0].text
 
     if doc_title == "":
         doc_title = page_url

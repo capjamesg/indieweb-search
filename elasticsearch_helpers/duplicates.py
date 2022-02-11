@@ -34,7 +34,7 @@ for hits in scroll(es, "pages", body, "2m", 20):
         print(count)
         if (
             links.get(h["_source"]["url"].replace("www.", "").lower().strip("/"))
-            == None
+            is None
         ):
             links[h["_source"]["url"].replace("www.", "").lower().strip("/")] = h["_id"]
         else:

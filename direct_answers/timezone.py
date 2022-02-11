@@ -16,7 +16,7 @@ def get_timezone(query):
     else:
         primary_time = None
 
-    if primary_time == None:
+    if primary_time is None:
         if "am" in query:
             position = query.find("am")
         elif "pm" in query:
@@ -54,7 +54,7 @@ def get_timezone(query):
 
     convert_to = timezone(secondary_timezone)
 
-    if primary_time != None:
+    if primary_time is not None:
         primary_time = datetime.strptime(primary_time, "%H:%M")
 
         visitor_timezone = visitor_timezone.localize(primary_time)
@@ -75,7 +75,7 @@ def get_timezone(query):
 
     final_time = ":".join(final_time)
 
-    if primary_time != None:
+    if primary_time is not None:
         message = "{} ({}) in {} is {}.".format(
             primary_time.strftime("%H:%M"),
             primary_timezone,
@@ -83,7 +83,7 @@ def get_timezone(query):
             final_time,
         )
     else:
-        message = "The time in {} is {}.".format(secondary_timezone, final_time)
+        message = f"The time in {secondary_timezone} is {final_time}."
 
     return message, {
         "type": "direct_answer",
