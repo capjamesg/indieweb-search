@@ -112,6 +112,8 @@ def crawl_urls(
 
     feeds = []
 
+    url = url.replace("///", "//")
+
     # make sure urls with // are processed correctly
     # example: https://www.test.com//text.html should become https://www.test.com/text.html
     parsed_url = parse_url(url)

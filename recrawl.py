@@ -148,7 +148,7 @@ def poll_feeds(f):
                 and item.get("children")
             ):
                 for child in item["children"]:
-                    jf2 = microformats2.to_jf2(child)
+                    jf2 = microformats2.jf2.to_jf2(child)
                     if jf2.get("url"):
                         if type(jf2["url"]) == list:
                             jf2["url"] = jf2["url"][0]
@@ -228,11 +228,9 @@ def poll_feeds(f):
             # random string of 20 letters and numbers
             # each websub endpoint needs to be different
 
-            headers = {"Authorization": config.ELASTICSEARCH_API_TOKEN}
-
             r = requests.post(
                 "https://es-indieweb-search.jamesg.blog/create_websub",
-                headers=headers,
+                headers=HEADERS,
                 data={"website_url": url},
             )
 
@@ -371,7 +369,7 @@ def process_crawl_queue_from_websub():
 
 
 def process_sitemaps():
-    r = requests.get("https://es-indieweb-search.jamesg.blog/sitemaps", headers=headers)
+    r = requests.get("https://es-indieweb-search.jamesg.blog/sitemaps", headers=HEADERS)
 
     pages_indexed = 0
 
@@ -382,15 +380,20 @@ def process_sitemaps():
     sitemap_urls = []
 
     for item in to_crawl:
-        sitemap_urls.append(item[0])
 
-        domain = item[0].split("/")[2]
+        domain = "https://" + item[0]
+
+        sitemap_urls.append(domain)
 
         domains_indexed[domain] = domains_indexed.get(domain, 0) + 1
 
         if domains_indexed[domain] > 50:
             print(f"50 urls have been crawled on {domain}, skipping")
             continue
+
+    sitemap_urls = list(set(sitemap_urls))
+
+    session = requests.Session()
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
         futures = [
@@ -402,12 +405,17 @@ def process_sitemaps():
                 [],
                 [],
                 {},
+                [item],
                 [],
-                "https://" + item,
-                1,
+                10,
                 item,
-                feeds,
-                feed_url_list,
+                [],
+                [],
+                item,
+                session,
+                {},
+                [],
+                "",
                 False,
             )
             for item in sitemap_urls
@@ -421,11 +429,7 @@ def process_sitemaps():
                 logging.info(f"PAGES INDEXED: {pages_indexed}")
 
                 try:
-                    url_indexed, _ = future.result()
-
-                    if url_indexed is None:
-                        futures = []
-                        break
+                    future.result()
                 except Exception as e:
                     print(e)
                     pass
@@ -433,6 +437,6 @@ def process_sitemaps():
                 futures.remove(future)
 
 
-process_feeds()
+#process_feeds()
 # process_crawl_queue_from_websub()
-# process_sitemaps()
+process_sitemaps()

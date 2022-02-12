@@ -3,9 +3,5 @@ import sys
 
 app = create_app()
 
-# if --debug flag is provided, run in debug mode
-
-if sys.argv[1] == "--debug":
+if len(sys.argv) > 1 and sys.argv[1] == "--debug":
     app.run(debug=True)
-else:
-    app.run()

@@ -182,7 +182,7 @@ def results_page():
         ordered_by=request.args.get("order"),
         base_results_query="/results?query=" + cleaned_value_for_query,
         corrected_text=final_query,
-        suggestion_made=suggestion,
+        suggestion_made="",
         special_result=special_result,
         featured_serp_contents=featured_serp_contents,
         title=f"Search results for '{cleaned_value_for_query}' query",

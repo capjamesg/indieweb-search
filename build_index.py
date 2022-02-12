@@ -2,6 +2,7 @@ import concurrent.futures
 import datetime
 import logging
 from typing import List
+import csv
 
 import indieweb_utils
 # import cProfile
@@ -127,8 +128,6 @@ def process_domain(site: str) -> List[list]:
             else:
                 final_urls[canonicalized_url] = ""
 
-    print(final_urls)
-
     # crawl budget is 15,000 URLs
     return 15000, final_urls, namespaces_to_ignore, protocol
 
@@ -225,8 +224,6 @@ def build_index(site: str) -> List[list]:
     average_crawl_speed = []
 
     homepage_meta_description = ""
-
-    print(crawl_queue)
 
     for url in crawl_queue:
         crawl_depth = 0
@@ -328,6 +325,15 @@ def build_index(site: str) -> List[list]:
     # exclude wordpress json feeds for now
     # only save first 25 feeds
     feeds = [f for f in all_feeds[:25] if "wp-json" not in f]
+
+    # turn indexed_list into a list of strings
+    current_date = datetime.date.today().strftime("%Y-%m-%d")
+
+    indexed_list = [[url, current_date] for url in list(indexed_list.keys())]
+
+    with open(f"indexed_list.csv", "a+") as f:
+        writer = csv.writer(f)
+        writer.writerows(indexed_list)
 
     r = requests.post(
         "https://es-indieweb-search.jamesg.blog/save",
