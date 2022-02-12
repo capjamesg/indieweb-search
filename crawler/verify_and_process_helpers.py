@@ -5,8 +5,8 @@ import requests
 from bs4 import BeautifulSoup
 
 import config
-import crawler.verify_and_process as verify_and_process
 import crawler.url_handling_helpers as url_handling_helpers
+import crawler.verify_and_process as verify_and_process
 
 
 def parse_link_headers(

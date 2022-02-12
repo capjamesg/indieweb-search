@@ -58,4 +58,12 @@ cursor.execute(
 
 print("created crawl_queue table")
 
+cursor.execute(
+    """CREATE TABLE IF NOT EXISTS urls_crawled (
+        url text,
+        last_crawled text
+        next_crawl text
+    )"""
+)
+
 print("the database is now ready for use on the elasticsearch back-end web server")

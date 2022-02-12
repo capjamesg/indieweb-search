@@ -22,7 +22,7 @@ def parse_canonical(
     :param crawl_queue: The list of URLs to iterate through
     :param discovered_urls: The list of URLs discovered
 
-    :return: A boolean indicating if the specified URL represents the page as its canonical URL 
+    :return: A boolean indicating if the specified URL represents the page as its canonical URL
     :rtype: bool
     """
     if url == None:

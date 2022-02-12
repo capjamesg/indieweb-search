@@ -1,8 +1,8 @@
 import concurrent.futures
+import csv
 import datetime
 import logging
 from typing import List
-import csv
 
 import indieweb_utils
 # import cProfile

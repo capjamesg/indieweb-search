@@ -7,11 +7,12 @@ import indieweb_utils
 import requests
 from bs4 import BeautifulSoup
 
-import crawler.save_record as save_record
 import crawler.discovery as page_link_discovery
 import crawler.page_info
+import crawler.save_record as save_record
 import crawler.url_handling_helpers as url_handling_helpers
 import crawler.verify_and_process_helpers as verify_and_process_helpers
+from crawler.constants import LIKELY_404_TITLES
 
 yesterday = datetime.datetime.today() - datetime.timedelta(days=1)
 
@@ -74,14 +75,37 @@ def check_if_content_is_thin(word_count: int, number_of_links: int) -> bool:
     # these pages may be spam or other non-content pages that will not be useful to those using the search engine
     # also filter out pages with 400 words or less
     if (
-        word_count
-        and (word_count > 0 and number_of_links and number_of_links > 0)
-        and word_count > 200
-        and word_count / number_of_links < 3
-    ) or (word_count < 400):
+        (
+            word_count
+            and (word_count > 0 and number_of_links and number_of_links > 0)
+            and word_count > 200
+            and word_count / number_of_links < 3
+        )
+        or (word_count < 400)
+        or (number_of_links > 200 and word_count < 3000)
+    ):
         thin_content = True
 
     return thin_content
+
+
+def detect_soft_404(page_desc_soup: BeautifulSoup) -> bool:
+    """
+    Detects if a page is a soft 404.
+
+    :return: Whether the page is a soft 404
+    :rtype: bool
+    """
+
+    # get page title
+    title = page_desc_soup.find("title")
+
+    if title and title == "404":
+        return True
+    elif title and any(title.text.lower() in s for s in LIKELY_404_TITLES):
+        return True
+
+    return False
 
 
 def crawl_urls(
@@ -197,6 +221,12 @@ def crawl_urls(
         page_desc_soup = BeautifulSoup(page.content, "html.parser")
     except:
         page_desc_soup = BeautifulSoup(page.content, "html5lib")
+
+    # don't index pages that are likely to be 404s
+    is_soft_404 = detect_soft_404(page_desc_soup)
+
+    if is_soft_404:
+        return url, {}, False, feeds, None, crawl_depth, average_crawl_speed
 
     # get body of page
     body = page_desc_soup.find("body")
@@ -315,6 +345,11 @@ def crawl_urls(
             for h in page_text.find_all(k):
                 v.append(h.text)
 
+    # only get first five of each heading
+    for k, v in heading_info.items():
+        if len(v) > 5:
+            v = v[:5]
+
     # Only index if noindex attribute is not present
 
     (
@@ -341,10 +376,30 @@ def crawl_urls(
     # get number of links
 
     links = page_desc_soup.find_all("a")
+
     number_of_links = len(links)
     word_count = len(page_desc_soup.get_text().split())
 
     thin_content = check_if_content_is_thin(word_count, number_of_links)
+
+    # tags to remove happens here so that valuable content can still be extracted
+    # (i.e. links from nav bars)
+    TAGS_TO_REMOVE = [
+        "script",
+        "style",
+        "noscript",
+        "iframe",
+        "frame",
+        "object",
+        "footer",
+        "nav",
+        "aside",
+    ]
+
+    for tag in TAGS_TO_REMOVE:
+        # remove tags that are not likely to be useful
+        for match in body.find_all(tag):
+            match.decompose()
 
     try:
         pages_indexed = save_record.save_to_file(

@@ -3,7 +3,9 @@ import re
 
 
 def parse_advanced_search(
-    advanced_filter_to_search: str, query_with_handled_spaces: str, query_values_in_list: str
+    advanced_filter_to_search: str,
+    query_with_handled_spaces: str,
+    query_values_in_list: str,
 ) -> list:
     # Advanced search term to look for (i.e. before:")
     look_for = query_with_handled_spaces.find(advanced_filter_to_search)

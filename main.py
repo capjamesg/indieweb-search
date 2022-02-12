@@ -6,7 +6,7 @@ import indieweb_utils
 import mf2py
 import requests
 import spacy
-from flask import (Blueprint, jsonify, redirect, render_template, request)
+from flask import Blueprint, jsonify, redirect, render_template, request
 
 import config
 import search.search_page_feeds as search_page_feeds

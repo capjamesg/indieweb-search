@@ -3,7 +3,12 @@ from flask import jsonify, request
 
 
 def process_special_format(
-    request: request, rows: list, cleaned_value: str, page: dict, special_result: dict, featured_serp_contents: str
+    request: request,
+    rows: list,
+    cleaned_value: str,
+    page: dict,
+    special_result: dict,
+    featured_serp_contents: str,
 ):
     format = request.args.get("format")
 

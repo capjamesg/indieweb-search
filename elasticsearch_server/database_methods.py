@@ -303,6 +303,56 @@ def update_feed():
     abort(400)
 
 
+@database_methods.route("/finish_crawl", methods=["POST"])
+def finish_crawl():
+    if (
+        not request.headers.get("Authorization")
+        or request.headers.get("Authorization") != config.ELASTICSEARCH_API_TOKEN
+    ):
+        abort(401)
+
+    database = mysql.connector.connect(
+        host="localhost",
+        user=config.MYSQL_DB_USER,
+        password=config.MYSQL_DB_PASSWORD,
+        database="feeds",
+    )
+
+    cursor = database.cursor(buffered=True)
+
+    item = request.get_json()
+
+    all_urls = item["urls"]
+
+    for url in all_urls:
+        cursor.execute("SELECT * FROM urls_crawled WHERE url = %s", (url,))
+
+        crawled = cursor.fetchone()
+
+        # next crawl date in 3 months
+        next_crawl_date = datetime.datetime.now() + datetime.timedelta(days=90)
+        next_crawl_date_as_text = next_crawl_date.strftime("%Y-%m-%d %H:%M:%S")
+
+        current_date_as_text = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        if crawled and len(crawled) > 0:
+            cursor.execute(
+                "UPDATE urls_crawled SET last_crawled = %s and next_crawl = %s WHERE url = %s",
+                (current_date_as_text, next_crawl_date_as_text, url),
+            )
+        else:
+            cursor.execute(
+                "INSERT INTO urls_crawled (url, last_crawled, next_crawl) VALUES (%s, %s, %s)",
+                (url, current_date_as_text, next_crawl_date_as_text),
+            )
+
+            database.commit()
+
+    cursor.close()
+
+    abort(400)
+
+
 @database_methods.route("/websub/<string:id>", methods=["GET", "POST"])
 def websub(id):
     database = mysql.connector.connect(
