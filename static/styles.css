@@ -280,9 +280,6 @@ li {
   border: 5px dotted royalblue;
   padding: 10px;
 }
-#query {
-  width: 100%;
-}
 @media only screen and (max-width: 900px) {
   .serp-item {
     width: 100%;
@@ -291,8 +288,9 @@ li {
     display: none;
   }
   main {
-    width: 100%;
+    width: 90%;
     max-width: 100%;
+    margin: auto;
   }
   #query {
     margin-top: 15px;
@@ -380,7 +378,6 @@ a:hover {
 		width: 100% !important;
 	}
 	input, textarea {
-		width: 100%;
 		box-sizing: border-box;
 	}
 	input[type="submit"] {

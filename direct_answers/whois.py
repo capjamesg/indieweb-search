@@ -49,11 +49,11 @@ def parse_whois(
                     break
 
         if h_card is None:
-            h_card = ""
+            return None
 
         to_show = ""
 
-        if len(h_card) > 0:
+        if len(h_card) == 0:
             return None
 
         name = h_card["properties"].get("name")

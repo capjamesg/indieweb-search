@@ -70,7 +70,7 @@ def results_page():
         cleaned_value_for_query,
         full_query_with_full_stops,
         query_values_in_list,
-    ) = transform_query.get_clean_url_and_advanced_search(request)
+    ) = transform_query.get_clean_url_and_advanced_search(request, allowed_chars)
 
     if cleaned_value_for_query.startswith(
         "xray https://"
@@ -94,7 +94,7 @@ def results_page():
     pagination = "0"
 
     order, minimal, query_params = transform_query.parse_query_parameters(
-        cleaned_value_for_query, query_values_in_list
+        cleaned_value_for_query, query_values_in_list, request
     )
 
     rows = session.get(
@@ -129,7 +129,6 @@ def results_page():
             cleaned_value_for_query,
             cleaned_value_for_query,
             rows,
-            special_result,
             full_query_with_full_stops,
             session,
             nlp,

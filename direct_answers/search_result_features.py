@@ -95,7 +95,7 @@ def generate_featured_snippet(
 
         response = whois.parse_feed(original_cleaned_value, soup, url)
 
-        response = whois.parse_address(original_cleaned_value, soup, url, original_url)
+        response = whois.parse_address(original_cleaned_value, soup, url)
 
         response = definition.get_term_definition(
             soup, url, new_cleaned_value_for_direct_answer, post
@@ -116,4 +116,6 @@ def generate_featured_snippet(
             url,
         )
 
-        response = None
+        response = None, None
+
+    return response

@@ -90,7 +90,7 @@ def check_remove_url(full_url: str) -> None:
     if len(check_if_indexed) > 0:
         # remove url from index if it no longer works
         data = {
-            "id": check_if_indexed["_id"],
+            "id": check_if_indexed[0]["_id"],
         }
         requests.post(
             "https://es-indieweb-search.jamesg.blog/remove-from-index",

@@ -12,7 +12,7 @@ import requests
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 import config
-from crawler.url_handling import crawl_urls
+from crawler.verify_and_process import crawl_urls
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 

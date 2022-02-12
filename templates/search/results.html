@@ -22,13 +22,9 @@
       <ol class="serp">
         {% for r in range(0, results | length) %}
         {% if results[r]['_source']['url'] != special_result.breadcrumb %}
-        {% if (results[r]['_source']['domain'] != results[r-1]['_source']['domain'] or 
-          (special_result and results[r]['_source']['domain'] == special_result.breadcrumb.split("/")[2]) or r == 0) or 
-          (results[r]['_source']["special_snippet"] and results[r]['_source']["special_snippet"] != {}) %}
           <li class="h-entry serp_result">
             {% include "search/breadcrumbs.html" %}
           {% else %}
-          <div class="indent-result">
         {% endif %}
             <div class="serp-item">
               {% if results[r]['_source']['h_card'] and results[r]['_source']['h_card']['url'] and 
@@ -88,19 +84,6 @@
               (special_result and results[r]['_source']['domain'] == special_result.breadcrumb.split("/")[2]) or r == 0) or not
               (results[r]['_source']["special_snippet"] and results[r]['_source']["special_snippet"] != {}) %}
             </div>
-            {% elif results[r+1] and results[r]['_source']['domain'] != results[r+1]['_source']['domain'] %}
-              </div>
-              </li>
-            {% elif results[r]['_source']["special_snippet"] and results[r]['_source']["special_snippet"] != {} %}
-              </div>
-              </li>
-            {% elif not results[r+1] %}
-              </div>
-              </li>
-            {% elif r - 1 != -1 and results[r-1] and results[r-1]['_source']['domain'] == results[r]['_source']['domain'] %}
-              </div>
-            </li>
-            {% endif %}
         {% endif %}
         {% endfor %}
       </ol>
@@ -134,10 +117,10 @@
       </ol>
     {% endif %}
     <p>You can follow this page in a <a href="https://indieweb.org/reader">social reader</a> or a <a href="https://indieweb.org/feed_reader">feed reader</a>.</p>
-    {% if "atlas.p3k.io" in featured_serp_contents %}
+    {% if featured_serp_contents and "atlas.p3k.io" in featured_serp_contents %}
     <p>The map at the top of this search result is provided by the <a href="https://atlas.p3k.io">p3k Atlas API</a>.</p>
     {% endif %}
-    {% if base_results_query.endswith("social") %}
+    {% if base_results_query and base_results_query.endswith("social") %}
     <p>The icons in the direct answer at the top of this page are from Paul Robert Lloyd's <a href="https://github.com/paulrobertlloyd/socialmediaicons">socialmediaicons</a> collection.</p>
     {% endif %}
   {% endblock %}
