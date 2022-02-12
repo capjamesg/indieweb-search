@@ -1,7 +1,22 @@
 from bs4 import BeautifulSoup
-from typing import Tuple, Dict, Any
 
-def parse_review(original_cleaned_value: str, soup: BeautifulSoup, url: str, post: dict) -> Tuple[str, Dict[str, Any]]:
+from .structures import DirectAnswer
+
+
+def parse_review(
+    original_cleaned_value: str, soup: BeautifulSoup, url: str, post: dict
+) -> DirectAnswer:
+    """
+    Get review information from a web page.
+
+    :param original_cleaned_value: The original cleaned value.
+    :param soup: The BeautifulSoup object of the post.
+    :param url: The URL of the post.
+    :param post: The post object.
+
+    :return: A DirectAnswer object.
+    :rtype: DirectAnswer
+    """
     if not "review" in original_cleaned_value:
         return None, None
 
@@ -33,12 +48,31 @@ def parse_review(original_cleaned_value: str, soup: BeautifulSoup, url: str, pos
     else:
         review = ""
 
-    return "<h3>Review of {}</h3><p>Rating: {}</p><p>{}</p>".format(
+    html = "<h3>Review of {}</h3><p>Rating: {}</p><p>{}</p>".format(
         name, rating, review
-    ), {"type": "direct_answer", "breadcrumb": url, "title": post["title"]}
+    )
+
+    return DirectAnswer(
+        answer_html=html,
+        answer_type="direct_answer",
+        breadcrumb=url,
+        title=post["title"],
+    )
 
 
-def parse_aggregate_review(original_cleaned_value: str, soup: BeautifulSoup, url: str, post: dict) -> Tuple[str, Dict[str, Any]]:
+def parse_aggregate_review(
+    original_cleaned_value: str, soup: BeautifulSoup, url: str, post: dict
+) -> DirectAnswer:
+    """
+    Get an aggregate review from a web page by searching for the h-review-aggregate class.
+
+    :param original_cleaned_value: The original cleaned value.
+    :param soup: The BeautifulSoup object of the post.
+    :param url: The URL of the post.
+
+    :return: A DirectAnswer object.
+    :rtype: DirectAnswer
+    """
     if not "aggregate review" in original_cleaned_value:
         return None, None
 
@@ -71,8 +105,11 @@ def parse_aggregate_review(original_cleaned_value: str, soup: BeautifulSoup, url
                 h_review.select(".{}".format(property))[0].text,
             )
 
-    return "<h3>Aggregate review of {}</h3><ul>{}</ul>".format(to_show), {
-        "type": "direct_answer",
-        "breadcrumb": url,
-        "title": post["title"],
-    }
+    html = "<h3>Aggregate review of {}</h3><ul>{}</ul>".format(to_show)
+
+    return DirectAnswer(
+        answer_html=html,
+        answer_type="direct_answer",
+        breadcrumb=url,
+        title=post["title"],
+    )

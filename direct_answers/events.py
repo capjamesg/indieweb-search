@@ -1,11 +1,25 @@
 import datetime
 
+from bs4 import BeautifulSoup
+
+from .structures import DirectAnswer
 from .whereis import parse_geo
 
-from bs4 import BeautifulSoup
-from typing import Tuple, Dict, Any
 
-def parse_event(original_cleaned_value: str, soup: BeautifulSoup, url: str, post: dict) -> Tuple[str, Dict[str, Any]]:
+def parse_event(
+    original_cleaned_value: str, soup: BeautifulSoup, url: str, post: dict
+) -> DirectAnswer:
+    """
+    Get details about an event from a web page.
+
+    :param original_cleaned_value: The original cleaned value.
+    :param soup: The BeautifulSoup object of the post.
+    :param url: The URL of the post.
+    :param post: The post object.
+
+    :return: A DirectAnswer object.
+    :rtype: DirectAnswer
+    """
     if not "event" in original_cleaned_value and not soup.select(".h-event"):
         return None, None
 
@@ -72,18 +86,17 @@ def parse_event(original_cleaned_value: str, soup: BeautifulSoup, url: str, post
     add_image = parse_geo(soup)
 
     if add_image is not None:
-        return "<h3>{}</h3>{}<p><b>Event start:</b> {}</p><p><b>Event end:</b> {}</p><p><b>Location:</b> {}</p><p>{}</p>".format(
+        html = "<h3>{}</h3>{}<p><b>Event start:</b> {}</p><p><b>Event end:</b> {}</p><p><b>Location:</b> {}</p><p>{}</p>".format(
             name, add_image, start_date, end_date, location, summary
-        ), {
-            "type": "direct_answer",
-            "breadcrumb": url,
-            "title": post["title"],
-        }
+        )
     else:
-        return "<h3>{}</h3><p><b>Event start:</b> {}</p><p><b>Event end:</b> {}</p><p><b>Location:</b> {}</p><p>{}</p>".format(
+        html = "<h3>{}</h3><p><b>Event start:</b> {}</p><p><b>Event end:</b> {}</p><p><b>Location:</b> {}</p><p>{}</p>".format(
             name, start_date, end_date, location, summary
-        ), {
-            "type": "direct_answer",
-            "breadcrumb": url,
-            "title": post["title"],
-        }
+        )
+
+    return DirectAnswer(
+        answer_html=html,
+        answer_type="direct_answer",
+        breadcrumb=url,
+        title=post["title"],
+    )

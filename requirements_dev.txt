@@ -1,0 +1,13 @@
+-r requirements.txt
+
+tox==3.24.5
+black==21.12b0
+isort==5.10.1
+pytest==6.2.5
+pytest-pythonpath==0.7.3
+mypy==0.931
+types-dataclasses==0.6.4
+types-requests==2.27.3
+typing-extensions==4.0.1
+flake8==4.0.1
+responses==0.17.0

@@ -1,13 +1,28 @@
-from typing import Tuple, Dict, Any
+from typing import Any, Dict, Tuple
+
 from bs4 import BeautifulSoup
 
-def parse_what_is(original_cleaned_value: str, soup: BeautifulSoup, url: str, direct: bool) -> Tuple[str, Dict[str, Any]]:
+from .structures import DirectAnswer
+
+
+def parse_what_is(
+    original_cleaned_value: str, soup: BeautifulSoup, url: str
+) -> DirectAnswer:
+    """
+    Answer a "what is" query using the text on a web page.
+
+    :param original_cleaned_value: The original cleaned query value.
+    :param soup: The BeautifulSoup object of the post.
+    :param url: The URL of the post.
+
+    :return: A DirectAnswer object.
+    :rtype: DirectAnswer
+    """
     # if "what is" in original_cleaned_value
     if not (
         "what is" in original_cleaned_value
         or "what are" in original_cleaned_value
         or "what were" in original_cleaned_value
-        or direct
         or "microformats" in original_cleaned_value
     ):
         return None, None
@@ -37,10 +52,13 @@ def parse_what_is(original_cleaned_value: str, soup: BeautifulSoup, url: str, di
         title = "IndieWeb"
 
     if len(p_tags) > 0:
-        return f"<p>{p_tags[0]}</p>", {
-            "type": "direct_answer",
-            "breadcrumb": url,
-            "title": title,
-        }
+        html = (f"<p>{p_tags[0]}</p>",)
+
+        return DirectAnswer(
+            answer_html=html,
+            answer_type="direct_answer",
+            breadcrumb=url,
+            title=title,
+        )
 
     return None, None

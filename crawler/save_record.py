@@ -1,7 +1,6 @@
 import datetime
 import json
 import logging
-from typing import List
 
 import indieweb_utils
 import mf2py
@@ -55,7 +54,7 @@ def remove_scripts_and_comments(page_content: BeautifulSoup) -> BeautifulSoup:
     return page_content
 
 
-def identify_page_type(h_entry_object: dict) -> List[dict, str, str]:
+def identify_page_type(h_entry_object: dict) -> list:
     """
     Retrieve the name of an mf2 property on a page and the main post type for the page.
     """
@@ -80,7 +79,7 @@ def identify_page_type(h_entry_object: dict) -> List[dict, str, str]:
 
             break
 
-    if page_as_h_entry is not None:
+    if page_as_h_entry is not None and type(page_as_h_entry) == dict:
         post_type = indieweb_utils.get_post_type(page_as_h_entry)
 
     return mf2_property_type, post_type, category
@@ -99,13 +98,16 @@ def get_favicon(page_content: BeautifulSoup) -> str:
     if not favicon:
         favicon = page_content.find("link", rel="icon")
 
+    if favicon:
+        favicon = favicon.get("href")
+
     if not favicon:
         favicon = ""
 
     return favicon
 
 
-def add_to_database(
+def save_to_file(
     full_url: str,
     published_on: str,
     doc_title: str,

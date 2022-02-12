@@ -49,8 +49,10 @@ def get_page_info(
 
     published_on = page_desc_soup.find("time", attrs={"class": "dt-published"})
 
-    if type(published_on) == dict and published_on.get("datetime") is not None:
+    if published_on and published_on.get("datetime") is not None:
         published_on = published_on["datetime"].split("T")[0]
+    else:
+        published_on = ""
 
     meta_description = ""
 

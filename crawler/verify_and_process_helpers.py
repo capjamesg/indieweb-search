@@ -5,7 +5,7 @@ import requests
 from bs4 import BeautifulSoup
 
 import config
-import crawler.find_base_url_path as find_base_url_path
+import crawler.verify_and_process as verify_and_process
 import crawler.url_handling_helpers as url_handling_helpers
 
 
@@ -48,7 +48,7 @@ def parse_link_headers(
         domain = full_url.split("/")[2]
         link["rel"] = full_url.split("/")[0] + "//" + domain + link["rel"]
 
-        canonical = find_base_url_path(link["rel"])
+        canonical = verify_and_process.find_base_url_path(link["rel"])
 
         result = url_handling_helpers.parse_canonical(
             canonical,
@@ -64,7 +64,9 @@ def parse_link_headers(
     return False
 
 
-def check_for_redirect_url(page_test: requests.Response, full_url: str, site_url: str) -> str:
+def check_for_redirect_url(
+    page_test: requests.Response, full_url: str, site_url: str
+) -> str:
     """
     Check if the page is a redirect.
 
@@ -160,7 +162,7 @@ def initial_url_checks(full_url: str) -> None:
 
 def check_if_url_is_noindexed(
     page_desc_soup: BeautifulSoup, full_url: str
-) -> List[bool, bool]:
+) -> List[bool]:
     """
     Check if a URL has been marked as noindex.
 
@@ -170,8 +172,10 @@ def check_if_url_is_noindexed(
     :type full_url: str
 
     :return: a list of booleans, the first is if the page is noindexed, the second is if the page is nofollow
-    :rtype: List[bool, bool]
+    :rtype: List[bool]
     """
+    nofollow_all = False
+
     check_if_no_index = page_desc_soup.find("meta", {"name": "robots"})
 
     if (
@@ -238,13 +242,9 @@ def get_main_page_text(page_desc_soup: str) -> BeautifulSoup:
 
 def initial_head_request(
     full_url: str,
-    feeds: list,
-    crawl_depth: int,
-    average_crawl_speed: list,
-    url: str,
     session: requests.Session,
     site_url: str,
-):
+) -> list:
     """
     Make initial head request to a url.
     """
@@ -257,10 +257,7 @@ def initial_head_request(
         )
 
         # get redirect url
-        try:
-            full_url = check_for_redirect_url(page_test, full_url, site_url)
-        except:
-            return url, {}, False, feeds, None, crawl_depth, average_crawl_speed
+        full_url = check_for_redirect_url(page_test, full_url, site_url)
 
         if page_test.headers.get("x-robots-tag"):
             # only obey directives pointed at indieweb-search or everyone
@@ -271,15 +268,7 @@ def initial_head_request(
                     "x-robots-tag"
                 ) or "none" in page_test.headers.get("x-robots-tag"):
                     print(f"{full_url} marked as noindex")
-                    return (
-                        url,
-                        {},
-                        False,
-                        feeds,
-                        None,
-                        crawl_depth,
-                        average_crawl_speed,
-                    )
+                    raise Exception
                 elif "nofollow" in page_test.headers.get("x-robots-tag"):
                     print(
                         "all links on {} marked as nofollow due to x-robots-tag nofollow value".format(
@@ -290,30 +279,22 @@ def initial_head_request(
 
         content_type_is_valid = verify_content_type_is_valid(page_test, full_url)
 
-        if content_type_is_valid:
-            return (
-                url,
-                {},
-                False,
-                feeds,
-                None,
-                crawl_depth,
-                average_crawl_speed,
-            )
+        if content_type_is_valid is False:
+            raise Exception
 
         return page_test, nofollow_all
 
     except requests.exceptions.Timeout:
         print(f"{full_url} timed out, skipping")
         url_handling_helpers.check_remove_url(full_url)
-        return url, {}, False, feeds, None, crawl_depth, average_crawl_speed
+        raise Exception
     except requests.exceptions.TooManyRedirects:
         print(f"{full_url} too many redirects, skipping")
         url_handling_helpers.check_remove_url(full_url)
-        return url, {}, False, feeds, None, crawl_depth, average_crawl_speed
+        raise Exception
     except:
         print(f"{full_url} failed to connect, skipping")
-        return url, {}, False, feeds, None, crawl_depth, average_crawl_speed
+        raise Exception
 
 
 def filter_adult_content(page_desc_soup: BeautifulSoup, full_url: str) -> bool:
@@ -491,7 +472,7 @@ def get_web_page(session: requests.Session, full_url: str) -> requests.Response:
 
     content_type_is_valid = verify_content_type_is_valid(page, full_url)
 
-    if content_type_is_valid:
+    if content_type_is_valid is False:
         raise Exception
 
     return page
@@ -499,7 +480,7 @@ def get_web_page(session: requests.Session, full_url: str) -> requests.Response:
 
 def link_discovery_processing(
     page: requests.Response, site: str, full_url: str, feeds: list, feed_urls: list
-) -> Tuple[list, list]:
+) -> Tuple[list]:
     """
     Process the headers in a link and look for websub hubs and feeds.
 
@@ -515,7 +496,7 @@ def link_discovery_processing(
     :type feed_urls: list
 
     :return: A list of feeds found on the page and a list of feed urls found on the page.
-    :rtype: Tuple[list, list]
+    :rtype: Tuple[list]
     """
     # check for feed with rel alternate
     # only support rss and atom right now

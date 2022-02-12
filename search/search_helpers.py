@@ -3,8 +3,8 @@ import re
 
 
 def parse_advanced_search(
-    advanced_filter_to_search, query_with_handled_spaces, query_values_in_list
-):
+    advanced_filter_to_search: str, query_with_handled_spaces: str, query_values_in_list: str
+) -> list:
     # Advanced search term to look for (i.e. before:")
     look_for = query_with_handled_spaces.find(advanced_filter_to_search)
     if look_for != -1:
@@ -44,7 +44,7 @@ def parse_advanced_search(
 
 
 # Process category search and defer dates to parse_advanced_search function
-def handle_advanced_search(query_with_handled_spaces):
+def handle_advanced_search(query_with_handled_spaces: str) -> list:
     query_values_in_list = {}
 
     query_values_in_list, query_with_handled_spaces = parse_advanced_search(

@@ -13,7 +13,7 @@ def page_link_discovery(
     discovered_urls: list,
     site_url: str,
     crawl_depth: int,
-) -> List[list, list, list, list, list]:
+) -> List[list]:
     """
     Find all the links on the page and adds them to the list of links to crawl.
     """

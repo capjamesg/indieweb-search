@@ -1,8 +1,40 @@
 from feedgen.feed import FeedGenerator
-from flask import jsonify
+from flask import jsonify, request
 
 
-def process_h_card(row):
+def process_special_format(
+    request: request, rows: list, cleaned_value: str, page: dict, special_result: dict, featured_serp_contents: str
+):
+    format = request.args.get("format")
+
+    if format == "json_feed":
+        json_feed = process_json_feed(rows, cleaned_value, page, format)
+
+        return json_feed
+
+    elif format == "jf2":
+        jf2_feed = process_jf2_feed(rows)
+
+        return jf2_feed
+
+    elif format == "rss":
+        rss_feed = process_rss_feed(rows, cleaned_value, page, format)
+
+        return rss_feed
+
+    elif format == "direct_serp_json":
+        if special_result:
+            return jsonify(
+                {"text": featured_serp_contents, "featured_serp": special_result}
+            )
+        else:
+            return jsonify({"message": "no custom serp available on this search"})
+
+    elif format == "results_page_json":
+        return jsonify({"results": [r["_source"] for r in rows]})
+
+
+def process_h_card(row: list) -> dict:
     item = {
         "type": "card",
     }
@@ -22,7 +54,7 @@ def process_h_card(row):
     return item
 
 
-def process_rss_feed(rows, cleaned_value, page, format):
+def process_rss_feed(rows: list, cleaned_value: str, page: dict, format: str) -> str:
     fg = FeedGenerator()
 
     fg.id(
@@ -67,7 +99,7 @@ def process_rss_feed(rows, cleaned_value, page, format):
     return fg.rss_str(pretty=True)
 
 
-def process_json_feed(rows, cleaned_value, page, format):
+def process_json_feed(rows: list, cleaned_value: str, page: dict, format: str) -> str:
     result = []
 
     author = {
@@ -108,7 +140,7 @@ def process_json_feed(rows, cleaned_value, page, format):
     return jsonify(final_feed)
 
 
-def process_jf2_feed(rows):
+def process_jf2_feed(rows: list) -> str:
     results = []
 
     for row in rows:

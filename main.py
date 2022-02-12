@@ -1,22 +1,16 @@
 import json
 import math
+from dataclasses import asdict
 
 import indieweb_utils
 import mf2py
 import requests
 import spacy
-from flask import (
-    Blueprint,
-    jsonify,
-    redirect,
-    render_template,
-    request,
-    send_from_directory,
-)
+from flask import (Blueprint, jsonify, redirect, render_template, request)
 
 import config
-import search.search_helpers as search_helpers
 import search.search_page_feeds as search_page_feeds
+import search.transform_query as transform_query
 from direct_answers import choose_direct_answer, search_result_features
 
 main = Blueprint("main", __name__, static_folder="static", static_url_path="")
@@ -24,27 +18,6 @@ main = Blueprint("main", __name__, static_folder="static", static_url_path="")
 nlp = spacy.load("en_core_web_sm")
 
 allowed_chars = [" ", '"', ":", "-", "/", ".", "=", ","]
-
-
-def get_clean_url_and_advanced_search(request):
-    query_with_handled_spaces = (
-        request.args.get("query").replace("--", "").replace("  ", " ").strip()
-    )
-
-    cleaned_value_for_query = "".join(
-        e for e in query_with_handled_spaces if e.isalnum() or e in allowed_chars
-    ).strip()
-
-    full_query_with_full_stops = "".join(
-        e for e in query_with_handled_spaces if e.isalnum() or e == " " or e == "."
-    )
-
-    (
-        query_values_in_list,
-        query_with_handled_spaces,
-    ) = search_helpers.handle_advanced_search(query_with_handled_spaces)
-
-    return cleaned_value_for_query, full_query_with_full_stops, query_values_in_list
 
 
 def handle_random_query(session):
@@ -55,76 +28,6 @@ def handle_random_query(session):
     ).json()["domain"]
 
     return redirect(f"https://{random_site}/")
-
-
-def parse_query_parameters(cleaned_value_for_query, query_values_in_list):
-    order = "score"
-    minimal = "false"
-
-    if request.args.get("order") == "date_asc":
-        order = "date_asc"
-    elif request.args.get("order") == "date_desc":
-        order = "date_desc"
-
-    cleaned_value_for_query = cleaned_value_for_query.replace("what is", "").lower()
-
-    if request.args.get("format") and (
-        request.args.get("format") == "json_feed" or request.args.get("format") == "jf2"
-    ):
-        minimal = "true"
-
-    query_params = ""
-
-    if query_values_in_list.get("site"):
-        query_params += f"&site={query_values_in_list.get('site').replace('%', '')}"
-
-    if request.args.get("query").startswith("discover"):
-        query_params += "&discover=true"
-
-    if "js:none" in request.args.get("query"):
-        query_params += "&js=false"
-
-    if query_values_in_list.get("category"):
-        query_params += f"&category={query_values_in_list.get('category')}"
-
-    if query_values_in_list.get("mf2prop"):
-        query_params += f"&mf2_property={query_values_in_list.get('mf2prop')}"
-
-    return order, minimal, query_params
-
-
-def process_special_format(
-    request, rows, cleaned_value, page, special_result, featured_serp_contents
-):
-    format = request.args.get("format")
-
-    if format == "json_feed":
-        json_feed = search_page_feeds.process_json_feed(
-            rows, cleaned_value, page, format
-        )
-
-        return json_feed
-
-    elif format == "jf2":
-        jf2_feed = search_page_feeds.process_jf2_feed(rows)
-
-        return jf2_feed
-
-    elif format == "rss":
-        rss_feed = search_page_feeds.process_rss_feed(rows, cleaned_value, page, format)
-
-        return rss_feed
-
-    elif format == "direct_serp_json":
-        if special_result:
-            return jsonify(
-                {"text": featured_serp_contents, "featured_serp": special_result}
-            )
-        else:
-            return jsonify({"message": "no custom serp available on this search"})
-
-    elif format == "results_page_json":
-        return jsonify({"results": [r["_source"] for r in rows]})
 
 
 @main.route("/")
@@ -167,7 +70,7 @@ def results_page():
         cleaned_value_for_query,
         full_query_with_full_stops,
         query_values_in_list,
-    ) = get_clean_url_and_advanced_search(request)
+    ) = transform_query.get_clean_url_and_advanced_search(request)
 
     if cleaned_value_for_query.startswith(
         "xray https://"
@@ -190,7 +93,7 @@ def results_page():
 
     pagination = "0"
 
-    order, minimal, query_params = parse_query_parameters(
+    order, minimal, query_params = transform_query.parse_query_parameters(
         cleaned_value_for_query, query_values_in_list
     )
 
@@ -247,7 +150,11 @@ def results_page():
     ):
         special_result = search_result_features.aeropress_recipe()
 
-    process_special_format(
+    # convert special_result to dict
+    if special_result:
+        special_result = asdict(special_result)
+
+    search_page_feeds.process_special_format(
         request,
         rows,
         cleaned_value_for_query,
@@ -280,28 +187,6 @@ def results_page():
         special_result=special_result,
         featured_serp_contents=featured_serp_contents,
         title=f"Search results for '{cleaned_value_for_query}' query",
-    )
-
-
-@main.route("/robots.txt")
-def robots():
-    return send_from_directory(main.static_folder, "robots.txt")
-
-
-@main.route("/assets/<path:path>")
-def send_static_images(path):
-    return send_from_directory("static/", path)
-
-
-@main.route("/changelog")
-def changelog():
-    return render_template("changelog.html", title="IndieWeb Search Changelog")
-
-
-@main.route("/advanced")
-def advanced_search():
-    return render_template(
-        "search/advanced_search.html", title="IndieWeb Search Advanced Search Options"
     )
 
 
@@ -379,41 +264,3 @@ def get_post_author():
     result = indieweb_utils.discover_author(h_card, h_entry, page_to_check, [])
 
     return jsonify({"status": "success", "result": result})
-
-
-@main.route("/stats")
-def stats():
-    count_request = requests.get("https://es-indieweb-search.jamesg.blog/count").json()
-
-    count = count_request["es_count"]["count"]
-
-    domains = count_request["domains"]
-
-    headers = {"Authorization": config.ELASTICSEARCH_API_TOKEN}
-
-    feed_breakdown_request = requests.get(
-        "https://es-indieweb-search.jamesg.blog/feed_breakdown", headers=headers
-    ).json()
-
-    special_stats = requests.get(
-        "https://es-indieweb-search.jamesg.blog/special_stats", headers=headers
-    ).json()
-
-    top_linked_assets = special_stats["top_ten_links"]
-
-    link_types = special_stats["link_microformat_instances"]
-
-    return render_template(
-        "search/stats.html",
-        count=count,
-        domains=domains,
-        title="IndieWeb Search Index Stats",
-        feed_breakdown=feed_breakdown_request,
-        top_linked_assets=top_linked_assets,
-        link_types=link_types,
-    )
-
-
-@main.route("/about")
-def about():
-    return render_template("search/about.html", title="About IndieWeb Search")

@@ -1,7 +1,24 @@
-from bs4 import BeautifulSoup
-from typing import Tuple, Dict, Any
+from typing import Any, Dict, Tuple
 
-def parse_recipe(original_cleaned_value: str, soup: BeautifulSoup, url: str, post: dict) -> Tuple[str, Dict[str, Any]]:
+from bs4 import BeautifulSoup
+
+from .structures import DirectAnswer
+
+
+def parse_recipe(
+    original_cleaned_value: str, soup: BeautifulSoup, url: str, post: dict
+) -> DirectAnswer:
+    """
+    Get information about a recipe.
+
+    :param original_cleaned_value: The original cleaned value.
+    :param soup: The BeautifulSoup object of the post.
+    :param url: The URL of the post.
+    :param post: The post object.
+
+    :return: A DirectAnswer object.
+    :rtype: DirectAnswer
+    """
     if not "recipe" in original_cleaned_value:
         return None, None
 
@@ -24,10 +41,15 @@ def parse_recipe(original_cleaned_value: str, soup: BeautifulSoup, url: str, pos
     instructions = ["<li>" + x.text + "</li>" for x in instructions]
 
     if len(ingredients) > 0 and len(instructions) > 0:
-        return "<h3>Ingredients</h3><p>{}</p><h3>Instructions</h3><p>{}</p>".format(
+        html = "<h3>Ingredients</h3><p>{}</p><h3>Instructions</h3><p>{}</p>".format(
             "".join(i for i in ingredients), "".join(i for i in instructions)
-        ), {
-            "type": "direct_answer",
-            "breadcrumb": url,
-            "title": post["title"],
-        }
+        )
+
+        return DirectAnswer(
+            answer_html=html,
+            answer_type="direct_answer",
+            breadcrumb=url,
+            title=post["title"],
+        )
+
+    return None

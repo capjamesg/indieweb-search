@@ -8,11 +8,8 @@ import config
 
 from .constants import default_fields, to_delete
 from .create_query import assemble_query
-from .queries import (
-    get_auto_suggest_query,
-    get_date_ordered_query,
-    get_default_search_param,
-)
+from .queries import (get_auto_suggest_query, get_date_ordered_query,
+                      get_default_search_param)
 
 es = Elasticsearch(["http://localhost:9200"])
 

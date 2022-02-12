@@ -1,15 +1,13 @@
 import concurrent.futures
 import datetime
 import logging
+from typing import List
 
 import indieweb_utils
-
 # import cProfile
 import mf2py
 import requests
 from bs4 import BeautifulSoup
-from typing import List
-
 # ignore warning about http:// connections
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
@@ -47,7 +45,7 @@ discovered_urls = {}
 headers = {"Authorization": config.ELASTICSEARCH_API_TOKEN}
 
 
-def process_domain(site: str, reindex: str) -> List[int, dict, list, str]:
+def process_domain(site: str) -> List[list]:
     """
     Processes a domain and executes a function that crawls all pages on the domain.
     This function keeps track of URLs that have been crawled, the hashes of pages that have been crawled
@@ -121,13 +119,15 @@ def process_domain(site: str, reindex: str) -> List[int, dict, list, str]:
                 continue
 
             canonicalized_url = indieweb_utils.canonicalize_url(
-                protocol, site, u.find("loc").text
+                site, site, u.find("loc").text
             )
 
             if u.find("lastmod"):
                 final_urls[canonicalized_url] = u.find("lastmod").text
             else:
                 final_urls[canonicalized_url] = ""
+
+    print(final_urls)
 
     # crawl budget is 15,000 URLs
     return 15000, final_urls, namespaces_to_ignore, protocol
@@ -168,16 +168,30 @@ def get_feeds(site: str) -> list:
     return feeds
 
 
-def build_index(site: str, reindex: bool = False) -> List[int, list]:
+def build_index(site: str) -> List[list]:
+    """
+    Main function to crawl a specified set of sites.
+
+    This function manages a concurrent.futures pool of threads to crawl websites.
+
+    This function calls on the crawler/verify_and_process.py functions to crawl pages.
+
+    This function also manages a list of various values that are required to manage a crawl
+    (i.e. crawl speed, numbers of URLs indexed).
+
+    :param site: The site to crawl
+    :type site: str
+
+    :return: The page indexed and the number of URLs discovered
+    :rtype: List[int, list]
+    """
     # do not index IPs
     # sites must have a domain name to qualify for inclusion in the index
     if site.replace(".", "").isdigit():
         return site, []
 
     # read crawl_queue.txt
-    crawl_budget, final_urls, namespaces_to_ignore, protocol = process_domain(
-        site, reindex
-    )
+    crawl_budget, final_urls, namespaces_to_ignore, protocol = process_domain(site)
 
     feeds = get_feeds(site)
 
@@ -197,8 +211,8 @@ def build_index(site: str, reindex: bool = False) -> List[int, list]:
     discovered_feeds_dict = {}
 
     try:
-        h_card = mf2py.Parser(protocol + site, timeout=5, verify=False)
-    except requests.exceptions.ConnectionError:
+        h_card = mf2py.Parser(protocol + site)
+    except:
         h_card = []
         print(f"no h-card could be found on {site} home page")
 
@@ -211,6 +225,8 @@ def build_index(site: str, reindex: bool = False) -> List[int, list]:
     average_crawl_speed = []
 
     homepage_meta_description = ""
+
+    print(crawl_queue)
 
     for url in crawl_queue:
         crawl_depth = 0
@@ -347,14 +363,14 @@ def build_index(site: str, reindex: bool = False) -> List[int, list]:
     with open("crawl_queue.txt", "r") as f:
         rows = f.readlines()
 
-    if site in rows:
-        rows.remove(site)
+    # if site in rows:
+    #     rows.remove(site)
 
-    if site + "\n" in rows:
-        rows.remove(site + "\n")
+    # if site + "\n" in rows:
+    #     rows.remove(site + "\n")
 
-    with open("crawl_queue.txt", "w+") as f:
-        f.writelines(rows)
+    # with open("crawl_queue.txt", "w+") as f:
+    #     f.writelines(rows)
 
     return url_indexed, discovered
 
@@ -394,8 +410,6 @@ def main():
                         break
                 except Exception as e:
                     print(e)
-                    # print("Skipped indexing site any more due to error.")
-                    pass
 
                 futures.remove(future)
 

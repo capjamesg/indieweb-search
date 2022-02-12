@@ -2,11 +2,24 @@ import os
 
 import indieweb_utils
 import mf2py
-
 from bs4 import BeautifulSoup
-from typing import Tuple, Dict, Any
 
-def parse_whois(original_cleaned_value: str, soup: BeautifulSoup, url: str, original_url: str) -> Tuple[str, Dict[str, Any]]:
+from .structures import DirectAnswer
+
+
+def parse_whois(
+    original_cleaned_value: str, soup: BeautifulSoup, url: str, original_url: str
+) -> DirectAnswer:
+    """
+    Parse and return h-card information from a post (if available).
+
+    :param original_cleaned_value: The cleaned value of the search term.
+    :param soup: The BeautifulSoup object of the post.
+    :param url: The URL of the post.
+
+    :return: A DirectAnswer object.
+    :rtype: DirectAnswer
+    """
     if "who is" in original_cleaned_value or (
         (
             "." in original_cleaned_value
@@ -108,18 +121,34 @@ def parse_whois(original_cleaned_value: str, soup: BeautifulSoup, url: str, orig
         else:
             title = url
 
-        return "<img src='{}' height='100' width='100' style='float: right;'><p>{}</p>".format(
+        html = "<img src='{}' height='100' width='100' style='float: right;'><p>{}</p>".format(
             photo, to_show
-        ), {
-            "type": "direct_answer",
-            "breadcrumb": original_url,
-            "title": title,
-        }
+        )
+
+        return DirectAnswer(
+            answer_html=html,
+            answer_type="direct_answer",
+            breadcrumb=original_url,
+            title=title,
+        )
 
     return None, None
 
 
-def parse_social(original_cleaned_value: str, soup: BeautifulSoup, url: str, original_url: str) -> Tuple[str, Dict[str, Any]]:
+def parse_social(
+    original_cleaned_value: str, soup: BeautifulSoup, url: str, original_url: str
+) -> DirectAnswer:
+    """
+    Parse and return rel=me information from a web page.
+
+    :param original_cleaned_value: The cleaned value of the search term.
+    :param soup: The BeautifulSoup object of the post.
+    :param url: The URL of the post.
+    :param original_url: The original URL of the post.
+
+    :return: A DirectAnswer object.
+    :rtype: DirectAnswer
+    """
     if original_cleaned_value.endswith("social"):
         # get all rel=me links
         rel_me_links = soup.find_all("a", {"rel": "me"})
@@ -169,20 +198,36 @@ def parse_social(original_cleaned_value: str, soup: BeautifulSoup, url: str, ori
         if to_show == "":
             to_show = "No social links were found on this site's home page."
 
-        return """<h3>{} Social Links</h3><ul>{}</ul><details><br><summary>How to show up here</summary>
+        html = """<h3>{} Social Links</h3><ul>{}</ul><details><br><summary>How to show up here</summary>
             You can have social links show up by entering 'yourdomainname.com social' into the search engine as long as you have rel=me links set up on your home page.
             Learn how to do this on the <a href='https://indieweb.org/rel-me'>IndieWeb wiki</a>.</details>""".format(
             title, to_show
-        ), {
-            "type": "direct_answer",
-            "breadcrumb": original_url,
-            "title": title,
-        }
+        )
+
+        return DirectAnswer(
+            answer_html=html,
+            answer_type="direct_answer",
+            breadcrumb=original_url,
+            title=title,
+        )
 
     return None, None
 
 
-def parse_get_rel(original_cleaned_value: str, soup: BeautifulSoup, original_url: str) -> Tuple[str, Dict[str, Any]]:
+def parse_get_rel(
+    original_cleaned_value: str, soup: BeautifulSoup, original_url: str
+) -> DirectAnswer:
+    """
+    Get information about all rel= links on a page.
+
+    :param original_cleaned_value: The cleaned value of the search term.
+    :param soup: The BeautifulSoup object of the post.
+    :param original_url: The original URL of the post.
+
+    :return: A DirectAnswer object.
+    :rtype: DirectAnswer
+    """
+
     # get all feeds on a page
     if not original_cleaned_value.endswith("get rel"):
         return None, None
@@ -200,17 +245,32 @@ def parse_get_rel(original_cleaned_value: str, soup: BeautifulSoup, original_url
     if to_show == "":
         to_show = "No rel links were found on this site's home page."
 
-    return "<h3>'Rel' Attributes for {}</h3><ul>{}</ul>".format(
+    html = "<h3>'Rel' Attributes for {}</h3><ul>{}</ul>".format(
         original_url.replace("https://", "").replace("http://", "").strip("/"),
         to_show,
-    ), {
-        "type": "direct_answer",
-        "breadcrumb": original_url,
-        "title": soup.find_all("h1")[0].text,
-    }
+    )
+
+    return DirectAnswer(
+        answer_html=html,
+        answer_type="direct_answer",
+        breadcrumb=original_url,
+        title=soup.find_all("h1")[0].text,
+    )
 
 
-def parse_feed(original_cleaned_value: str, soup: BeautifulSoup, url: str, original_url: str) -> Tuple[str, Dict[str, Any]]:
+def parse_feed(
+    original_cleaned_value: str, soup: BeautifulSoup, url: str
+) -> DirectAnswer:
+    """
+    Retrieve a list of all feeds on a page.
+
+    :param original_cleaned_value: The cleaned value of the search term.
+    :param soup: The BeautifulSoup object of the post.
+    :param url: The URL of the post.
+
+    :return: A DirectAnswer object.
+    :rtype: DirectAnswer
+    """
     # get all feeds on a page
     if not original_cleaned_value.endswith("inspect feed"):
         return None, None
@@ -259,14 +319,29 @@ def parse_feed(original_cleaned_value: str, soup: BeautifulSoup, url: str, origi
     if to_show == "":
         to_show = "No feeds were found on this site's home page."
 
-    return f"<h3>{title} Feeds</h3><ul>{to_show}</ul>", {
-        "type": "direct_answer",
-        "breadcrumb": original_url,
-        "title": title,
-    }
+    html = f"<h3>{title} Feeds</h3><ul>{to_show}</ul>"
+
+    return DirectAnswer(
+        answer_html=html,
+        answer_type="direct_answer",
+        breadcrumb=url,
+        title=title,
+    )
 
 
-def parse_address(original_cleaned_value: str, soup: BeautifulSoup, url: str, original_url: str) -> Tuple[str, Dict[str, Any]]:
+def parse_address(
+    original_cleaned_value: str, soup: BeautifulSoup, url: str
+) -> DirectAnswer:
+    """
+    Parse a h-adr address microformats object and return a result that can be displayed in the search engine.
+
+    :param original_cleaned_value: The cleaned value of the search term.
+    :param soup: The BeautifulSoup object of the post.
+    :param url: The URL of the post.
+
+    :return: A DirectAnswer object.
+    :rtype: DirectAnswer
+    """
     # get all addresses on a page
     if not original_cleaned_value.endswith("address"):
         return None, None
@@ -303,8 +378,11 @@ def parse_address(original_cleaned_value: str, soup: BeautifulSoup, url: str, or
     if to_show == "":
         to_show = "No addresses were found on this site's home page."
 
-    return f"<h3>{title} Addresses</h3><ul>{to_show}</ul>", {
-        "type": "direct_answer",
-        "breadcrumb": original_url,
-        "title": title,
-    }
+    html = f"<h3>{title} Addresses</h3><ul>{to_show}</ul>"
+
+    return DirectAnswer(
+        answer_html=html,
+        answer_type="direct_answer",
+        breadcrumb=url,
+        title=title,
+    )

@@ -1,10 +1,11 @@
+import requests
+import spacy
+
 import config
 
 from . import search_result_features
 from .entity_type_map import keyword_values
-import spacy
-import requests
-from typing import Tuple, Dict, Any
+from .structures import DirectAnswer
 
 
 def choose_featured_snippet(
@@ -14,7 +15,7 @@ def choose_featured_snippet(
     full_query_with_full_stops: list,
     session: requests.Session,
     nlp: spacy,
-) -> Tuple[str, Dict[str, Any]]:
+) -> DirectAnswer:
     """
     Choose the snippet that is most relevant to the search term.
     """

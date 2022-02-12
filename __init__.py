@@ -1,6 +1,6 @@
 import os
 
-from flask import Flask, render_template
+from flask import Flask, render_template, send_from_directory
 
 from config import SENTRY_DSN, SENTRY_SERVER_NAME
 
@@ -29,6 +29,11 @@ def create_app():
 
     app.register_blueprint(main_blueprint)
 
+    from search.information_pages import \
+        information_pages as information_pages_blueprint
+
+    app.register_blueprint(information_pages_blueprint)
+
     @app.errorhandler(404)
     def page_not_found(e):
         return render_template("error.html", title="Page Not Found Error"), 404
@@ -48,6 +53,14 @@ def create_app():
             ),
             429,
         )
+
+    @app.route("/robots.txt")
+    def robots():
+        return send_from_directory("static/", "robots.txt")
+
+    @app.route("/assets/<path:path>")
+    def send_static_images(path):
+        return send_from_directory("static/", path)
 
     # from werkzeug.middleware.profiler import ProfilerMiddleware
     # app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=[5], profile_dir='./profile')

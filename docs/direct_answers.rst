@@ -20,3 +20,5 @@ The main "direct answers" that are in development are:
 - Showing all rel=me links on a site's home page.
 
 The code for the logic used to retrieve direct answers from HTML documents is in the `direct_answers` folder.
+
+Below is the documentation for each direct answer function in the repository.

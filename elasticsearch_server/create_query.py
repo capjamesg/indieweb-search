@@ -1,4 +1,11 @@
-def assemble_query(query: str, category: str, contains_js: str, inurl: str, mf2_property: str, site: str) -> str:
+def assemble_query(
+    query: str,
+    category: str,
+    contains_js: str,
+    inurl: str,
+    mf2_property: str,
+    site: str,
+) -> str:
     query = query.replace("what is ", "").replace("who is ", "")
 
     query = query.strip().replace(" ", " AND ").strip("AND").strip()

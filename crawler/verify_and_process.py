@@ -6,9 +6,8 @@ from urllib.parse import urlparse as parse_url
 import indieweb_utils
 import requests
 from bs4 import BeautifulSoup
-from typing import Tuple
 
-import crawler.add_to_database as add_to_database
+import crawler.save_record as save_record
 import crawler.discovery as page_link_discovery
 import crawler.page_info
 import crawler.url_handling_helpers as url_handling_helpers
@@ -106,7 +105,7 @@ def crawl_urls(
     link_discovery: bool = True,
     h_card: list = [],
     crawl_depth: int = 0,
-) -> Tuple[str, dict, bool, list, str, int, list]:
+) -> tuple:
     """
     Crawls URLs in list, adds URLs to index, and returns updated list.
     """
@@ -125,7 +124,7 @@ def crawl_urls(
         verify_and_process_helpers.initial_url_checks(full_url)
     except:
         url_handling_helpers.check_remove_url(full_url)
-        return url, {}, False, feeds, hash, crawl_depth, average_crawl_speed
+        return url, {}, False, feeds, "", crawl_depth, average_crawl_speed
 
     # Only get URLs that match namespace exactly
     in_matching_namespace = [
@@ -133,14 +132,18 @@ def crawl_urls(
     ]
 
     # The next line of code skips indexing namespaces excluded in robots.txt
-    if len(in_matching_namespace) > 0:
+    if len(in_matching_namespace) > 1:
         return url, discovered_urls, True, feeds, "", crawl_depth, average_crawl_speed
 
     session.max_redirects = 3
 
-    page_test, nofollow_all = verify_and_process_helpers.initial_head_request(
-        full_url, feeds, crawl_depth, average_crawl_speed, url, session, site_url
-    )
+    try:
+        page_test, nofollow_all = verify_and_process_helpers.initial_head_request(
+            full_url, session, site_url
+        )
+    except:
+        url_handling_helpers.check_remove_url(full_url)
+        return url, {}, False, feeds, None, crawl_depth, average_crawl_speed
 
     has_canonical = verify_and_process_helpers.parse_link_headers(
         page_test, full_url, crawl_queue, discovered_urls
@@ -209,16 +212,16 @@ def crawl_urls(
 
     # if http-equiv refresh redirect present
     # not recommended by W3C but still worth checking for just in case
-    verify_and_process_helpers.check_meta_equiv_refresh(
-        url,
-        feeds,
-        hash,
-        crawl_depth,
-        average_crawl_speed,
-        page_desc_soup,
-        discovered_urls,
-        full_url,
-    )
+    # verify_and_process_helpers.check_meta_equiv_refresh(
+    #     url,
+    #     feeds,
+    #     hash,
+    #     crawl_depth,
+    #     average_crawl_speed,
+    #     page_desc_soup,
+    #     discovered_urls,
+    #     full_url,
+    # )
 
     # check for canonical url
 
@@ -342,7 +345,7 @@ def crawl_urls(
     thin_content = check_if_content_is_thin(word_count, number_of_links)
 
     try:
-        pages_indexed = add_to_database.add_to_database(
+        pages_indexed = save_record.save_to_file(
             full_url,
             published_on,
             doc_title,
@@ -363,5 +366,6 @@ def crawl_urls(
         print(e)
         logging.warning(f"error with {full_url}")
         logging.warning(e)
+        raise Exception
 
     return url, discovered_urls, True, feeds, hash, crawl_depth, average_crawl_speed

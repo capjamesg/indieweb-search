@@ -1,10 +1,10 @@
 from datetime import datetime
+from typing import Any, Dict, Tuple
 
 from pytz import timezone
-from typing import Tuple, Dict, Any
 
 
-def get_timezone(query: str) -> Tuple[str, Dict[str, Any]]:
+def get_timezone(query: str) -> DirectAnswer:
     # time, timezone 1, timezone 2
 
     primary_time = [item for item in query.split() if ":" in item]

@@ -8,7 +8,6 @@ import feedparser
 import mf2py
 import microformats2
 import requests
-
 # ignore insecure request warning
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 

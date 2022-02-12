@@ -22,7 +22,8 @@ def parse_canonical(
     :param crawl_queue: The list of URLs to iterate through
     :param discovered_urls: The list of URLs discovered
 
-    :return: The canonical URL
+    :return: A boolean indicating if the specified URL represents the page as its canonical URL 
+    :rtype: bool
     """
     if url == None:
         return False
@@ -106,7 +107,7 @@ def save_feed(
     feed_type: str,
     feeds: list,
     feed_urls: list,
-) -> List[list, list]:
+) -> List[list]:
     """
     Add a feed to the list of feeds found on a website.
 
@@ -161,9 +162,7 @@ def save_feed(
     return feeds, feed_urls
 
 
-def find_feeds(
-    page_desc_soup: BeautifulSoup, full_url: str, site: str
-) -> List[list, list]:
+def find_feeds(page_desc_soup: BeautifulSoup, full_url: str, site: str) -> List[list]:
     """
     Find the feeds provided in HTTP headers and on a HTML web page.
 
