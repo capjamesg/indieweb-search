@@ -80,6 +80,12 @@
               {% if results[r]['_source']['published_on'] %}
                 <p>Published on <time class="dt-published" datetime="{{ results[r]['_source']['published_on'] }}">{{ results[r]['_source']['published_on'] }}</time>.</p>
               {% endif %}
+              {% if is_logged_in == True %}
+                <p>
+                  <a href="{{ base_results_query }}&page={{ page }}&evaluate=save&value=upvote">Upvote</a><br>
+                  <a href="{{ base_results_query }}&page={{ page }}&evaluate=save&value=downvote">Downvote</a>
+                </p>
+              {% endif %}
             {% if not (results[r]['_source']['domain'] != results[r-1]['_source']['domain'] or 
               (special_result and results[r]['_source']['domain'] == special_result.breadcrumb.split("/")[2]) or r == 0) or not
               (results[r]['_source']["special_snippet"] and results[r]['_source']["special_snippet"] != {}) %}

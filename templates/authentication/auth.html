@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="main_content_box">
+    <h1>IndieWeb Search Sign In</h1>
+    <p>Sign in is powered by IndieAuth. This means you can log in to IndieWeb Search with your domain name.</p>
+    <p>Enter your domain name below to log in.</p>
+    <p>Only approved domains can sign in.</p>
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+        <p class="error">
+            <em>{{ messages[0] }}</em>
+        </p>
+    {% endif %}
+    {% endwith %}
+    <form action="/discover" method="POST">
+      <label for="indie_auth_url">Web Address:</label><br>
+      <input id="indie_auth_url" type="url" name="me" placeholder="https://yourdomain.com" /><br>
+      <input type="submit" value="Sign In" />
+    </form>
+</section>
+{% endblock %}

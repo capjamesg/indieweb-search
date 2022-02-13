@@ -2,7 +2,7 @@ import random
 
 import mysql.connector
 from elasticsearch import Elasticsearch
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, abort
 
 import config
 
@@ -15,7 +15,6 @@ from .queries import (get_auto_suggest_query, get_date_ordered_query,
 es = Elasticsearch(["http://localhost:9200"])
 
 main = Blueprint("main", __name__)
-
 
 @main.route("/suggest")
 def autosuggest():
@@ -114,6 +113,30 @@ def create():
 
     return jsonify({"status": "ok"})
 
+@main.route("/evaluate")
+def evaluate():
+    is_authenticated_check(request)
+
+    term = request.args.get("term")
+    data = request.get_json()
+
+    if not term or not data:
+        abort(400)
+
+    request_body = {
+        "requests": data,
+        "metric": {
+            "precision": {
+                "k": 10,
+                "relevant_rating_threshold": 1,
+                "ignore_unlabeled": True,
+            }
+        }
+    }
+
+    rank_eval = es.rank_eval(term, body=request_body, index="pages")
+
+    return jsonify({"result": rank_eval})
 
 @main.route("/update", methods=["POST"])
 def update():

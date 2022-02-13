@@ -6,7 +6,7 @@ import indieweb_utils
 import mf2py
 import requests
 import spacy
-from flask import Blueprint, jsonify, redirect, render_template, request
+from flask import (Blueprint, jsonify, redirect, render_template, request)
 
 import config
 import search.search_page_feeds as search_page_feeds
@@ -19,6 +19,40 @@ nlp = spacy.load("en_core_web_sm")
 
 allowed_chars = [" ", '"', ":", "-", "/", ".", "=", ","]
 
+def save_search_result_evaluation(evaluate: str, is_logged_in: bool, rows: list, cleaned_value_for_query: str) -> None:
+    if evaluate == "save" and is_logged_in is True:
+        get_ids_of_results = [r["_id"] for r in rows]
+
+        relevance = request.args.get("relevance")
+
+        # relevance as list
+        relevance_list = relevance.split(",")
+
+        count = 0
+
+        results = []
+
+        for id in get_ids_of_results:
+            rank_object = {
+                "_index": "pages",
+                "_id": id,
+                "rating": int(relevance_list[count])
+            }
+
+            count += 1
+
+            results.append(rank_object)
+        
+        relevance_object = {
+            "id": cleaned_value_for_query,
+            "request": {
+                "query": { "simple_query_string": { "query": cleaned_value_for_query, "minimum_should_match": "75%" } }
+            },
+            "ratings": results
+        }
+
+        with open("data/relevance.json", "a+") as f:
+            f.write(json.dumps(relevance_object) + "\n")
 
 def handle_random_query(session):
     random_site = session.get(
@@ -46,7 +80,6 @@ def search_autocomplete():
     )
 
     return jsonify(suggest.json()), 200
-
 
 @main.route("/results", methods=["GET", "POST"])
 def results_page():
@@ -88,6 +121,11 @@ def results_page():
 
     if len(cleaned_value_for_query) == 0:
         return redirect("/")
+
+    if session.get("me"):
+        is_logged_in = True
+    else:
+        is_logged_in = False
 
     featured_serp_contents = ""
 
@@ -139,7 +177,6 @@ def results_page():
         final_query = cleaned_value_for_query
     else:
         out_of_bounds_page = False
-        suggestion = False
         final_query = ""
 
     if (
@@ -170,6 +207,8 @@ def results_page():
     else:
         out_of_bounds_page = False
 
+    save_search_result_evaluation(request.args.get("evaluate"), is_logged_in, rows, cleaned_value_for_query)
+
     return render_template(
         "search/results.html",
         results=rows,
@@ -186,6 +225,7 @@ def results_page():
         special_result=special_result,
         featured_serp_contents=featured_serp_contents,
         title=f"Search results for '{cleaned_value_for_query}' query",
+        is_logged_in=is_logged_in
     )
 
 

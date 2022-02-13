@@ -117,6 +117,7 @@ input[type="text"],
 input[type="username"],
 input[type="password"],
 input[type="search"],
+input[type="url"],
 select {
   padding: 10px;
   border-radius: 10px;

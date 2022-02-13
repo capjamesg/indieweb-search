@@ -7,7 +7,7 @@ def get_default_search_param(query: str, fields: str) -> dict:
                     "query_string": {
                         "query": query,
                         "fields": fields,
-                        "minimum_should_match": "3<75%",
+                        "minimum_should_match": "3<50%",
                     },
                 },
                 "script": {

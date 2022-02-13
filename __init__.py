@@ -34,6 +34,10 @@ def create_app():
 
     app.register_blueprint(information_pages_blueprint)
 
+    from auth import auth as auth_blueprint
+
+    app.register_blueprint(auth_blueprint)
+
     @app.errorhandler(404)
     def page_not_found(e):
         return render_template("error.html", title="Page Not Found Error"), 404

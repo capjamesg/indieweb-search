@@ -53,4 +53,23 @@ def assemble_query(
 
         query = query + mf2_property_string
 
+    valid_post_types = [
+        ("rsvp", "rsvp"),
+        ("reply", "reply"),
+        ("replies", "reply"),
+        ("repost", "repost"),
+        ("share", "repost"),
+        ("like", "like"),
+        ("video", "video"),
+        ("note", "note"),
+        ("article", "article")
+    ]
+
+    last_query_word = query.split(" ")[-1]
+
+    for name, collection_identifier in valid_post_types:
+        if last_query_word == name or last_query_word == name + "s":
+            final_query = final_query + f" AND (post_type:{collection_identifier})"
+            break
+
     return query
