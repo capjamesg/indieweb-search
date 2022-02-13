@@ -2,10 +2,11 @@ import random
 
 import mysql.connector
 from elasticsearch import Elasticsearch
-from flask import Blueprint, abort, jsonify, request
+from flask import Blueprint, jsonify, request
 
 import config
 
+from .authentication import check_password, is_authenticated_check
 from .constants import default_fields, to_delete
 from .create_query import assemble_query
 from .queries import (get_auto_suggest_query, get_date_ordered_query,
@@ -18,12 +19,9 @@ main = Blueprint("main", __name__)
 
 @main.route("/suggest")
 def autosuggest():
-    pw = config.ELASTICSEARCH_PASSWORD
+    check_password(request)
 
     query = request.args.get("q")
-
-    if request.args.get("pw") != pw:
-        return abort(401)
 
     search_param = get_auto_suggest_query(query)
 
@@ -34,7 +32,7 @@ def autosuggest():
 
 @main.route("/")
 def home():
-    pw = config.ELASTICSEARCH_PASSWORD
+    check_password(request)
 
     # get accepted query params
     query = request.args.get("q")
@@ -50,9 +48,6 @@ def home():
 
     if not from_num:
         from_num = 1
-
-    if request.args.get("pw") != pw:
-        return abort(401)
 
     query = assemble_query(query, category, contains_js, inurl, mf2_property, site)
 
@@ -97,30 +92,19 @@ def home():
 
 @main.route("/remove-from-index", methods=["POST"])
 def remove_from_index():
-    if request.method == "POST":
-        # check auth header
-        if request.headers.get("Authorization") != "Bearer {}".format(
-            config.ELASTICSEARCH_API_TOKEN
-        ):
-            return abort(401)
+    is_authenticated_check(request)
 
-        data = request.get_json()
+    data = request.get_json()
 
-        # remove from elasticsearch
-        es.delete(index="pages", doc_type="page", id=data["id"])
+    # remove from elasticsearch
+    es.delete(index="pages", doc_type="page", id=data["id"])
 
-        return jsonify({"status": "ok"})
-    else:
-        return abort(401)
+    return jsonify({"status": "ok"})
 
 
 @main.route("/create", methods=["POST"])
 def create():
-    # check auth header
-    if request.headers.get("Authorization") != "Bearer {}".format(
-        config.ELASTICSEARCH_API_TOKEN
-    ):
-        return abort(401)
+    is_authenticated_check(request)
 
     data = request.get_json()
 
@@ -133,11 +117,7 @@ def create():
 
 @main.route("/update", methods=["POST"])
 def update():
-    # check auth header
-    if request.headers.get("Authorization") != "Bearer {}".format(
-        config.ELASTICSEARCH_API_TOKEN
-    ):
-        return abort(401)
+    is_authenticated_check(request)
 
     data = request.get_json()
 
@@ -153,11 +133,7 @@ def update():
 
 @main.route("/check", methods=["POST"])
 def check():
-    # check auth header
-    if request.headers.get("Authorization") != "Bearer {}".format(
-        config.ELASTICSEARCH_API_TOKEN
-    ):
-        return abort(401)
+    is_authenticated_check(request)
 
     hash = request.args.get("hash")
 
@@ -240,8 +216,7 @@ def show_num_of_pages():
 
 @main.route("/random")
 def random_page():
-    if request.args.get("pw") != config.ELASTICSEARCH_PASSWORD:
-        return abort(401)
+    check_password(request)
 
     # read domains.txt file
     with open("domains.txt", "r") as f:
@@ -256,11 +231,7 @@ def random_page():
 # return feeds associated with URL
 @main.route("/feeds", methods=["GET", "POST"])
 def get_feeds_for_url():
-    if (
-        not request.headers.get("Authorization")
-        or request.headers.get("Authorization") != config.ELASTICSEARCH_API_TOKEN
-    ):
-        abort(401)
+    is_authenticated_check(request)
 
     website_url = request.form.get("website_url")
 
@@ -302,11 +273,7 @@ def get_feeds_for_url():
 
 @main.route("/save", methods=["POST"])
 def save_feed():
-    if (
-        not request.headers.get("Authorization")
-        or request.headers.get("Authorization") != config.ELASTICSEARCH_API_TOKEN
-    ):
-        abort(401)
+    is_authenticated_check(request)
 
     result = request.get_json()["feeds"]
 

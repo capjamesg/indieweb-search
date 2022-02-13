@@ -1,3 +1,5 @@
+from urllib.parse import urlparse as parse_url
+
 import requests
 import spacy
 
@@ -6,7 +8,6 @@ import config
 from . import search_result_features
 from .entity_type_map import keyword_values
 from .structures import DirectAnswer
-from urllib.parse import urlparse as parse_url
 
 
 def choose_featured_snippet(
@@ -100,10 +101,7 @@ def choose_featured_snippet(
                 rows[1]["_source"],
             )
 
-    elif len(rows) > 0 and (
-        domain == "microformats.org"
-        or domain == "indieweb.org"
-    ):
+    elif len(rows) > 0 and (domain == "microformats.org" or domain == "indieweb.org"):
         url = rows[0]["_source"]["url"]
         source = rows[0]["_source"]
 

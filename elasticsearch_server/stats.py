@@ -4,9 +4,11 @@ import random
 
 import mysql.connector
 from elasticsearch import Elasticsearch
-from flask import Blueprint, abort, jsonify, request
+from flask import Blueprint, jsonify, request
 
 import config
+
+from .authentication import check_password, is_authenticated_check
 
 es = Elasticsearch(["http://localhost:9200"])
 
@@ -26,8 +28,7 @@ def show_num_of_pages():
 
 @stats.route("/random")
 def random_page():
-    if request.args.get("pw") != config.ELASTICSEARCH_PASSWORD:
-        return abort(401)
+    check_password(request)
 
     # read domains.txt file
     with open("domains.txt", "r") as f:
@@ -41,11 +42,7 @@ def random_page():
 
 @stats.route("/crawled")
 def get_crawled_sites():
-    if (
-        not request.headers.get("Authorization")
-        or request.headers.get("Authorization") != config.ELASTICSEARCH_API_TOKEN
-    ):
-        abort(401)
+    is_authenticated_check(request)
 
     database = mysql.connector.connect(
         host="localhost",
@@ -67,11 +64,7 @@ def get_crawled_sites():
 
 @stats.route("/crawl_queue")
 def get_crawl_queue():
-    if (
-        not request.headers.get("Authorization")
-        or request.headers.get("Authorization") != config.ELASTICSEARCH_API_TOKEN
-    ):
-        abort(401)
+    is_authenticated_check(request)
 
     database = mysql.connector.connect(
         host="localhost",
@@ -93,11 +86,7 @@ def get_crawl_queue():
 
 @stats.route("/sitemaps")
 def get_sitemaps():
-    if (
-        not request.headers.get("Authorization")
-        or request.headers.get("Authorization") != config.ELASTICSEARCH_API_TOKEN
-    ):
-        abort(401)
+    is_authenticated_check(request)
 
     database = mysql.connector.connect(
         host="localhost",
@@ -119,11 +108,7 @@ def get_sitemaps():
 
 @stats.route("/feed_breakdown")
 def get_feed_breakdown():
-    if (
-        not request.headers.get("Authorization")
-        or request.headers.get("Authorization") != config.ELASTICSEARCH_API_TOKEN
-    ):
-        abort(401)
+    is_authenticated_check(request)
 
     database = mysql.connector.connect(
         host="localhost",

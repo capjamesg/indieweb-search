@@ -1,4 +1,5 @@
 import datetime
+import logging
 from time import mktime
 
 import constants
@@ -18,7 +19,7 @@ def process_xml_feed(url, feed_etag, site_url):
         return url, etag, None
 
     if etag == feed_etag:
-        print(f"{url} has not changed since last poll, skipping")
+        logging.debug(f"{url} has not changed since last poll, skipping")
         return url, etag, None
 
     last_modified = feed.get("modified_parsed", None)
@@ -26,7 +27,7 @@ def process_xml_feed(url, feed_etag, site_url):
     if last_modified and datetime.datetime.fromtimestamp(
         mktime(last_modified)
     ) < datetime.datetime.now() - datetime.timedelta(hours=12):
-        print(f"{url} has not been modified in the last 12 hours, skipping")
+        logging.debug(f"{url} has not been modified in the last 12 hours, skipping")
         return url, etag, None
 
     session = requests.Session()
@@ -47,9 +48,11 @@ def process_xml_feed(url, feed_etag, site_url):
     )
 
     if modify_feed.status_code != 200:
-        print(f"{modify_feed.status_code} status code returned while modifying {url}")
+        logging.debug(
+            f"{modify_feed.status_code} status code returned while modifying {url}"
+        )
     else:
-        print(f"updated etag for {url}")
+        logging.debug(f"updated etag for {url}")
 
 
 def process_h_feed(r, site_url):
@@ -117,7 +120,7 @@ def renew_websub_hub_subscription(url):
             ),
         )
 
-        print(f"sent websub request to {url}")
+        logging.debug(f"sent websub request to {url}")
 
 
 def poll_feeds(f):
@@ -138,10 +141,10 @@ def poll_feeds(f):
     etag = r.headers.get("etag")
 
     if r.status_code == 304:
-        print(f"Feed {url} unchanged")
+        logging.debug(f"Feed {url} unchanged")
         return url, etag, None
     elif r.status_code != 200:
-        print(f"{r.status_code} status code returned while retrieving {url}")
+        logging.debug(f"{r.status_code} status code returned while retrieving {url}")
         return url, etag, None
 
     if r.headers.get("content-type"):
@@ -149,7 +152,7 @@ def poll_feeds(f):
     else:
         content_type = ""
 
-    print("polling " + url)
+    logging.debug("polling " + url)
 
     site_url = "https://" + url.split("/")[2]
 

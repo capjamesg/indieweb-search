@@ -256,6 +256,10 @@ def initial_head_request(
             full_url, headers=config.HEADERS, allow_redirects=True, verify=False
         )
 
+        # get redirect count
+        redirect_history = page_test.history
+        redirect_count = len(redirect_history)
+
         # get redirect url
         full_url = check_for_redirect_url(page_test, full_url, site_url)
 
@@ -282,7 +286,7 @@ def initial_head_request(
         if content_type_is_valid is False:
             raise Exception
 
-        return page_test, nofollow_all
+        return page_test, nofollow_all, redirect_count
 
     except requests.exceptions.Timeout:
         print(f"{full_url} timed out, skipping")

@@ -1,6 +1,6 @@
 import concurrent.futures
-import csv
 import datetime
+import ipaddress
 import logging
 from typing import List
 
@@ -13,6 +13,7 @@ from bs4 import BeautifulSoup
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 import config
+import crawler.post_crawl_processing as post_crawl_processing
 import crawler.robots_handling as robots_handling
 import crawler.verify_and_process as verify_and_process
 from config import ROOT_DIRECTORY
@@ -22,7 +23,7 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 start_time = datetime.datetime.now()
 
 logging.basicConfig(
-    filename=f"logs/{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.log",
+    filename=f"logs/search/{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.log",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 
@@ -167,6 +168,29 @@ def get_feeds(site: str) -> list:
     return feeds
 
 
+def get_urls_to_crawl(protocol: str, site: str, final_urls: dict) -> tuple:
+    r = requests.post(
+        "https://es-indieweb-search.jamesg.blog/feeds",
+        headers=headers,
+        data={"website_url": site},
+    )
+
+    if r.status_code == 200 and r.json() and not r.json().get("urls"):
+        print("{} has urls that need to be crawled")
+    else:
+        print("{} has no urls that need to be crawled")
+
+    for url in r.json().get("urls"):
+        final_urls[url] = ""
+
+    if len(final_urls) == 0:
+        final_urls[f"{protocol}{site}"] = ""
+
+    crawl_queue = list(final_urls.keys())
+
+    return final_urls, crawl_queue
+
+
 def build_index(site: str) -> List[list]:
     """
     Main function to crawl a specified set of sites.
@@ -186,28 +210,32 @@ def build_index(site: str) -> List[list]:
     """
     # do not index IPs
     # sites must have a domain name to qualify for inclusion in the index
-    if site.replace(".", "").isdigit():
-        return site, []
+    try:
+        if ipaddress.ip_address(site):
+            return
+    except:
+        pass
 
     # read crawl_queue.txt
     crawl_budget, final_urls, namespaces_to_ignore, protocol = process_domain(site)
 
     feeds = get_feeds(site)
 
-    if len(final_urls) == 0:
-        final_urls[f"{protocol}{site}"] = ""
-
-    crawl_queue = list(final_urls.keys())
-
     print(f"processing {site}. crawl budget: {crawl_budget}")
 
+    # initialize variables for crawl
     indexed = 0
     valid_count = 0
-
     indexed_list = {}
-
     all_feeds = []
     discovered_feeds_dict = {}
+    web_page_hashes = {}
+    crawl_depths = {}
+    average_crawl_speed = []
+    homepage_meta_description = ""
+    budget_spent = 0
+
+    session = requests.Session()
 
     try:
         h_card = mf2py.Parser(protocol + site)
@@ -215,15 +243,7 @@ def build_index(site: str) -> List[list]:
         h_card = []
         print(f"no h-card could be found on {site} home page")
 
-    session = requests.Session()
-
-    web_page_hashes = {}
-
-    crawl_depths = {}
-
-    average_crawl_speed = []
-
-    homepage_meta_description = ""
+    final_urls, crawl_queue = get_urls_to_crawl(protocol, site, final_urls)
 
     for url in crawl_queue:
         crawl_depth = 0
@@ -245,6 +265,7 @@ def build_index(site: str) -> List[list]:
             web_page_hash,
             crawl_depth,
             average_crawl_speed,
+            budget_used,
         ) = verify_and_process.crawl_urls(
             final_urls,
             namespaces_to_ignore,
@@ -296,10 +317,13 @@ def build_index(site: str) -> List[list]:
 
         indexed += 1
 
-        print(f"{indexed}/{crawl_budget}")
-        print(f"{site} - {indexed}/{crawl_budget}")
+        budget_spent += budget_used
 
-        if indexed > crawl_budget:
+        print(
+            f"{site} - indexed: {indexed} / budget spent: {budget_spent} / budget for crawl: {crawl_budget}"
+        )
+
+        if budget_spent > crawl_budget:
             break
 
         indexed_list[url_indexed] = True
@@ -318,8 +342,6 @@ def build_index(site: str) -> List[list]:
 
             crawl_depths[key] = value
 
-    # update database to list new feeds
-
     headers["Content-Type"] = "application/json"
 
     # exclude wordpress json feeds for now
@@ -331,52 +353,10 @@ def build_index(site: str) -> List[list]:
 
     indexed_list = [[url, current_date] for url in list(indexed_list.keys())]
 
-    with open(f"indexed_list.csv", "a+") as f:
-        writer = csv.writer(f)
-        writer.writerows(indexed_list)
-
-    r = requests.post(
-        "https://es-indieweb-search.jamesg.blog/save",
-        json={"feeds": all_feeds},
-        headers=headers,
-    )
-
-    if r.status_code == 200:
-        # print("feeds updated in database for {}".format(site))
-        print(f"feeds updated database for {site}")
-    else:
-        # print("ERROR: feeds not updated for {} (status code {})".format(site, r.status_code))
-        logging.error(f"feeds not updated for {site} (status code {r.status_code})")
-
-    del headers["Content-Type"]
-
-    r = requests.post(
-        "https://es-indieweb-search.jamesg.blog/create_crawled",
-        data={"url": site},
-        headers=headers,
-    )
-
-    if r.status_code == 200:
-        # print(r.text)
-        # print("crawl recorded in database for {}".format(site))
-        print(f"crawl recorded in database for {site}")
-    else:
-        # print("ERROR: crawl not recorded in database for {} (status code {})".format(site, r.status_code))
-        logging.error(
-            f"crawl not recorded in database for {site} (status code {r.status_code})"
-        )
-
-    with open("crawl_queue.txt", "r") as f:
-        rows = f.readlines()
-
-    # if site in rows:
-    #     rows.remove(site)
-
-    # if site + "\n" in rows:
-    #     rows.remove(site + "\n")
-
-    # with open("crawl_queue.txt", "w+") as f:
-    #     f.writelines(rows)
+    # update database to include new data
+    post_crawl_processing.save_feeds_to_database(all_feeds, headers, site)
+    post_crawl_processing.save_indexed_urls_to_database(indexed_list, headers, site)
+    post_crawl_processing.record_crawl_of_domain(site, headers)
 
     return url_indexed, discovered
 

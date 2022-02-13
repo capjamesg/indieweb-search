@@ -48,9 +48,7 @@ def parse_review(
     else:
         review = ""
 
-    html = "<h3>Review of {}</h3><p>Rating: {}</p><p>{}</p>".format(
-        name, rating, review
-    )
+    html = f"<h3>Review of {name}</h3><p>Rating: {rating}</p><p>{review}</p>"
 
     return DirectAnswer(
         answer_html=html,

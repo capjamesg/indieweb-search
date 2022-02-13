@@ -93,9 +93,7 @@ def parse_whois(
                         url.strip("./") + "/" + value[0],
                     )
 
-                to_show += "<p><b>{}</b>: {}</p>".format(
-                    key.title().replace("-", " "), value[0]
-                )
+                to_show += f"<p><b>{key.title().replace('-', ' ')}</b>: {value[0]}</p>"
             elif key == "email" and "@" in value[0]:
                 # @ must be in email for it to be valid
                 to_show += "<p><b>{}</b>: <a href='{}'>{}</a></p>".format(
@@ -182,9 +180,7 @@ def parse_social(
                     image, link.get("href"), link_type
                 )
             elif link_type and link_type != "":
-                to_show += "<li><a href='{}'>{}</a></li>".format(
-                    link.get("href"), link_type
-                )
+                to_show += f"<li><a href='{link.get('href')}'>{link_type}</a></li>"
             else:
                 to_show += "<li><a href='{}'>{}</a></li>".format(
                     link.get("href"), link.get("href")

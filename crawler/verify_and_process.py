@@ -134,9 +134,9 @@ def crawl_urls(
     Crawls URLs in list, adds URLs to index, and returns updated list.
     """
 
-    feeds = []
+    budget_used = 0
 
-    url = url.replace("///", "//")
+    feeds = []
 
     # make sure urls with // are processed correctly
     # example: https://www.test.com//text.html should become https://www.test.com/text.html
@@ -150,7 +150,7 @@ def crawl_urls(
         verify_and_process_helpers.initial_url_checks(full_url)
     except:
         url_handling_helpers.check_remove_url(full_url)
-        return url, {}, False, feeds, "", crawl_depth, average_crawl_speed
+        return url, {}, False, feeds, "", crawl_depth, average_crawl_speed, budget_used
 
     # Only get URLs that match namespace exactly
     in_matching_namespace = [
@@ -159,14 +159,28 @@ def crawl_urls(
 
     # The next line of code skips indexing namespaces excluded in robots.txt
     if len(in_matching_namespace) > 1:
-        return url, discovered_urls, True, feeds, "", crawl_depth, average_crawl_speed
+        return (
+            url,
+            discovered_urls,
+            True,
+            feeds,
+            "",
+            crawl_depth,
+            average_crawl_speed,
+            budget_used,
+        )
 
-    session.max_redirects = 3
+    session.max_redirects = 5
+
+    budget_used += 1
 
     try:
-        page_test, nofollow_all = verify_and_process_helpers.initial_head_request(
-            full_url, session, site_url
-        )
+        (
+            page_test,
+            nofollow_all,
+            redirect_count,
+        ) = verify_and_process_helpers.initial_head_request(full_url, session, site_url)
+        budget_used += redirect_count
     except:
         url_handling_helpers.check_remove_url(full_url)
         return url, {}, False, feeds, None, crawl_depth, average_crawl_speed
@@ -183,12 +197,22 @@ def crawl_urls(
             None,
             crawl_depth,
             average_crawl_speed,
+            budget_used,
         )
 
     try:
         page = verify_and_process_helpers.get_web_page(session, full_url)
     except:
-        return url, {}, False, feeds, None, crawl_depth, average_crawl_speed
+        return (
+            url,
+            {},
+            False,
+            feeds,
+            None,
+            crawl_depth,
+            average_crawl_speed,
+            budget_used,
+        )
 
     if page.status_code == 301 or page.status_code == 302 or page.status_code == 308:
         return verify_and_process_helpers.handle_redirect(
@@ -201,6 +225,7 @@ def crawl_urls(
             average_crawl_speed,
             discovered_urls,
             full_url,
+            budget_used,
         )
 
     if len(average_crawl_speed) > 10 and page.elapsed.total_seconds() > 2:
@@ -226,7 +251,16 @@ def crawl_urls(
     is_soft_404 = detect_soft_404(page_desc_soup)
 
     if is_soft_404:
-        return url, {}, False, feeds, None, crawl_depth, average_crawl_speed
+        return (
+            url,
+            {},
+            False,
+            feeds,
+            None,
+            crawl_depth,
+            average_crawl_speed,
+            budget_used,
+        )
 
     # get body of page
     body = page_desc_soup.find("body")
@@ -240,7 +274,16 @@ def crawl_urls(
                 full_url, web_page_hashes.get(hash)
             )
         )
-        return url, {}, False, feeds, hash, crawl_depth, average_crawl_speed
+        return (
+            url,
+            {},
+            False,
+            feeds,
+            hash,
+            crawl_depth,
+            average_crawl_speed,
+            budget_used,
+        )
 
     # if http-equiv refresh redirect present
     # not recommended by W3C but still worth checking for just in case
@@ -267,7 +310,15 @@ def crawl_urls(
         )
 
         if is_canonical:
-            return url, discovered_urls, False, None, crawl_depth, average_crawl_speed
+            return (
+                url,
+                discovered_urls,
+                False,
+                None,
+                crawl_depth,
+                average_crawl_speed,
+                budget_used,
+            )
 
     try:
         noindex, nofollow_all = verify_and_process_helpers.check_if_url_is_noindexed(
@@ -282,6 +333,7 @@ def crawl_urls(
             hash,
             crawl_depth,
             average_crawl_speed,
+            budget_used,
         )
 
     links = filter_nofollow_links(page_desc_soup, nofollow_all)
@@ -298,6 +350,7 @@ def crawl_urls(
             hash,
             crawl_depth,
             average_crawl_speed,
+            budget_used,
         )
 
     # only discover feeds and new links if a crawl is going on
@@ -336,6 +389,7 @@ def crawl_urls(
             hash,
             crawl_depth,
             average_crawl_speed,
+            budget_used,
         )
 
     heading_info = {"h1": [], "h2": [], "h3": [], "h4": [], "h5": [], "h6": []}
@@ -371,6 +425,7 @@ def crawl_urls(
             hash,
             crawl_depth,
             average_crawl_speed,
+            budget_used,
         )
 
     # get number of links
@@ -425,4 +480,13 @@ def crawl_urls(
         logging.warning(e)
         raise Exception
 
-    return url, discovered_urls, True, feeds, hash, crawl_depth, average_crawl_speed
+    return (
+        url,
+        discovered_urls,
+        True,
+        feeds,
+        hash,
+        crawl_depth,
+        average_crawl_speed,
+        budget_used,
+    )

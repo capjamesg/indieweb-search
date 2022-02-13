@@ -31,6 +31,10 @@ def page_link_discovery(
 
         supported_protocols = ["http", "https"]
 
+        # remove # from the end of the link
+        if "#" in link["href"]:
+            link["href"] = link["href"].split("#")[0]
+
         if link["href"].startswith("/"):
             full_link = f"https://{site_url}" + link["href"]
 

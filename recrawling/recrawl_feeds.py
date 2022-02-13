@@ -11,6 +11,11 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
+logging.basicConfig(
+    filename=f"logs/recrawl/{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.log",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+
 # move results.json to a file with a datetime stamp
 if os.path.isfile("results.json"):
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -33,7 +38,7 @@ def prepare_feeds_for_polling():
             else:
                 feeds_by_page[f[1]] = [f]
         except Exception as e:
-            print(e)
+            logging.debug(e)
             continue
 
     feed_url_list = []
@@ -41,14 +46,14 @@ def prepare_feeds_for_polling():
     for value in feeds_by_page.values():
         try:
             if value and len(value) > 1:
-                print(value)
+                logging.debug(value)
                 to_add = [feed for feed in value if feed[4] == "h-feed"]
             elif value and len(value) < 2:
                 to_add = value[0]
 
             feed_url_list.append(to_add)
         except Exception as e:
-            print(e)
+            logging.debug(e)
             continue
 
     return feed_url_list
@@ -64,13 +69,13 @@ def process_feeds(feeds):
             for future in concurrent.futures.as_completed(futures):
                 feeds_indexed += 1
 
-                print(f"FEEDS INDEXED: {feeds_indexed}")
+                logging.debug(f"FEEDS INDEXED: {feeds_indexed}")
                 logging.info(f"FEEDS INDEXED: {feeds_indexed}")
 
                 try:
                     future.result()
                 except Exception as e:
-                    print(e)
+                    logging.debug(e)
                     pass
 
                 futures.remove(future)

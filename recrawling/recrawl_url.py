@@ -1,3 +1,5 @@
+import logging
+
 import requests
 
 from crawler.verify_and_process import crawl_urls
@@ -6,6 +8,7 @@ from crawler.verify_and_process import crawl_urls
 def schedule_crawl_of_one_url(url, site_url, session):
     if session == None:
         session = requests.Session()
+
     crawl_urls(
         {url: ""},
         [],
@@ -29,4 +32,4 @@ def schedule_crawl_of_one_url(url, site_url, session):
         0,
     )
 
-    print(f"crawled {url} url")
+    logging.debug(f"crawled {url} url")

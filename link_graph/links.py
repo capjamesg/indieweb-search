@@ -1,10 +1,18 @@
 import csv
+import datetime
 import json
+import logging
 
+import indieweb_utils
 from bs4 import BeautifulSoup
 from elasticsearch import Elasticsearch
+
 from .scroll import scroll
-import indieweb_utils
+
+logging.basicConfig(
+    filename=f"logs/link_graph/{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.log",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 es = Elasticsearch(["http://localhost:9200"])
 
@@ -26,12 +34,14 @@ LINK_MICROFORMATS = [
     ("u-invitee", 0),
 ]
 
+
 def get_link_weight(l: dict) -> tuple:
     for microformat, weight in LINK_MICROFORMATS:
         if l.has_attr(microformat):
             return microformat, weight
 
     return "", 0
+
 
 def get_all_links(h: dict, f: csv.DictWriter, count: int) -> None:
     # don't count links on pages that specified nofollow in the X-Robots-Tag header
@@ -49,10 +59,9 @@ def get_all_links(h: dict, f: csv.DictWriter, count: int) -> None:
     links = soup.find_all("a")
 
     print(str(count) + " " + h["_source"]["url"])
+    logging.info(str(count) + " " + h["_source"]["url"])
 
     count += 1
-
-    domain = h["_source"]["url"].split("/")[2].lower()
 
     # check for nofollow or none meta values
     check_if_no_index = soup.find("meta", {"name": "robots"})
@@ -65,22 +74,21 @@ def get_all_links(h: dict, f: csv.DictWriter, count: int) -> None:
             or "none" in check_if_no_index.get("content")
         )
     ):
-        print(
-            f"all links on {h['_source']['url']} marked as nofollow, skipping"
-        )
+        print(f"all links on {h['_source']['url']} marked as nofollow, skipping")
+        logging.info(f"all links on {h['_source']['url']} marked as nofollow, skipping")
         return
 
     links_on_page = {}
-    
+
     for l in links:
         if not l.has_attr("href"):
             continue
         # skip nofollow links
         if l.has_attr("rel") and "nofollow" in l["rel"]:
             continue
-        
+
         link = indieweb_utils.canonicalize_url(link, h["_source"]["domain"])
-        
+
         link = link.strip("/").split("?")[0].replace("#", "")
 
         # don't count the same link twice
@@ -117,6 +125,7 @@ def get_all_links(h: dict, f: csv.DictWriter, count: int) -> None:
 
         csv.writer(f).writerow([h["_source"]["url"], link, link_domain])
 
+
 def write_links_to_file():
     count = 0
 
@@ -133,6 +142,7 @@ def write_links_to_file():
     with open("all_domains.txt", "w+") as f:
         for domain in domain_links.keys():
             f.write(domain.lower() + "\n")
+
 
 def get_domain_internal_link_count() -> list:
     # Open links file
@@ -155,8 +165,10 @@ def get_domain_internal_link_count() -> list:
                     links[link[1]] = 1
             count += 1
             print(count)
+            logging.info(count)
         except:
             print("error with link")
+            logging.info("error with link")
 
     # write links to all_links_final.json
     with open("all_links_final.json", "w+") as f:
@@ -171,6 +183,7 @@ def get_domain_internal_link_count() -> list:
     domains = {k: "" for k in domain_list}
 
     return domains
+
 
 def update_incoming_links_attribute_for_url(domains: list) -> None:
     count = 0
@@ -192,7 +205,9 @@ def update_incoming_links_attribute_for_url(domains: list) -> None:
         while found == "no":
             search_param = {
                 "query": {
-                    "term": {"url.keyword": {"value": link.replace("http://", "https://")}}
+                    "term": {
+                        "url.keyword": {"value": link.replace("http://", "https://")}
+                    }
                 }
             }
 
@@ -222,6 +237,7 @@ def update_incoming_links_attribute_for_url(domains: list) -> None:
                     break
 
             print("No results for " + link + ", skipping")
+            logging.info("No results for " + link + ", skipping")
 
             found = "none"
 
@@ -251,9 +267,12 @@ def update_incoming_links_attribute_for_url(domains: list) -> None:
         count += 1
 
         print(count, full_link)
+        logging.info(count)
+
 
 def calculate_aggregate_statistics(links: list) -> None:
     print("calculating top linked assets")
+    logging.info("calculating top linked assets")
 
     # sort URLs by number of incoming links
     links = {k: v for k, v in reversed(sorted(links.items(), key=lambda item: item[1]))}
@@ -267,17 +286,23 @@ def calculate_aggregate_statistics(links: list) -> None:
         csv.writer(f).writerows(top_ten)
 
     print("calculated top 10 linked assets")
-    print("done")
+    logging.info("calculated top 10 linked assets")
 
     with open("link_microformat_instances.json", "w+") as f:
         json.dump(link_microformat_instances, f)
 
     print("calculated link microformat instances")
+    logging.info("calculated link microformat instances")
+
 
 def main():
+    logging.info(
+        f"Starting link graph build at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+    )
     write_links_to_file()
     domains = get_domain_internal_link_count()
     update_incoming_links_attribute_for_url(domains)
     calculate_aggregate_statistics(links)
+
 
 main()

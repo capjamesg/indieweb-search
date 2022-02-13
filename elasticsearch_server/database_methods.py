@@ -8,9 +8,22 @@ from flask import Blueprint, abort, jsonify, request
 
 import config
 
+from .authentication import check_password, is_authenticated_check
+
 es = Elasticsearch(["http://localhost:9200"])
 
 database_methods = Blueprint("database_methods", __name__)
+
+
+def initialize_database():
+    database = mysql.connector.connect(
+        host="localhost",
+        user=config.MYSQL_DB_USER,
+        password=config.MYSQL_DB_PASSWORD,
+        database="feeds",
+    )
+
+    return database
 
 
 @database_methods.route("/count")
@@ -26,8 +39,7 @@ def show_num_of_pages():
 
 @database_methods.route("/random")
 def random_page():
-    if request.args.get("pw") != config.ELASTICSEARCH_PASSWORD:
-        return abort(401)
+    check_password(request)
 
     # read domains.txt file
     with open("domains.txt", "r") as f:
@@ -42,21 +54,12 @@ def random_page():
 # return feeds associated with URL
 @database_methods.route("/feeds", methods=["GET", "POST"])
 def get_feeds_for_url():
-    if (
-        not request.headers.get("Authorization")
-        or request.headers.get("Authorization") != config.ELASTICSEARCH_API_TOKEN
-    ):
-        abort(401)
+    is_authenticated_check(request)
 
     website_url = request.form.get("website_url")
 
     if website_url:
-        database = mysql.connector.connect(
-            host="localhost",
-            user=config.MYSQL_DB_USER,
-            password=config.MYSQL_DB_PASSWORD,
-            database="feeds",
-        )
+        database = initialize_database()
 
         cursor = database.cursor(buffered=True)
 
@@ -69,12 +72,7 @@ def get_feeds_for_url():
         else:
             return jsonify({"message": "No results matching this URL were found."})
     else:
-        database = mysql.connector.connect(
-            host="localhost",
-            user=config.MYSQL_DB_USER,
-            password=config.MYSQL_DB_PASSWORD,
-            database="feeds",
-        )
+        database = initialize_database()
         cursor = database.cursor(buffered=True)
 
         cursor.execute("SELECT * FROM feeds")
@@ -88,21 +86,13 @@ def get_feeds_for_url():
 
 @database_methods.route("/save", methods=["POST"])
 def save_feed():
-    if (
-        not request.headers.get("Authorization")
-        or request.headers.get("Authorization") != config.ELASTICSEARCH_API_TOKEN
-    ):
-        abort(401)
+    is_authenticated_check(request)
 
     result = request.get_json()["feeds"]
 
     for r in result:
-        database = mysql.connector.connect(
-            host="localhost",
-            user=config.MYSQL_DB_USER,
-            password=config.MYSQL_DB_PASSWORD,
-            database="feeds",
-        )
+        database = initialize_database()
+
         cursor = database.cursor(buffered=True)
 
         cursor.execute(
@@ -137,23 +127,14 @@ def save_feed():
 
 @database_methods.route("/create_crawled", methods=["POST"])
 def create_crawled_site():
-    if (
-        not request.headers.get("Authorization")
-        or request.headers.get("Authorization") != config.ELASTICSEARCH_API_TOKEN
-    ):
-        abort(401)
+    is_authenticated_check(request)
 
     url = request.form.get("url")
 
     if not url:
         return jsonify({"message": "No URL was provided."})
 
-    database = mysql.connector.connect(
-        host="localhost",
-        user=config.MYSQL_DB_USER,
-        password=config.MYSQL_DB_PASSWORD,
-        database="feeds",
-    )
+    database = initialize_database()
 
     cursor = database.cursor(buffered=True)
 
@@ -184,11 +165,7 @@ def create_crawled_site():
 
 @database_methods.route("/create_sitemap", methods=["POST"])
 def create_sitemap():
-    if (
-        not request.headers.get("Authorization")
-        or request.headers.get("Authorization") != config.ELASTICSEARCH_API_TOKEN
-    ):
-        abort(401)
+    is_authenticated_check(request)
 
     # get json data
     website_url = request.form.get("domain")
@@ -196,12 +173,8 @@ def create_sitemap():
 
     if not website_url:
         return jsonify({"message": "No website URL was provided."})
-    database = mysql.connector.connect(
-        host="localhost",
-        user=config.MYSQL_DB_USER,
-        password=config.MYSQL_DB_PASSWORD,
-        database="feeds",
-    )
+
+    database = initialize_database()
 
     cursor = database.cursor(buffered=True)
 
@@ -210,35 +183,26 @@ def create_sitemap():
     if cursor.fetchone():
         cursor.close()
         return jsonify({"message": "Sitemap already exists."})
-    else:
-        cursor.execute(
-            "INSERT INTO sitemaps (domain, sitemap_url) VALUES (%s, %s)",
-            (website_url, sitemap_url),
-        )
 
-        database.commit()
+    cursor.execute(
+        "INSERT INTO sitemaps (domain, sitemap_url) VALUES (%s, %s)",
+        (website_url, sitemap_url),
+    )
 
-        cursor.close()
+    database.commit()
 
-        return jsonify({"message": "Sitemap successfully created."})
+    cursor.close()
+
+    return jsonify({"message": "Sitemap successfully created."})
 
 
 @database_methods.route("/create_websub", methods=["POST"])
 def create_websub():
-    if (
-        not request.headers.get("Authorization")
-        or request.headers.get("Authorization") != config.ELASTICSEARCH_API_TOKEN
-    ):
-        abort(401)
+    is_authenticated_check(request)
 
     result = request.get_json()
 
-    database = mysql.connector.connect(
-        host="localhost",
-        user=config.MYSQL_DB_USER,
-        password=config.MYSQL_DB_PASSWORD,
-        database="feeds",
-    )
+    database = initialize_database()
 
     cursor = database.cursor(buffered=True)
 
@@ -265,18 +229,9 @@ def create_websub():
 
 @database_methods.route("/update_feed", methods=["POST"])
 def update_feed():
-    if (
-        not request.headers.get("Authorization")
-        or request.headers.get("Authorization") != config.ELASTICSEARCH_API_TOKEN
-    ):
-        abort(401)
+    is_authenticated_check(request)
 
-    database = mysql.connector.connect(
-        host="localhost",
-        user=config.MYSQL_DB_USER,
-        password=config.MYSQL_DB_PASSWORD,
-        database="feeds",
-    )
+    database = initialize_database()
 
     cursor = database.cursor(buffered=True)
 
@@ -286,37 +241,48 @@ def update_feed():
 
     feeds = cursor.fetchone()
 
-    if feeds and len(feeds) > 0:
-        cursor.execute(
-            "UPDATE feeds SET etag = %s, last_modified = %s WHERE feed_url = %s",
-            (item.get("etag"), item.get("last_modified"), item.get("feed_url")),
-        )
+    if not feeds or len(feeds) == 0:
+        abort(400)
 
-        database.commit()
+    cursor.execute(
+        "UPDATE feeds SET etag = %s, last_modified = %s WHERE feed_url = %s",
+        (item.get("etag"), item.get("last_modified"), item.get("feed_url")),
+    )
 
-        cursor.close()
-
-        return 200
+    database.commit()
 
     cursor.close()
 
-    abort(400)
+    return 200
+
+
+@database_methods.route("/to_crawl", methods=["GET"])
+def to_crawl():
+    is_authenticated_check(request)
+
+    database = initialize_database()
+
+    cursor = database.cursor(buffered=True)
+
+    domain = request.args.get("domain")
+
+    urls = cursor.execute(
+        "SELECT * FROM crawled WHERE domain = %s AND next_crawl < NOW()", (domain,)
+    )
+
+    if urls.rowcount == 0:
+        return jsonify({"message": "No urls to crawl."})
+
+    urls = urls.fetchall()
+
+    return jsonify({"urls": urls})
 
 
 @database_methods.route("/finish_crawl", methods=["POST"])
 def finish_crawl():
-    if (
-        not request.headers.get("Authorization")
-        or request.headers.get("Authorization") != config.ELASTICSEARCH_API_TOKEN
-    ):
-        abort(401)
+    is_authenticated_check(request)
 
-    database = mysql.connector.connect(
-        host="localhost",
-        user=config.MYSQL_DB_USER,
-        password=config.MYSQL_DB_PASSWORD,
-        database="feeds",
-    )
+    database = initialize_database()
 
     cursor = database.cursor(buffered=True)
 
@@ -355,12 +321,7 @@ def finish_crawl():
 
 @database_methods.route("/websub/<string:id>", methods=["GET", "POST"])
 def websub(id):
-    database = mysql.connector.connect(
-        host="localhost",
-        user=config.MYSQL_DB_USER,
-        password=config.MYSQL_DB_PASSWORD,
-        database="feeds",
-    )
+    database = initialize_database()
 
     cursor = database.cursor(buffered=True)
 
