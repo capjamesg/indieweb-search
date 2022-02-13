@@ -67,7 +67,7 @@ def process_domain(site: str) -> List[list]:
     # Parse sitemap indexes
     for u in sitemap_urls:
         r = requests.get(
-            u, verify=False, headers=config.HEADERS, timeout=5, allow_redirects=True
+            u, verify=False, headers=config.SEARCH_HEADERS, timeout=5, allow_redirects=True
         )
         if r.status_code == 200:
             # parse with bs4
@@ -93,7 +93,7 @@ def process_domain(site: str) -> List[list]:
         # Only URLs not already discovered will be added by this code
         # Lastmod dates will be added to the final_url value related to the URL if a lastmod date is available
         feed = requests.get(
-            s, headers=config.HEADERS, timeout=5, verify=False, allow_redirects=True
+            s, headers=config.SEARCH_HEADERS, timeout=5, verify=False, allow_redirects=True
         )
 
         soup = BeautifulSoup(feed.content, "lxml")
@@ -169,24 +169,23 @@ def get_feeds(site: str) -> list:
 
 
 def get_urls_to_crawl(protocol: str, site: str, final_urls: dict, web_page_hashes: dict) -> tuple:
-    r = requests.post(
+    r = requests.get(
         "https://es-indieweb-search.jamesg.blog/to_crawl",
         headers=headers,
         data={"website_url": site},
     )
 
     if r.status_code == 200 and r.json() and not r.json().get("urls"):
-        print("{} has urls that need to be crawled")
+        print(f"{site} has urls that need to be crawled")
+        all_urls = r.json().get("urls")
+
+        for url in all_urls:
+            url_object = url[0]
+            hash = [1]
+            final_urls[url_object] = ""
+            web_page_hashes[hash] = url_object
     else:
-        print("{} has no urls that need to be crawled")
-
-    all_urls = r.json().get("urls")
-
-    for url in all_urls:
-        url_object = url[0]
-        hash = [1]
-        final_urls[url_object] = ""
-        web_page_hashes[hash] = url_object
+        print(f"{site} has no urls that need to be crawled (status code {r.status_code})")
 
     if len(final_urls) == 0:
         final_urls[f"{protocol}{site}"] = ""
@@ -248,7 +247,7 @@ def build_index(site: str) -> List[list]:
         h_card = []
         print(f"no h-card could be found on {site} home page")
 
-    final_urls, crawl_queue = get_urls_to_crawl(protocol, site, final_urls, web_page_hashes)
+    final_urls, crawl_queue, web_page_hashes = get_urls_to_crawl(protocol, site, final_urls, web_page_hashes)
 
     for url in crawl_queue:
         crawl_depth = 0
