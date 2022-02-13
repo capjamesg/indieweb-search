@@ -19,10 +19,10 @@ to_delete = [
 ]
 
 default_fields = [
-    "title^1.7",
-    "description^1.5",
-    "url^1.3",
-    "category^0",
+    "title^1.4",
+    "description^0.9",
+    "url^0.2",
+    "category^0.3",
     "published^0",
     "keywords^0",
     "text^1.8",

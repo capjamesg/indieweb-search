@@ -6,6 +6,7 @@ import config
 from . import search_result_features
 from .entity_type_map import keyword_values
 from .structures import DirectAnswer
+from urllib.parse import urlparse as parse_url
 
 
 def choose_featured_snippet(
@@ -31,6 +32,10 @@ def choose_featured_snippet(
         if w in keyword_values:
             search_for_snippet = True
 
+    parsed_url = parse_url(rows[0]["_source"]["url"])
+
+    domain = parsed_url.netloc
+
     if search_for_snippet:
         # remove stopwords from query
         original = cleaned_value_for_query
@@ -49,7 +54,7 @@ def choose_featured_snippet(
         wiki_direct_result = [
             item
             for item in rows
-            if item["_source"]["url"].startswith("https://indieweb.org")
+            if domain == "indieweb.org"
             and "/" not in item["_source"]["title"]
             and cleaned_value_for_query.lower().strip()
             in item["_source"]["title"].lower()
@@ -58,7 +63,7 @@ def choose_featured_snippet(
         microformats_wiki_direct_result = [
             item
             for item in rows
-            if item["_source"]["url"].startswith("https://microformats.org/wiki/")
+            if domain == "microformats.org"
             and "/" not in item["_source"]["title"]
             and cleaned_value_for_query.lower() in item["_source"]["title"].lower()
         ]
@@ -96,9 +101,8 @@ def choose_featured_snippet(
             )
 
     elif len(rows) > 0 and (
-        rows[0]["_source"]["url"].startswith("https://jamesg.blog")
-        or rows[0]["_source"]["url"].startswith("https://microformats.org/wiki/")
-        or rows[0]["_source"]["url"].startswith("https://indieweb.org/")
+        domain == "microformats.org"
+        or domain == "indieweb.org"
     ):
         url = rows[0]["_source"]["url"]
         source = rows[0]["_source"]

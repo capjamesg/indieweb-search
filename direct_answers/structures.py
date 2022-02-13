@@ -11,4 +11,5 @@ class DirectAnswer:
     answer_type: str
     breadcrumb: str
     title: str
-    context: str
+    context: str = ""
+    featured_image: str = ""
