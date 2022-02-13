@@ -2,15 +2,15 @@ import datetime
 import logging
 from time import mktime
 
-import constants
+from . import constants
 import feedparser
 import indieweb_utils
 import mf2py
 import requests
-from recrawl_url import schedule_crawl_of_one_url
+from recrawling.recrawl_url import schedule_crawl_of_one_url
 
 
-def process_xml_feed(url, feed_etag, site_url):
+def process_xml_feed(url, feed_etag, site_url, f):
     feed = feedparser.parse(url)
 
     etag = feed.get("etag", "")
@@ -95,36 +95,37 @@ def process_json_feed(r, site_url):
         schedule_crawl_of_one_url(item["url"], site_url, session)
 
 
-def renew_websub_hub_subscription(url):
+def renew_websub_hub_subscription(url, f):
     # send request to renew websub if the websub subscription has expired
 
-    expire_date = f[4]
+    expire_date = f[3]
 
     if f[5] is False or datetime.datetime.now() > datetime.datetime.strptime(
-        expire_date, "%Y-%m-%dT%H:%M:%S.%fZ"
+        expire_date, "%Y-%m-%d"
     ):
         # random string of 20 letters and numbers
         # each websub endpoint needs to be different
 
-        r = requests.post(
+        create_websub_subscription = requests.post(
             "https://es-indieweb-search.jamesg.blog/create_websub",
             headers=constants.HEADERS,
             data={"website_url": url},
         )
 
-        r = requests.post(
+        requests.post(
             url,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
             data="hub.mode=subscribe&sub.topic={}&hub.callback=https://es-indieweb-search.jamesg.blog/websub/{}".format(
-                url, r.get_json()["key"]
+                url, create_websub_subscription.json()["key"]
             ),
         )
 
         logging.debug(f"sent websub request to {url}")
 
 
-def poll_feeds(f):
-    url = f[1]
+def poll_feeds(f, feeds_parsed):
+    domain = f[0]
+    url = indieweb_utils.canonicalize_url(f[1], domain)
     feed_etag = f[2]
     mime_type = f[4]
 
@@ -154,8 +155,6 @@ def poll_feeds(f):
 
     logging.debug("polling " + url)
 
-    site_url = "https://" + url.split("/")[2]
-
     allowed_xml_content_types = ["application/rss+xml", "application/atom+xml"]
 
     if (
@@ -163,16 +162,16 @@ def poll_feeds(f):
         or mime_type in allowed_xml_content_types
         or mime_type == "feed"
     ):
-        process_xml_feed(url, feed_etag, site_url)
+        process_xml_feed(url, feed_etag, url, f)
 
     if mime_type == "h-feed":
-        process_h_feed(r, site_url)
+        process_h_feed(r, url)
 
     elif mime_type == "application/json":
-        process_json_feed(r, site_url)
+        process_json_feed(r, url)
 
     elif mime_type == "websub":
-        renew_websub_hub_subscription(site_url)
+        renew_websub_hub_subscription(url, f)
 
         pass
 
