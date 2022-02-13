@@ -1,5 +1,6 @@
 import datetime
 from typing import List, Tuple
+from wsgiref import headers
 
 import requests
 from bs4 import BeautifulSoup
@@ -284,6 +285,18 @@ def initial_head_request(
         content_type_is_valid = verify_content_type_is_valid(page_test, full_url)
 
         if content_type_is_valid is False:
+            raise Exception
+
+        if page_test.status_code == 304:
+            headers = {"Authorization": config.ELASTICSEARCH_API_TOKEN}
+
+            requests.post(
+                "https://es-indieweb-search.jamesg.blog/add_to_queue",
+                headers=headers,
+                data={"url": full_url}
+            )
+
+            # raise exception here so URL doesn't continue to be crawled
             raise Exception
 
         return page_test, nofollow_all, redirect_count

@@ -19,10 +19,13 @@ def save_feeds_to_database(all_feeds: list, headers: dict, site: str) -> None:
         logging.error(f"feeds not updated for {site} (status code {r.status_code})")
 
 
-def save_indexed_urls_to_database(indexed_list: list, headers: dict, site: str) -> None:
+def save_indexed_urls_to_database(dict_of_urls_and_hashes: list, headers: dict, site: str) -> None:
+    # convert dict_of_urls_and_hashes into list of lists
+    list_of_urls_and_hashes = [[i[0], i[1]] for i in dict_of_urls_and_hashes.items()]
+    
     r = requests.post(
-        "https://es-indieweb-search.jamesg.blog/save",
-        json={"url": indexed_list},
+        "https://es-indieweb-search.jamesg.blog/finish_crawl",
+        json={"url": list_of_urls_and_hashes},
         headers=headers,
     )
 

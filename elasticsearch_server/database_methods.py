@@ -267,7 +267,7 @@ def to_crawl():
     domain = request.args.get("domain")
 
     urls = cursor.execute(
-        "SELECT * FROM crawled WHERE domain = %s AND next_crawl < NOW()", (domain,)
+        "SELECT domain, hash FROM urls_crawled WHERE domain = %s AND next_crawl < NOW()", (domain,)
     )
 
     if urls.rowcount == 0:
@@ -290,26 +290,26 @@ def finish_crawl():
 
     all_urls = item["urls"]
 
-    for url in all_urls:
+    for url, hash in all_urls:
         cursor.execute("SELECT * FROM urls_crawled WHERE url = %s", (url,))
 
         crawled = cursor.fetchone()
 
-        # next crawl date in 3 months
-        next_crawl_date = datetime.datetime.now() + datetime.timedelta(days=90)
+        # next crawl date in 1 month
+        next_crawl_date = datetime.datetime.now() + datetime.timedelta(days=30)
         next_crawl_date_as_text = next_crawl_date.strftime("%Y-%m-%d %H:%M:%S")
 
         current_date_as_text = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         if crawled and len(crawled) > 0:
             cursor.execute(
-                "UPDATE urls_crawled SET last_crawled = %s and next_crawl = %s WHERE url = %s",
-                (current_date_as_text, next_crawl_date_as_text, url),
+                "UPDATE urls_crawled SET last_crawled = %s AND next_crawl = %s AND hash = %s WHERE url = %s",
+                (current_date_as_text, next_crawl_date_as_text, url, hash),
             )
         else:
             cursor.execute(
-                "INSERT INTO urls_crawled (url, last_crawled, next_crawl) VALUES (%s, %s, %s)",
-                (url, current_date_as_text, next_crawl_date_as_text),
+                "INSERT INTO urls_crawled (url, last_crawled, next_crawl, hash) VALUES (%s, %s, %s)",
+                (url, current_date_as_text, next_crawl_date_as_text, hash),
             )
 
             database.commit()
@@ -317,6 +317,27 @@ def finish_crawl():
     cursor.close()
 
     abort(400)
+
+@database_methods.route("/add_to_queue")
+def add_to_queue():
+    is_authenticated_check(request)
+
+    url = request.args.get("url")
+
+    if not url:
+        abort(400)
+
+    database = initialize_database()
+
+    cursor = database.cursor(buffered=True)
+
+    cursor.execute(
+        "INSERT INTO crawl_queue (url) VALUES (%s)", (url,)
+    )
+
+    database.commit()
+
+    return 200
 
 
 @database_methods.route("/websub/<string:id>", methods=["GET", "POST"])

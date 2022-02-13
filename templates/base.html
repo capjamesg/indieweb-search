@@ -15,7 +15,15 @@
             <li><a href="https://indieweb.org">IndieWeb.org</a></li>
         </ul>
         <ul id="mobile_menu">
-            <li><a onclick="trigger_modal('settings')">Menu</a></li>
+            <li>
+              <a onclick="trigger_modal('settings')" style="border: none">
+                <svg viewBox="0 0 100 80" width="25" height="25">
+                <rect width="100" height="20"></rect>
+                <rect y="30" width="100" height="20"></rect>
+                <rect y="60" width="100" height="20"></rect>
+              </svg>
+            </a>
+          </li>
         </ul>
       </nav>
       <script>
@@ -69,8 +77,8 @@
           {% endblock %}
       </div>
       <section class="mobile_modal" style="display: none;" id="settings">
-        <h2>IndieWeb Search</h2>
         <span class="close" onclick="trigger_modal('settings');">&times;</span>
+        <h2>IndieWeb Search</h2>
         <ul>
           <li>
             <a href="/about">About</a>

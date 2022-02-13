@@ -268,7 +268,7 @@ def crawl_urls(
     # get hash of web page
     hash = hashlib.sha256(str(body).encode("utf-8")).hexdigest()
 
-    if web_page_hashes.get(hash):
+    if web_page_hashes.get(hash) and web_page_hashes.get(hash) != full_url:
         print(
             "{} has already been indexed (hash the same as {}), skipping".format(
                 full_url, web_page_hashes.get(hash)

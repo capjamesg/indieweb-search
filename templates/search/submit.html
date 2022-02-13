@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <section class="search">
-  <img src="/static/indieweb.png" alt="IndieWeb logo" />
+  <img src="/static/indieweb.png" alt="IndieWeb logo" style="max-height: 200px;" />
   <h1>IndieWeb Search</h1>
   {% if query == 'site:"jamesg.blog"' %}
     <p>Use the form below to find a web page on {{ query.replace("site:", "").replace('"', "") }}.</p>

@@ -168,9 +168,9 @@ def get_feeds(site: str) -> list:
     return feeds
 
 
-def get_urls_to_crawl(protocol: str, site: str, final_urls: dict) -> tuple:
+def get_urls_to_crawl(protocol: str, site: str, final_urls: dict, web_page_hashes: dict) -> tuple:
     r = requests.post(
-        "https://es-indieweb-search.jamesg.blog/feeds",
+        "https://es-indieweb-search.jamesg.blog/to_crawl",
         headers=headers,
         data={"website_url": site},
     )
@@ -180,15 +180,20 @@ def get_urls_to_crawl(protocol: str, site: str, final_urls: dict) -> tuple:
     else:
         print("{} has no urls that need to be crawled")
 
-    for url in r.json().get("urls"):
-        final_urls[url] = ""
+    all_urls = r.json().get("urls")
+
+    for url in all_urls:
+        url_object = url[0]
+        hash = [1]
+        final_urls[url_object] = ""
+        web_page_hashes[hash] = url_object
 
     if len(final_urls) == 0:
         final_urls[f"{protocol}{site}"] = ""
 
     crawl_queue = list(final_urls.keys())
 
-    return final_urls, crawl_queue
+    return final_urls, crawl_queue, web_page_hashes
 
 
 def build_index(site: str) -> List[list]:
@@ -243,7 +248,7 @@ def build_index(site: str) -> List[list]:
         h_card = []
         print(f"no h-card could be found on {site} home page")
 
-    final_urls, crawl_queue = get_urls_to_crawl(protocol, site, final_urls)
+    final_urls, crawl_queue = get_urls_to_crawl(protocol, site, final_urls, web_page_hashes)
 
     for url in crawl_queue:
         crawl_depth = 0
@@ -355,7 +360,7 @@ def build_index(site: str) -> List[list]:
 
     # update database to include new data
     post_crawl_processing.save_feeds_to_database(all_feeds, headers, site)
-    post_crawl_processing.save_indexed_urls_to_database(indexed_list, headers, site)
+    post_crawl_processing.save_indexed_urls_to_database(web_page_hashes, headers, site)
     post_crawl_processing.record_crawl_of_domain(site, headers)
 
     return url_indexed, discovered
