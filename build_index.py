@@ -400,7 +400,6 @@ def main():
                         break
                 except Exception as e:
                     print(e)
-                    raise Exception
 
                 futures.remove(future)
 

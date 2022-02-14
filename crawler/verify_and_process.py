@@ -162,7 +162,7 @@ def crawl_urls(
         return (
             url,
             discovered_urls,
-            True,
+            False,
             feeds,
             "",
             crawl_depth,
@@ -183,7 +183,16 @@ def crawl_urls(
         budget_used += redirect_count
     except:
         url_handling_helpers.check_remove_url(full_url)
-        return url, {}, False, feeds, None, crawl_depth, average_crawl_speed
+        return (
+            url,
+            discovered_urls,
+            False,
+            feeds,
+            "",
+            crawl_depth,
+            average_crawl_speed,
+            budget_used,
+        )
 
     has_canonical = verify_and_process_helpers.parse_link_headers(
         page_test, full_url, crawl_queue, discovered_urls
@@ -194,7 +203,8 @@ def crawl_urls(
             url,
             discovered_urls,
             False,
-            None,
+            feeds,
+            "",
             crawl_depth,
             average_crawl_speed,
             budget_used,
@@ -205,10 +215,10 @@ def crawl_urls(
     except:
         return (
             url,
-            {},
+            discovered_urls,
             False,
             feeds,
-            None,
+            "",
             crawl_depth,
             average_crawl_speed,
             budget_used,
@@ -216,15 +226,13 @@ def crawl_urls(
 
     if page.status_code == 301 or page.status_code == 302 or page.status_code == 308:
         return verify_and_process_helpers.handle_redirect(
-            page,
-            final_urls,
-            crawl_queue,
             url,
+            discovered_urls,
+            False,
             feeds,
+            "",
             crawl_depth,
             average_crawl_speed,
-            discovered_urls,
-            full_url,
             budget_used,
         )
 
@@ -236,8 +244,6 @@ def crawl_urls(
         )
 
     average_crawl_speed.append(page.elapsed.total_seconds())
-
-    print(f"{full_url} took {page.elapsed.total_seconds()} seconds to load")
 
     # only store the most recent 100 times
     average_crawl_speed = average_crawl_speed[:100]

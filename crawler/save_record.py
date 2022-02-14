@@ -98,8 +98,8 @@ def get_favicon(page_content: BeautifulSoup) -> str:
     if not favicon:
         favicon = page_content.find("link", rel="icon")
 
-    if favicon:
-        favicon = favicon.get("href")
+        if favicon:
+            favicon = favicon.get("href")
 
     if not favicon:
         favicon = ""

@@ -27,7 +27,7 @@ html {
     padding: 0;
 }
 
-.topic_cloud li {
+.topic_cloud a {
   background-color: white;
   padding: 15px;
   border-radius: 10px;
@@ -310,9 +310,6 @@ li {
     width: 90%;
     max-width: 100%;
     margin: auto;
-  }
-  #query {
-    margin-top: 15px;
   }
   #mobile_menu {
     display: block;
