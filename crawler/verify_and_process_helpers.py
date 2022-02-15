@@ -217,26 +217,33 @@ def get_main_page_text(page_desc_soup: str) -> BeautifulSoup:
     :rtype: BeautifulSoup
     """
 
-    if page_desc_soup.select(".e-content"):
-        page_text = page_desc_soup.select(".e-content")[0]
-    elif page_desc_soup.select(".h-entry"):
-        page_text = page_desc_soup.select(".h-entry")[0]
-    elif page_desc_soup.find("main"):
-        page_text = page_desc_soup.find("main")
-    elif page_desc_soup.find("div", {"id": "main"}):
-        page_text = page_desc_soup.find("div", {"id": "main"})
-    elif page_desc_soup.find("div", {"id": "app"}):
-        page_text = page_desc_soup.find("div", {"id": "app"})
-    elif page_desc_soup.find("div", {"id": "page"}):
-        page_text = page_desc_soup.find("div", {"id": "page"})
-    elif page_desc_soup.find("div", {"id": "site-container"}):
-        page_text = page_desc_soup.find("div", {"id": "main"})
-    elif page_desc_soup.find("div", {"id": "application-main"}):
-        page_text = page_desc_soup.find("div", {"id": "application-main"})
-    elif page_desc_soup.find("div", {"id": "site-container"}):
-        page_text = page_desc_soup.find("div", {"id": "site-container"})
-    else:
-        page_text = page_desc_soup.find("body")
+    selectors_to_check = (
+        ".e-content", ".h-entry"
+    )
+
+    for s in selectors_to_check:
+        if page_desc_soup.select(s):
+            page_text = page_desc_soup.select(s)[0]
+
+    tags_to_find = (
+        ("main", {}),
+        ("div", {"id": "main"}),
+        ("div", {"id": "app"}),
+        ("div", {"id": "page"}),
+        ("div", {"id": "site-container"}),
+        ("div", {"id": "application-main"}),
+        ("body", {}),
+        ("html", {})
+    )
+
+    for tag in tags_to_find:
+        tag_name = tag[0]
+        tag_selector = tag[1]
+
+        if page_desc_soup.find(tag) and tag_selector != {}:
+            page_text = page_desc_soup.find(tag_name, tag_selector)
+        elif page_desc_soup.find(tag):
+            page_text = page_desc_soup.find(tag)
 
     return page_text
 

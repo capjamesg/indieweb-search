@@ -6,7 +6,6 @@ from flask import Blueprint, jsonify, request, abort
 
 import config
 
-from .authentication import check_password, is_authenticated_check
 from .constants import default_fields, to_delete
 from .create_query import assemble_query
 from .queries import (get_auto_suggest_query, get_date_ordered_query,
@@ -18,8 +17,6 @@ main = Blueprint("main", __name__)
 
 @main.route("/suggest")
 def autosuggest():
-    check_password(request)
-
     query = request.args.get("q")
 
     search_param = get_auto_suggest_query(query)
@@ -31,8 +28,6 @@ def autosuggest():
 
 @main.route("/")
 def home():
-    check_password(request)
-
     # get accepted query params
     query = request.args.get("q")
     domain_param = request.args.get("domain")
@@ -91,8 +86,6 @@ def home():
 
 @main.route("/remove-from-index", methods=["POST"])
 def remove_from_index():
-    is_authenticated_check(request)
-
     data = request.get_json()
 
     # remove from elasticsearch
@@ -103,8 +96,6 @@ def remove_from_index():
 
 @main.route("/create", methods=["POST"])
 def create():
-    is_authenticated_check(request)
-
     data = request.get_json()
 
     total_docs_today = int(es.count(index="pages")["count"])
@@ -115,8 +106,6 @@ def create():
 
 @main.route("/evaluate")
 def evaluate():
-    is_authenticated_check(request)
-
     term = request.args.get("term")
     data = request.get_json()
 
@@ -140,8 +129,6 @@ def evaluate():
 
 @main.route("/update", methods=["POST"])
 def update():
-    is_authenticated_check(request)
-
     data = request.get_json()
 
     # get document with same url as data['url']
@@ -156,8 +143,6 @@ def update():
 
 @main.route("/check", methods=["POST"])
 def check():
-    is_authenticated_check(request)
-
     hash = request.args.get("hash")
 
     if hash:
@@ -239,8 +224,6 @@ def show_num_of_pages():
 
 @main.route("/random")
 def random_page():
-    check_password(request)
-
     # read domains.txt file
     with open("domains.txt", "r") as f:
         domains = f.readlines()
@@ -254,8 +237,6 @@ def random_page():
 # return feeds associated with URL
 @main.route("/feeds", methods=["GET", "POST"])
 def get_feeds_for_url():
-    is_authenticated_check(request)
-
     website_url = request.form.get("website_url")
 
     if website_url:
@@ -296,8 +277,6 @@ def get_feeds_for_url():
 
 @main.route("/save", methods=["POST"])
 def save_feed():
-    is_authenticated_check(request)
-
     result = request.get_json()["feeds"]
 
     for r in result:

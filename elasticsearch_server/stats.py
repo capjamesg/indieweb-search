@@ -28,8 +28,6 @@ def show_num_of_pages():
 
 @stats.route("/random")
 def random_page():
-    check_password(request)
-
     # read domains.txt file
     with open("domains.txt", "r") as f:
         domains = f.readlines()
@@ -42,8 +40,6 @@ def random_page():
 
 @stats.route("/crawled")
 def get_crawled_sites():
-    is_authenticated_check(request)
-
     database = mysql.connector.connect(
         host="localhost",
         user=config.MYSQL_DB_USER,
@@ -64,8 +60,6 @@ def get_crawled_sites():
 
 @stats.route("/crawl_queue")
 def get_crawl_queue():
-    is_authenticated_check(request)
-
     database = mysql.connector.connect(
         host="localhost",
         user=config.MYSQL_DB_USER,
@@ -86,8 +80,6 @@ def get_crawl_queue():
 
 @stats.route("/sitemaps")
 def get_sitemaps():
-    is_authenticated_check(request)
-
     database = mysql.connector.connect(
         host="localhost",
         user=config.MYSQL_DB_USER,
@@ -108,8 +100,6 @@ def get_sitemaps():
 
 @stats.route("/feed_breakdown")
 def get_feed_breakdown():
-    is_authenticated_check(request)
-
     database = mysql.connector.connect(
         host="localhost",
         user=config.MYSQL_DB_USER,

@@ -27,6 +27,15 @@ html {
     padding: 0;
 }
 
+.topic_cloud li {
+  display: inline-block;
+}
+
+.changelog ul {
+    list-style: none;
+    padding: 0;
+}
+
 .topic_cloud a {
   background-color: white;
   padding: 15px;

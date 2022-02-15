@@ -21,11 +21,13 @@ if os.path.isfile("results.json"):
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     os.rename("results.json", f"results-{now}.json")
 
-feeds = requests.post(
+feeds = requests.get(
     "https://es-indieweb-search.jamesg.blog/feeds", headers=constants.HEADERS
 ).json()
 
 feeds_parsed = {}
+
+urls_crawled = 0
 
 
 def prepare_feeds_for_polling():
@@ -39,7 +41,7 @@ def prepare_feeds_for_polling():
                 feeds_by_page[f[1]] = [f]
         except Exception as e:
             logging.debug(e)
-            continue
+            raise e
 
     feed_url_list = []
 
@@ -54,7 +56,7 @@ def prepare_feeds_for_polling():
             feed_url_list.append(to_add)
         except Exception as e:
             logging.debug(e)
-            continue
+            raise e
 
     return feed_url_list
 
@@ -69,15 +71,19 @@ def process_feeds(feeds):
             for future in concurrent.futures.as_completed(futures):
                 feeds_indexed += 1
 
-                logging.debug(f"FEEDS INDEXED: {feeds_indexed}")
+                print(f"FEEDS INDEXED: {feeds_indexed}")
                 logging.info(f"FEEDS INDEXED: {feeds_indexed}")
 
                 try:
-                    future.result()
+                    url_crawled_count = future.result()
+                    urls_crawled += url_crawled_count
+
+                    print(f"URLS CRAWLED: {urls_crawled}")
+                    logging.info(f"URLS CRAWLED: {urls_crawled}")
                 except Exception as e:
                     print(e)
                     logging.debug(e)
-                    pass
+                    raise e
 
                 futures.remove(future)
 

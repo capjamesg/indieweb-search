@@ -32,11 +32,18 @@ def process_xml_feed(url, feed_etag, site_url, f):
 
     session = requests.Session()
 
+    crawled = 0
+
     for entry in feed.entries:
         if entry.get("link"):
             url = indieweb_utils.canonicalize_url(entry.link, site_url)
 
             schedule_crawl_of_one_url(url, site_url, session)
+
+            crawled += 1
+
+    # close session
+    session.close()
 
     # update etag
     f[2] = etag
@@ -54,11 +61,15 @@ def process_xml_feed(url, feed_etag, site_url, f):
     else:
         logging.debug(f"updated etag for {url}")
 
+    return crawled
+
 
 def process_h_feed(r, site_url):
     mf2_raw = mf2py.parse(r.text)
 
     session = requests.Session()
+
+    crawled = 0
 
     for item in mf2_raw["items"]:
         if not item.get("type"):
@@ -77,6 +88,13 @@ def process_h_feed(r, site_url):
 
             schedule_crawl_of_one_url(url, site_url, session)
 
+            crawled += 1
+
+    # close session
+    session.close()
+
+    return crawled
+
 
 def process_json_feed(r, site_url):
     # parse as JSON Feed per jsonfeed.org spec
@@ -88,11 +106,20 @@ def process_json_feed(r, site_url):
     if not items or len(items) > 0:
         return
 
+    crawled = 0
+
     for item in items:
         if not item.get("url"):
             continue
 
         schedule_crawl_of_one_url(item["url"], site_url, session)
+
+        crawled += 1
+
+    # close session
+    session.close()
+
+    return crawled
 
 
 def renew_websub_hub_subscription(url, f):
@@ -136,7 +163,11 @@ def poll_feeds(f, feeds_parsed):
     feeds_parsed[url.lower()] = ""
 
     # request will return 304 if feed has not changed based on provided etag
-    r = requests.get(url, headers={"If-None-Match": feed_etag.strip()})
+    try:
+        r = requests.get(url, headers={"If-None-Match": feed_etag.strip()}, timeout=10)
+    except requests.exceptions.Timeout:
+        logging.debug(f"timeout while requesting {url}")
+        return 0
 
     # get etag
     etag = r.headers.get("etag")
@@ -162,13 +193,13 @@ def poll_feeds(f, feeds_parsed):
         or mime_type in allowed_xml_content_types
         or mime_type == "feed"
     ):
-        process_xml_feed(url, feed_etag, url, f)
+        entries_in_feed_count = process_xml_feed(url, feed_etag, url, f)
 
     if mime_type == "h-feed":
-        process_h_feed(r, url)
+        entries_in_feed_count = process_h_feed(r, url)
 
     elif mime_type == "application/json":
-        process_json_feed(r, url)
+        entries_in_feed_count = process_json_feed(r, url)
 
     elif mime_type == "websub":
         renew_websub_hub_subscription(url, f)
@@ -178,4 +209,4 @@ def poll_feeds(f, feeds_parsed):
     if etag is None:
         etag = ""
 
-    return url, etag, f
+    return entries_in_feed_count

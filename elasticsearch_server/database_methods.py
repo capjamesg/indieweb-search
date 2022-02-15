@@ -39,8 +39,6 @@ def show_num_of_pages():
 
 @database_methods.route("/random")
 def random_page():
-    check_password(request)
-
     # read domains.txt file
     with open("domains.txt", "r") as f:
         domains = f.readlines()
@@ -54,8 +52,6 @@ def random_page():
 # return feeds associated with URL
 @database_methods.route("/feeds", methods=["GET", "POST"])
 def get_feeds_for_url():
-    is_authenticated_check(request)
-
     website_url = request.form.get("website_url")
 
     if website_url:
@@ -86,8 +82,6 @@ def get_feeds_for_url():
 
 @database_methods.route("/save", methods=["POST"])
 def save_feed():
-    is_authenticated_check(request)
-
     result = request.get_json()["feeds"]
 
     for r in result:
@@ -127,8 +121,6 @@ def save_feed():
 
 @database_methods.route("/create_crawled", methods=["POST"])
 def create_crawled_site():
-    is_authenticated_check(request)
-
     url = request.form.get("url")
 
     if not url:
@@ -165,8 +157,6 @@ def create_crawled_site():
 
 @database_methods.route("/create_sitemap", methods=["POST"])
 def create_sitemap():
-    is_authenticated_check(request)
-
     # get json data
     website_url = request.form.get("domain")
     sitemap_url = request.form.get("sitemap_url")
@@ -198,9 +188,7 @@ def create_sitemap():
 
 @database_methods.route("/create_websub", methods=["POST"])
 def create_websub():
-    is_authenticated_check(request)
-
-    result = request.get_json()
+    result = request.form
 
     database = initialize_database()
 
@@ -229,8 +217,6 @@ def create_websub():
 
 @database_methods.route("/update_feed", methods=["POST"])
 def update_feed():
-    is_authenticated_check(request)
-
     database = initialize_database()
 
     cursor = database.cursor(buffered=True)
@@ -258,8 +244,6 @@ def update_feed():
 
 @database_methods.route("/to_crawl", methods=["GET"])
 def to_crawl():
-    is_authenticated_check(request)
-
     database = initialize_database()
 
     cursor = database.cursor(buffered=True)
@@ -280,8 +264,6 @@ def to_crawl():
 
 @database_methods.route("/finish_crawl", methods=["POST"])
 def finish_crawl():
-    is_authenticated_check(request)
-
     database = initialize_database()
 
     cursor = database.cursor(buffered=True)
@@ -320,8 +302,6 @@ def finish_crawl():
 
 @database_methods.route("/add_to_queue")
 def add_to_queue():
-    is_authenticated_check(request)
-
     url = request.args.get("url")
 
     if not url:

@@ -6,7 +6,7 @@ import indieweb_utils
 import mf2py
 import requests
 import spacy
-from flask import (Blueprint, jsonify, redirect, render_template, request)
+from flask import (Blueprint, jsonify, redirect, render_template, request, session)
 
 import config
 import search.search_page_feeds as search_page_feeds
@@ -114,10 +114,10 @@ def results_page():
             )
         )
 
-    session = requests.Session()
+    app_session = requests.Session()
 
     if cleaned_value_for_query == "random":
-        return handle_random_query(cleaned_value_for_query, session)
+        return handle_random_query(cleaned_value_for_query, app_session)
 
     if len(cleaned_value_for_query) == 0:
         return redirect("/")
@@ -135,7 +135,7 @@ def results_page():
         cleaned_value_for_query, query_values_in_list, request
     )
 
-    rows = session.get(
+    rows = app_session.get(
         "https://es-indieweb-search.jamesg.blog/?pw={}&q={}&sort={}&from={}&minimal={}{}".format(
             config.ELASTICSEARCH_PASSWORD,
             cleaned_value_for_query.replace("who is", "")
@@ -168,7 +168,7 @@ def results_page():
             cleaned_value_for_query,
             rows,
             full_query_with_full_stops,
-            session,
+            app_session,
             nlp,
         )
 

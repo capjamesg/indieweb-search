@@ -44,7 +44,7 @@ def get_link_weight(l: dict) -> tuple:
     return "", 0
 
 
-def get_all_links(h: dict, f: csv.DictWriter) -> None:
+def get_all_links(h: dict, f: csv.DictWriter, count: int) -> None:
     # don't count links on pages that specified nofollow in the X-Robots-Tag header
     if (
         h["_source"].get("page_is_nofollow")
@@ -58,6 +58,11 @@ def get_all_links(h: dict, f: csv.DictWriter) -> None:
         soup = BeautifulSoup(h["_source"]["page_content"], "html5lib")
 
     links = soup.find_all("a")
+
+    print(str(count) + " " + h["_source"]["url"])
+    logging.info(str(count) + " " + h["_source"]["url"])
+
+    count += 1
 
     # check for nofollow or none meta values
     check_if_no_index = soup.find("meta", {"name": "robots"})
@@ -84,7 +89,12 @@ def get_all_links(h: dict, f: csv.DictWriter) -> None:
         if l.get("rel") and "nofollow" in l["rel"]:
             continue
 
-        link = indieweb_utils.canonicalize_url(l["href"], h["_source"]["domain"], l["href"])
+        if h["_source"]["domain"] == None:
+            parsed_url = parse_url(h["_source"]["url"])
+
+            h["_source"]["domain"] = parsed_url.netloc
+
+        link = indieweb_utils.canonicalize_url(l["href"], h["_source"]["domain"])
 
         link = link.strip("/").split("?")[0].replace("#", "")
 
@@ -129,10 +139,7 @@ def write_links_to_file():
     with open("links.csv", "w+") as f:
         for hits in scroll(es, "pages", body, "3m", 40):
             for h in hits:
-                print(str(count) + " " + h["_source"]["url"])
-                logging.info(str(count) + " " + h["_source"]["url"])
-                get_all_links(h, f)
-                count += 1
+                get_all_links(h, f, count)
 
     # write domain_links to file
     # may be a useful metric for determining overall domain authority
@@ -186,7 +193,7 @@ def get_domain_internal_link_count() -> list:
 
 
 def update_incoming_links_attribute_for_url(domains: list) -> None:
-    incoming_links_count = 0
+    count = 0
 
     for link, link_count in links.items():
         found = "no"
@@ -264,10 +271,10 @@ def update_incoming_links_attribute_for_url(domains: list) -> None:
 
         full_link = response["hits"]["hits"][0]["_source"]["url"]
 
-        incoming_links_count += 1
+        count += 1
 
-        print(incoming_links_count, full_link)
-        logging.info(incoming_links_count, full_link)
+        print(count, full_link)
+        logging.info(count)
 
 
 def calculate_aggregate_statistics(links: list) -> None:

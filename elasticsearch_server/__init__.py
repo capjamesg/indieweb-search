@@ -1,6 +1,7 @@
 import os
 
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, request, abort
+import config
 
 
 def create_app():
@@ -26,6 +27,19 @@ def create_app():
     @app.route("/assets/<path:path>")
     def send_assets(path):
         return send_from_directory("static", path)
+
+    @app.before_request
+    def before_request():
+        # check auth header
+        if request.headers.get("Authorization") == "{}".format(
+            config.ELASTICSEARCH_API_TOKEN
+        ):
+            return
+
+        if request.args.get("pw") == config.ELASTICSEARCH_PASSWORD:
+            return
+        
+        return abort(401)
 
     # from werkzeug.middleware.profiler import ProfilerMiddleware
     # app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=[5], profile_dir='./profile')
