@@ -35,4 +35,4 @@ def schedule_crawl_of_one_url(url, site_url, session):
         0,
     )
 
-    logging.debug(f"crawled {url} url")
+    print(f"crawled {url} url")

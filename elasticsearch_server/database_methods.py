@@ -188,7 +188,7 @@ def create_sitemap():
 
 @database_methods.route("/create_websub", methods=["POST"])
 def create_websub():
-    result = request.form
+    result = request.data
 
     database = initialize_database()
 

@@ -40,7 +40,7 @@ def prepare_feeds_for_polling():
             else:
                 feeds_by_page[f[1]] = [f]
         except Exception as e:
-            logging.debug(e)
+            print(e)
             raise e
 
     feed_url_list = []
@@ -48,14 +48,14 @@ def prepare_feeds_for_polling():
     for value in feeds_by_page.values():
         try:
             if value and len(value) > 1:
-                logging.debug(value)
+                print(value)
                 to_add = [feed for feed in value if feed[4] == "h-feed"]
             elif value and len(value) < 2:
                 to_add = value[0]
 
             feed_url_list.append(to_add)
         except Exception as e:
-            logging.debug(e)
+            print(e)
             raise e
 
     return feed_url_list
@@ -72,17 +72,17 @@ def process_feeds(feeds):
                 feeds_indexed += 1
 
                 print(f"FEEDS INDEXED: {feeds_indexed}")
-                logging.info(f"FEEDS INDEXED: {feeds_indexed}")
+                print(f"FEEDS INDEXED: {feeds_indexed}")
 
                 try:
                     url_crawled_count = future.result()
                     urls_crawled += url_crawled_count
 
                     print(f"URLS CRAWLED: {urls_crawled}")
-                    logging.info(f"URLS CRAWLED: {urls_crawled}")
+                    print(f"URLS CRAWLED: {urls_crawled}")
                 except Exception as e:
                     print(e)
-                    logging.debug(e)
+                    print(e)
                     raise e
 
                 futures.remove(future)

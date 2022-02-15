@@ -19,7 +19,7 @@ def process_xml_feed(url, feed_etag, site_url, f):
         return url, etag, None
 
     if etag == feed_etag:
-        logging.debug(f"{url} has not changed since last poll, skipping")
+        print(f"{url} has not changed since last poll, skipping")
         return url, etag, None
 
     last_modified = feed.get("modified_parsed", None)
@@ -27,7 +27,7 @@ def process_xml_feed(url, feed_etag, site_url, f):
     if last_modified and datetime.datetime.fromtimestamp(
         mktime(last_modified)
     ) < datetime.datetime.now() - datetime.timedelta(hours=12):
-        logging.debug(f"{url} has not been modified in the last 12 hours, skipping")
+        print(f"{url} has not been modified in the last 12 hours, skipping")
         return url, etag, None
 
     session = requests.Session()
@@ -55,11 +55,11 @@ def process_xml_feed(url, feed_etag, site_url, f):
     )
 
     if modify_feed.status_code != 200:
-        logging.debug(
+        print(
             f"{modify_feed.status_code} status code returned while modifying {url}"
         )
     else:
-        logging.debug(f"updated etag for {url}")
+        print(f"updated etag for {url}")
 
     return crawled
 
@@ -147,7 +147,7 @@ def renew_websub_hub_subscription(url, f):
             ),
         )
 
-        logging.debug(f"sent websub request to {url}")
+        print(f"sent websub request to {url}")
 
 
 def poll_feeds(f, feeds_parsed):
@@ -166,17 +166,17 @@ def poll_feeds(f, feeds_parsed):
     try:
         r = requests.get(url, headers={"If-None-Match": feed_etag.strip()}, timeout=10)
     except requests.exceptions.Timeout:
-        logging.debug(f"timeout while requesting {url}")
+        print(f"timeout while requesting {url}")
         return 0
 
     # get etag
     etag = r.headers.get("etag")
 
     if r.status_code == 304:
-        logging.debug(f"Feed {url} unchanged")
+        print(f"Feed {url} unchanged")
         return url, etag, None
     elif r.status_code != 200:
-        logging.debug(f"{r.status_code} status code returned while retrieving {url}")
+        print(f"{r.status_code} status code returned while retrieving {url}")
         return url, etag, None
 
     if r.headers.get("content-type"):
@@ -184,7 +184,7 @@ def poll_feeds(f, feeds_parsed):
     else:
         content_type = ""
 
-    logging.debug("polling " + url)
+    print("polling " + url)
 
     allowed_xml_content_types = ["application/rss+xml", "application/atom+xml"]
 
