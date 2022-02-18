@@ -123,7 +123,7 @@
       </ol>
     {% endif %}
     <p>You can follow this page in a <a href="https://indieweb.org/reader">social reader</a> or a <a href="https://indieweb.org/feed_reader">feed reader</a>.</p>
-    {% if featured_serp_contents and "atlas.p3k.io" in featured_serp_contents %}
+    {% if featured_serp_contents.answer_html and "atlas.p3k.io" in featured_serp_contents.answer_html %}
     <p>The map at the top of this search result is provided by the <a href="https://atlas.p3k.io">p3k Atlas API</a>.</p>
     {% endif %}
     {% if base_results_query and base_results_query.endswith("social") %}

@@ -160,10 +160,7 @@ def results_page():
 
     # only page 1 is eligible to show a featured snippet
     if page == 1:
-        (
-            featured_serp_contents,
-            special_result,
-        ) = choose_direct_answer.choose_featured_snippet(
+        featured_serp_contents = choose_direct_answer.choose_featured_snippet(
             cleaned_value_for_query,
             cleaned_value_for_query,
             rows,
@@ -171,7 +168,6 @@ def results_page():
             app_session,
             nlp,
         )
-
     if len(rows) == 0:
         out_of_bounds_page = True
         final_query = cleaned_value_for_query
@@ -190,7 +186,7 @@ def results_page():
     if special_result:
         special_result = asdict(special_result)
 
-    search_page_feeds.process_special_format(
+    special_format = search_page_feeds.process_special_format(
         request,
         rows,
         cleaned_value_for_query,
@@ -198,6 +194,11 @@ def results_page():
         special_result,
         featured_serp_contents,
     )
+
+    print(featured_serp_contents)
+
+    if special_format != None:
+        return special_format
 
     # show one result if a featured snippet is available, even if there are no other results to show
 

@@ -247,6 +247,14 @@ def build_index(site: str) -> List[list]:
         h_card = []
         print(f"no h-card could be found on {site} home page")
 
+    # get home page title
+    try:
+        r = session.get(protocol + site, headers=config.SEARCH_HEADERS, timeout=5)
+        soup = BeautifulSoup(r.content, "lxml")
+        home_page_title = soup.find("title").text
+    except:
+        home_page_title = ""
+
     final_urls, crawl_queue, web_page_hashes = get_urls_to_crawl(protocol, site, final_urls, web_page_hashes)
 
     for url in crawl_queue:
@@ -291,6 +299,7 @@ def build_index(site: str) -> List[list]:
             True,
             h_card,
             crawl_depth,
+            home_page_title
         )
 
         if valid:
@@ -324,7 +333,7 @@ def build_index(site: str) -> List[list]:
         budget_spent += budget_used
 
         print(
-            f"{site} - indexed: {indexed} / budget spent: {budget_spent} / budget for crawl: {crawl_budget}"
+            f"{site} ({url_indexed}) - indexed: {indexed} / budget spent: {budget_spent} / budget for crawl: {crawl_budget}"
         )
 
         if budget_spent > crawl_budget:
@@ -399,6 +408,7 @@ def main():
                         futures = []
                         break
                 except Exception as e:
+                    raise e
                     print(e)
 
                 futures.remove(future)

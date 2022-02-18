@@ -74,48 +74,80 @@ def generate_featured_snippet(
     else:
         return "", special_result
 
-    response = ""
+    response = get_code_snippet(original_cleaned_value, soup, post, url)
 
-    while response == "":
-        response = get_code_snippet(original_cleaned_value, soup, post, url)
+    if response != None:
+        return response
 
-        response = recipes.parse_recipe(original_cleaned_value, soup, url, post)
+    response = recipes.parse_recipe(original_cleaned_value, soup, url, post)
 
-        response = reviews.parse_review(original_cleaned_value, soup, url, post)
 
-        response = events.parse_event(original_cleaned_value, soup, url, post)
+    if response != (None, None):
+        return response
 
-        response = whatis.parse_what_is(original_cleaned_value, soup, url)
+    response = reviews.parse_review(original_cleaned_value, soup, url, post)
 
-        response = whois.parse_whois(original_cleaned_value, soup, url, original_url)
+    if response != (None, None):
+        return response
 
-        response = whois.parse_social(original_cleaned_value, soup, url, original_url)
+    response = events.parse_event(original_cleaned_value, soup, url, post)
 
-        response = whois.parse_get_rel(original_cleaned_value, soup, original_url)
+    if response != (None, None):
+        return response
 
-        response = whois.parse_feed(original_cleaned_value, soup, url)
+    response = whatis.parse_what_is(original_cleaned_value, soup, url)
 
-        response = whois.parse_address(original_cleaned_value, soup, url)
+    if response != (None, None):
+        return response
 
-        response = definition.get_term_definition(
-            soup, url, new_cleaned_value_for_direct_answer, post
-        )
+    response = whois.parse_whois(original_cleaned_value, soup, url, original_url)
 
-        # check if cleaned value refers to an ent type
-        response = process_entity_type.get_entity_response(
-            cleaned_value, entity_types, soup, nlp, url, post
-        )
+    if response != (None, None):
+        return response
 
-        # look for the answer to a question
-        response = get_answer_to_question.retrieve_answer(
-            soup,
-            original_cleaned_value,
-            cleaned_value,
-            new_cleaned_value_for_direct_answer,
-            post,
-            url,
-        )
+    response = whois.parse_social(original_cleaned_value, soup, url, original_url)
 
-        response = None, None
+    if response != (None, None):
+        return response
+
+    response = whois.parse_get_rel(original_cleaned_value, soup, original_url)
+
+    if response != (None, None):
+        return response
+
+    response = whois.parse_feed(original_cleaned_value, soup, url)
+
+    if response != (None, None):
+        return response
+
+    response = whois.parse_address(original_cleaned_value, soup, url)
+
+    if response != (None, None):
+        return response
+
+    response = definition.get_term_definition(
+        soup, url, new_cleaned_value_for_direct_answer, post
+    )
+
+    if response != (None, None):
+        return response
+
+    # check if cleaned value refers to an ent type
+    response = process_entity_type.get_entity_response(
+        cleaned_value, entity_types, soup, nlp, url, post
+    )
+
+    if response != (None, None):
+        return response
+
+    # look for the answer to a question
+    response = get_answer_to_question.retrieve_answer(
+        soup,
+        original_cleaned_value,
+        cleaned_value,
+        new_cleaned_value_for_direct_answer,
+        post,
+        url,
+    )
 
     return response

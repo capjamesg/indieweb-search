@@ -38,6 +38,8 @@ def process_special_format(
     elif format == "results_page_json":
         return jsonify({"results": [r["_source"] for r in rows]})
 
+    return None
+
 
 def process_h_card(row: list) -> dict:
     item = {

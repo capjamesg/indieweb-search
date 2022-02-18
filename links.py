@@ -21,6 +21,10 @@ body = {"query": {"match_all": {}}}
 
 domain_links = {}
 links = {}
+internal_links = {}
+            
+with open("internal_links.json", "r") as f:
+    internal_links = json.load(f)
 
 link_microformat_instances = {}
 
@@ -94,7 +98,11 @@ def get_all_links(h: dict, f: csv.DictWriter, count: int) -> None:
 
             h["_source"]["domain"] = parsed_url.netloc
 
-        link = indieweb_utils.canonicalize_url(l["href"], h["_source"]["domain"])
+        try:
+            link = indieweb_utils.canonicalize_url(l["href"], h["_source"]["domain"])
+        except:
+            print(f"could not canonicalize {l['href']}, skipping")
+            continue
 
         link = link.strip("/").split("?")[0].replace("#", "")
 
@@ -117,15 +125,21 @@ def get_all_links(h: dict, f: csv.DictWriter, count: int) -> None:
             link_microformat_instances[mf2_attribute] = 1
 
         try:
-            link_domain = link.split("/")[2].replace("www.", "").lower()
+            link_domain = parse_url(link).netloc.lower()
 
             if domain_links.get(link_domain):
                 domain_links[link_domain] += weight + 1
             else:
                 domain_links[link_domain] = weight + 1
 
-            # don't count links to someone's own site
             if h["_source"]["domain"] == link_domain:
+                # calculate internal links for internal_links count
+                if internal_links.get(link):
+                    internal_links[link] += 1
+                else:
+                    internal_links[link] = 1
+
+                # don't count links to someone's own site
                 continue
         except:
             continue
@@ -133,13 +147,14 @@ def get_all_links(h: dict, f: csv.DictWriter, count: int) -> None:
         csv.writer(f).writerow([h["_source"]["url"], link, link_domain])
 
 
-def write_links_to_file():
+def write_links_to_file() -> None:
     count = 0
 
     with open("links.csv", "w+") as f:
         for hits in scroll(es, "pages", body, "3m", 40):
             for h in hits:
                 get_all_links(h, f, count)
+                count += 1
 
     # write domain_links to file
     # may be a useful metric for determining overall domain authority
@@ -149,6 +164,9 @@ def write_links_to_file():
     with open("all_domains.txt", "w+") as f:
         for domain in domain_links.keys():
             f.write(domain.lower() + "\n")
+            
+    with open("internal_links.json", "w+") as f:
+        json.dump(internal_links, f)
 
 
 def get_domain_internal_link_count() -> list:
@@ -163,8 +181,8 @@ def get_domain_internal_link_count() -> list:
 
         # get domain of link
         try:
-            domain_1 = link[0].split("//")[1].split("/")[0]
-            domain_2 = link[1].split("//")[1].split("/")[0]
+            domain_1 = parse_url(link[0]).netloc.lower()
+            domain_2 = parse_url(link[1]).netloc.lower()
             if domain_1 != domain_2:
                 if links.get(link[1]):
                     links[link[1]] = links[link[1]] + 1
@@ -192,89 +210,96 @@ def get_domain_internal_link_count() -> list:
     return domains
 
 
-def update_incoming_links_attribute_for_url(domains: list) -> None:
-    count = 0
+def update_link_record(link: str, domains: list, link_count: int) -> None:
+    found = "no"
+    
+    link_domain = parse_url(link).netloc.lower()
 
-    for link, link_count in links.items():
-        found = "no"
-        link_domain = link.split("/")
+    if not link_domain:
+        return
 
-        if link_domain:
-            link_domain = link_domain[2].replace("www.", "").lower()
-        else:
-            continue
+    # do not search elasticsearch if a domain is not in the index
+    # checking if each link in the "links.csv" file is in the index is inefficient and slow
+    if domains.get(link_domain) is None:
+        return
 
-        # do not search elasticsearch if a domain is not in the index
-        # checking if each link in the "links.csv" file is in the index is inefficient and slow
-        if domains.get(link_domain) is None:
-            continue
-
-        while found == "no":
-            search_param = {
-                "query": {
-                    "term": {
-                        "url.keyword": {"value": link.replace("http://", "https://")}
-                    }
+    while found == "no":
+        search_param = {
+            "query": {
+                "term": {
+                    "url.keyword": {"value": link.replace("http://", "https://")}
                 }
             }
+        }
+
+        response = es.search(index="pages", body=search_param)
+
+        if len(response["hits"]["hits"]) > 0:
+            found = "yes"
+
+        # look for a link in all variations
+        tests = [
+            link.replace("https://", "http://"),
+            link.replace("http://", "https://").strip("/"),
+            link.replace("https://", "http://").strip("/"),
+            link.replace("www.", ""),
+            link.replace("www.", "").strip("/"),
+            link.replace("www.", "").strip("/").replace("https://", "http://"),
+            link.replace("www.", "").strip("/").replace("https://", "http://"),
+        ]
+
+        for t in tests:
+            search_param = {"query": {"term": {"url.keyword": {"value": t}}}}
 
             response = es.search(index="pages", body=search_param)
 
             if len(response["hits"]["hits"]) > 0:
                 found = "yes"
+                break
 
-            # look for a link in all variations
-            tests = [
-                link.replace("https://", "http://"),
-                link.replace("http://", "https://").strip("/"),
-                link.replace("https://", "http://").strip("/"),
-                link.replace("www.", ""),
-                link.replace("www.", "").strip("/"),
-                link.replace("www.", "").strip("/").replace("https://", "http://"),
-                link.replace("www.", "").strip("/").replace("https://", "http://"),
-            ]
+        print("No results for " + link + ", skipping")
+        logging.info("No results for " + link + ", skipping")
 
-            for t in tests:
-                search_param = {"query": {"term": {"url.keyword": {"value": t}}}}
+        found = "none"
 
-                response = es.search(index="pages", body=search_param)
+    if found == "none":
+        return
 
-                if len(response["hits"]["hits"]) > 0:
-                    found = "yes"
-                    break
+    try:
+        link_domain = parse_url(link).netloc.lower()
 
-            print("No results for " + link + ", skipping")
-            logging.info("No results for " + link + ", skipping")
+        referring_domains = domain_links.get(link_domain)
+    except:
+        referring_domains = 0
 
-            found = "none"
+    print("internal links")
+    print(internal_links.get(link))
 
-        if found == "none":
-            continue
+    es.update(
+        index="pages",
+        id=response["hits"]["hits"][0]["_id"],
+        body={
+            "doc": {
+                "incoming_links": link_count,
+                "internal_links": internal_links.get(link),
+                "referring_domains_to_site": referring_domains,
+            }
+        },
+    )
 
-        try:
-            link_domain = link.split("/")[2].lower().replace("www.", "")
+def update_incoming_links_attribute_for_url(domains: list) -> None:
+    count = 0
 
-            referring_domains = domain_links.get(link_domain)
-        except:
-            referring_domains = 0
+    with open("all_links_final.json", "r") as f:
+        links = json.load(f)
 
-        es.update(
-            index="pages",
-            id=response["hits"]["hits"][0]["_id"],
-            body={
-                "doc": {
-                    "incoming_links": link_count,
-                    "referring_domains_to_site": referring_domains,
-                }
-            },
-        )
+    for link, link_count in links.items():
+        update_link_record(link, domains, link_count)
 
-        full_link = response["hits"]["hits"][0]["_source"]["url"]
+        # print(link, link_count)
+        logging.info(link + " " + str(link_count))
 
         count += 1
-
-        print(count, full_link)
-        logging.info(count)
 
 
 def calculate_aggregate_statistics(links: list) -> None:
@@ -306,9 +331,9 @@ def main():
     logging.info(
         f"Starting link graph build at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
     )
-    write_links_to_file()
-    domains = get_domain_internal_link_count()
-    update_incoming_links_attribute_for_url(domains)
+    # write_links_to_file()
+    # domains = get_domain_internal_link_count()
+    update_incoming_links_attribute_for_url({})
     calculate_aggregate_statistics(links)
 
 

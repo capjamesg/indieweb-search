@@ -1,35 +1,35 @@
-{% if special_result and special_result.type == "aeropress_recipe" and results_type != "image" %}
+{% if special_result and featured_serp_contents.answer_type == "aeropress_recipe" and results_type != "image" %}
 <section>
     <hr>
     <h2>Random Aeropress Recipe</h2>
     <p>Here's a random Aeropress recipe for you:</p>
     <ol>
-    <li>Weigh and grind {{ special_result.dose }}{% if special_result.dose_is_point_five %}.5{% endif %} grams of coffee. Your coffee should be ground at {{ special_result.grind_size }} on a Comandante ({% if special_result.grind_size < 15 %}medium-fine{% elif special_result.grind_size < 23 %}medium{% elif special_result.grind_size < 26 %}medium-coarse{% else %}coarse{% endif %}).</li>
-    <li>Prewet {{ special_result.filters }} filter paper{% if special_result.filters > 1 %}s{% endif %}.</li>
-    {% if special_result.inverted == True %}<li>Invert your Aeropress.</li>{% endif %}
-    <li>Start your timer and pour {{ special_result.water }} grams of water into your Aeropress.</li>
-    {% if special_result.stirring == "before putting the cap on" or special_result.stirring == "both before putting the cap on and before plunging" %}<li>Stir the Aeropress {{ special_result.stir_times }} time{% if special_result.stir_times > 1 %}s{% endif %}.</li>{% endif %}
-    {% if special_result.inverted == True %}<li>Put the cap on the Aeropress and flip it.</li>{% endif %}
-    <li>Wait until {{ special_result.time }} and then plunge the Aeropress.</li>
-    {% if special_result.stirring == "both before putting the cap on and before plunging" %}<li>Stir the Aeropress {{ special_result.stir_times }} time{% if special_result.stir_times > 1 %}s{% endif%}.</li>{% endif %}
+    <li>Weigh and grind {{ featured_serp_contents.dose }}{% if featured_serp_contents.dose_is_point_five %}.5{% endif %} grams of coffee. Your coffee should be ground at {{ featured_serp_contents.grind_size }} on a Comandante ({% if featured_serp_contents.grind_size < 15 %}medium-fine{% elif featured_serp_contents.grind_size < 23 %}medium{% elif featured_serp_contents.grind_size < 26 %}medium-coarse{% else %}coarse{% endif %}).</li>
+    <li>Prewet {{ featured_serp_contents.filters }} filter paper{% if featured_serp_contents.filters > 1 %}s{% endif %}.</li>
+    {% if featured_serp_contents.inverted == True %}<li>Invert your Aeropress.</li>{% endif %}
+    <li>Start your timer and pour {{ featured_serp_contents.water }} grams of water into your Aeropress.</li>
+    {% if featured_serp_contents.stirring == "before putting the cap on" or featured_serp_contents.stirring == "both before putting the cap on and before plunging" %}<li>Stir the Aeropress {{ featured_serp_contents.stir_times }} time{% if featured_serp_contents.stir_times > 1 %}s{% endif %}.</li>{% endif %}
+    {% if featured_serp_contents.inverted == True %}<li>Put the cap on the Aeropress and flip it.</li>{% endif %}
+    <li>Wait until {{ featured_serp_contents.time }} and then plunge the Aeropress.</li>
+    {% if featured_serp_contents.stirring == "both before putting the cap on and before plunging" %}<li>Stir the Aeropress {{ featured_serp_contents.stir_times }} time{% if featured_serp_contents.stir_times > 1 %}s{% endif%}.</li>{% endif %}
     <li>Enjoy your delicious coffee.</li>
     </ol>
     <hr>
 </section>
 {% endif %}
-{% if special_result and special_result.type == "direct_answer" %}
+{% if featured_serp_contents and featured_serp_contents.answer_type == "direct_answer" %}
     <div class="serp search_box featured">
-        {% if special_result.featured_image %}<img src="{{ special_result.featured_image }}" alt="{{ special_result.title }} featured image">{% endif %}
-        {% if featured_serp_contents %}<p>{{ featured_serp_contents | safe }}</p>{% endif %}
-        <p><a href="{{ special_result.breadcrumb }}">{{ special_result.title }}</a></p>
-        {% if special_result.breadcrumb %}<p class="breadcrumbs"><a href="{{ special_result.breadcrumb }}" style="border-bottom: none;">{% for item in special_result.breadcrumb.replace("https://", "").rstrip("/").split("/") %} {{ item }} {% if not loop.last %}>{% endif %}{% endfor %}</a></p>{% endif %}
+        {% if featured_serp_contents.featured_image %}<img src="{{ featured_serp_contents.featured_image }}" alt="{{ featured_serp_contents.title }} featured image">{% endif %}
+        {% if featured_serp_contents.answer_html %}<p>{{ featured_serp_contents.answer_html.replace("\n", "") | safe }}</p>{% endif %}
+        <p><a href="{{ featured_serp_contents.breadcrumb }}">{{ featured_serp_contents.title }}</a></p>
+        {% if featured_serp_contents.breadcrumb %}<p class="breadcrumbs"><a href="{{ featured_serp_contents.breadcrumb }}" style="border-bottom: none;">{% for item in featured_serp_contents.breadcrumb.replace("https://", "").rstrip("/").split("/") %} {{ item }} {% if not loop.last %}>{% endif %}{% endfor %}</a></p>{% endif %}
     </div>
-{% elif special_result and special_result.type == "code" %}
+{% elif special_result and featured_serp_contents.answer_type == "code" %}
     <div class="serp search_box featured">
-        {% if special_result.featured_image %}<img src="{{ special_result.featured_image }}" alt="{{ special_result.title }} featured image">{% endif %}
-        {{ special_result.context | safe }}
+        {% if featured_serp_contents.featured_image %}<img src="{{ featured_serp_contents.featured_image }}" alt="{{ featured_serp_contents.title }} featured image">{% endif %}
+        {{ featured_serp_contents.context | safe }}
         {% if featured_serp_contents %}<p><pre><code>{{ featured_serp_contents }}</code></pre></p>{% endif %}
-        <p><a href="{{ special_result.breadcrumb }}">{{ special_result.title }}</a></p>
-        {% if special_result.breadcrumb %}<p class="breadcrumbs"><a href="{{ special_result.breadcrumb }}" style="border-bottom: none;">{% for item in special_result.breadcrumb.replace("https://", "").rstrip("/").split("/") %} {{ item }} {% if not loop.last %}>{% endif %}{% endfor %}</a></p>{% endif %}
+        <p><a href="{{ featured_serp_contents.breadcrumb }}">{{ featured_serp_contents.title }}</a></p>
+        {% if featured_serp_contents.breadcrumb %}<p class="breadcrumbs"><a href="{{ featured_serp_contents.breadcrumb }}" style="border-bottom: none;">{% for item in featured_serp_contents.breadcrumb.replace("https://", "").rstrip("/").split("/") %} {{ item }} {% if not loop.last %}>{% endif %}{% endfor %}</a></p>{% endif %}
     </div>
 {% endif %}

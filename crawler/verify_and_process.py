@@ -129,6 +129,7 @@ def crawl_urls(
     link_discovery: bool = True,
     h_card: list = [],
     crawl_depth: int = 0,
+    home_page_title: str = "",
 ) -> tuple:
     """
     Crawls URLs in list, adds URLs to index, and returns updated list.
@@ -145,12 +146,6 @@ def crawl_urls(
     url_path = parsed_url.path
 
     full_url = indieweb_utils.canonicalize_url(url, url_domain).lower()
-
-    try:
-        verify_and_process_helpers.initial_url_checks(full_url)
-    except:
-        url_handling_helpers.check_remove_url(full_url)
-        return url, {}, False, feeds, "", crawl_depth, average_crawl_speed, budget_used
 
     # Only get URLs that match namespace exactly
     in_matching_namespace = [
@@ -320,7 +315,8 @@ def crawl_urls(
                 url,
                 discovered_urls,
                 False,
-                None,
+                feeds,
+                hash,
                 crawl_depth,
                 average_crawl_speed,
                 budget_used,
@@ -384,6 +380,21 @@ def crawl_urls(
             crawl_depth,
         )
 
+    try:
+        verify_and_process_helpers.initial_url_checks(full_url)
+    except:
+        url_handling_helpers.check_remove_url(full_url)
+        return (
+            url,
+            discovered_urls,
+            False,
+            feeds,
+            hash,
+            crawl_depth,
+            average_crawl_speed,
+            budget_used,
+        )
+
     page_text = verify_and_process_helpers.get_main_page_text(page_desc_soup)
 
     if page_text is None:
@@ -420,6 +431,8 @@ def crawl_urls(
     ) = crawler.page_info.get_page_info(
         page_desc_soup, full_url, homepage_meta_description
     )
+
+    doc_title = verify_and_process_helpers.remove_repeated_fragments_from_title(doc_title, home_page_title)
 
     if noindex:
         url_handling_helpers.check_remove_url(full_url)

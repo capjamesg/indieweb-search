@@ -33,9 +33,13 @@ def choose_featured_snippet(
         if w in keyword_values:
             search_for_snippet = True
 
-    parsed_url = parse_url(rows[0]["_source"]["url"])
+    try:
+        parsed_url = parse_url(rows[0]["_source"]["url"])
 
-    domain = parsed_url.netloc
+        domain = parsed_url.netloc
+    except:
+        parsed_url = ""
+        domain = ""
 
     if search_for_snippet:
         # remove stopwords from query
@@ -105,12 +109,11 @@ def choose_featured_snippet(
         url = rows[0]["_source"]["url"]
         source = rows[0]["_source"]
 
-        (
-            featured_serp_contents,
-            special_result,
-        ) = search_result_features.generate_featured_snippet(
+        featured_serp_contents = search_result_features.generate_featured_snippet(
             full_query_with_full_stops, special_result, nlp, url, source
         )
+
+        return featured_serp_contents
 
     if (
         "who is" in cleaned_value
@@ -140,10 +143,9 @@ def choose_featured_snippet(
                 == cleaned_value.split(" ")[0]
             ):
                 (
-                    featured_serp_contents,
-                    special_result,
+                    featured_serp_contents
                 ) = search_result_features.generate_featured_snippet(
                     full_query_with_full_stops, special_result, nlp, url, source
                 )
 
-    return featured_serp_contents, special_result
+    return featured_serp_contents

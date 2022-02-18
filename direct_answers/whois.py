@@ -67,7 +67,7 @@ def parse_whois(
 
         if photo_url:
             photo = indieweb_utils.canonicalize_url(
-                h_card["properties"].get("photo"), url
+                h_card["properties"].get("photo")[0], url
             )
         else:
             photo = ""

@@ -84,7 +84,7 @@ def check_remove_url(full_url: str) -> None:
     """
     check_if_indexed = requests.post(
         f"https://es-indieweb-search.jamesg.blog/check?url={full_url}",
-        headers={"Authorization": f"Bearer {config.ELASTICSEARCH_API_TOKEN}"},
+        headers={"Authorization": f"{config.ELASTICSEARCH_API_TOKEN}"},
     ).json()
 
     if len(check_if_indexed) > 0:
@@ -94,7 +94,7 @@ def check_remove_url(full_url: str) -> None:
         }
         requests.post(
             "https://es-indieweb-search.jamesg.blog/remove-from-index",
-            headers={"Authorization": f"Bearer {config.ELASTICSEARCH_API_TOKEN}"},
+            headers={"Authorization": f"{config.ELASTICSEARCH_API_TOKEN}"},
             json=data,
         )
         logging.info(f"removed {full_url} from index as it is no longer valid")

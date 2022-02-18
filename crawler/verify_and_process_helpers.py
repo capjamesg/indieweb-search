@@ -9,6 +9,43 @@ import config
 import crawler.url_handling_helpers as url_handling_helpers
 import crawler.verify_and_process as verify_and_process
 
+def remove_repeated_fragments_from_title(
+    doc_title: str,
+    home_page_title: str
+) -> str:
+    """
+    Check if the title of a page is a duplicate of another page.
+
+    :param doc_title: the title of the page
+    :type doc_title: str
+    :param home_page_title: the title of the home page
+    :type home_page_title: str
+
+    :return: the title of the page if it is a duplicate, the original title if not
+    :rtype: str
+    """
+    
+    separators = [
+        " | ",
+        " - ",
+        " • "
+    ]
+    
+    for sep in separators:
+        if sep in doc_title and sep in home_page_title:
+            home_page_title_components = home_page_title.split(sep)[1:]
+
+            for component in home_page_title_components:
+                doc_title = doc_title.replace(component, "")
+            
+            # replace separator
+            doc_title = doc_title.replace(sep, "")
+            
+            doc_title = doc_title.strip()
+
+            break
+
+    return doc_title
 
 def parse_link_headers(
     page_test: requests.Response,

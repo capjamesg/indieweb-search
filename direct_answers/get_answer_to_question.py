@@ -47,6 +47,8 @@ def retrieve_answer(
         and "what is" in original_cleaned_value.lower()
     ):
         return None
+    
+    special_result = {}
 
     try:
         featured_serp_contents = c.concordance_list(cleaned_value, width=50)
