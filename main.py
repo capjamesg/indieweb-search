@@ -98,6 +98,8 @@ def results_page():
 
     if int(page) > 1:
         pagination = (int(page) - 1) * 10
+    else:
+        pagination = 0
 
     (
         cleaned_value_for_query,
@@ -128,8 +130,6 @@ def results_page():
         is_logged_in = False
 
     featured_serp_contents = ""
-
-    pagination = "0"
 
     order, minimal, query_params = transform_query.parse_query_parameters(
         cleaned_value_for_query, query_values_in_list, request
@@ -194,8 +194,6 @@ def results_page():
         special_result,
         featured_serp_contents,
     )
-
-    print(featured_serp_contents)
 
     if special_format != None:
         return special_format
