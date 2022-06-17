@@ -6,7 +6,7 @@ import spacy
 from bs4 import BeautifulSoup
 
 from . import (definition, events, get_answer_to_question, process_entity_type,
-               recipes, reviews, whatis, whois)
+               recipes, reviews, whatis, whois, aeropress_recipe)
 from .code_snippets import get_code_snippet
 from .entity_type_map import entity_types
 from .structures import DirectAnswer
@@ -80,7 +80,6 @@ def generate_featured_snippet(
         return response
 
     response = recipes.parse_recipe(original_cleaned_value, soup, url, post)
-
 
     if response != (None, None):
         return response

@@ -175,17 +175,19 @@ def results_page():
         out_of_bounds_page = False
         final_query = ""
 
+    # convert special_result to dict
+    if special_result:
+        special_result = asdict(special_result)
+
     if (
         "random aeropress" in cleaned_value_for_query
         or "generate aeropress" in cleaned_value_for_query
         and request.args.get("type") != "image"
     ):
-        special_result = search_result_features.aeropress_recipe()
-
-    # convert special_result to dict
-    if special_result:
-        special_result = asdict(special_result)
-
+        special_result = search_result_features.aeropress_recipe.aeropress_recipe()
+        featured_serp_contents = special_result
+        featured_serp_contents["answer_type"] = "aeropress_recipe"
+    
     special_format = search_page_feeds.process_special_format(
         request,
         rows,
