@@ -86,12 +86,15 @@ def choose_featured_snippet(
             url = None
             source = None
 
-        (
-            featured_serp_contents,
-            special_result,
-        ) = search_result_features.generate_featured_snippet(
-            original, special_result, nlp, url, source
-        )
+        try:
+            (
+                featured_serp_contents,
+                special_result,
+            ) = search_result_features.generate_featured_snippet(
+                original, special_result, nlp, url, source
+            )
+        except:
+            pass
 
         if featured_serp_contents == "" and len(rows) > 1:
             (

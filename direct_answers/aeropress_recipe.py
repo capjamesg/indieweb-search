@@ -68,6 +68,7 @@ def aeropress_recipe() -> dict:
         "stir_times": stir_times,
         "dose_is_point_five": dose_is_point_five,
         "inverted": inverted,
+        "breadcrumb": ""
     }
 
     return special_result

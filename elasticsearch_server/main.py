@@ -71,6 +71,8 @@ def home():
     search_param["from"] = int(from_num)
     search_param["size"] = 10
 
+    print(search_param)
+
     response = es.search(index="pages", body=search_param)
 
     if request.args.get("minimal") and request.args.get("minimal") == "true":
