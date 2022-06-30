@@ -3,17 +3,10 @@
 <section class="search">
   <img src="/static/indieweb.png" alt="IndieWeb logo" style="max-height: 200px;" />
   <h1>IndieWeb Search</h1>
-  {% if query == 'site:"jamesg.blog"' %}
-    <p>Use the form below to find a web page on {{ query.replace("site:", "").replace('"', "") }}.</p>
-  {% else %}
-    <p>Use the form below to search web sites published by members of the IndieWeb community and related sites.</p>
-  {% endif %}
+  <p>Search web sites published by members of the IndieWeb community and related sites.</p>
   <form action="/results" method="GET" role="search">
     <input type="search" id="query" name="query" placeholder="Enter your query" aria-label="Search" autocomplete="off" /><br>
     <select id="suggestions" style="display: none;"></select>
-    {% if query == 'site:"jamesg.blog"' %}
-      <input type="hidden" name="site" value="{{ query.replace("site:", "").replace('"', "") }}" />
-    {% endif %}
     <br>
     <input type="submit" value="Search">
   </form>

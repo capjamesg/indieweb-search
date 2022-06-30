@@ -24,7 +24,6 @@
         {% if results[r]['_source']['url'] != special_result.breadcrumb %}
           <li class="h-entry serp_result">
             {% include "search/breadcrumbs.html" %}
-          {% else %}
         {% endif %}
             <div class="serp-item">
               {% if results[r]['_source']['h_card'] and results[r]['_source']['h_card']['url'] and 
@@ -49,6 +48,37 @@
                 and results[r]['_source']['h_card']['url'][0].split("/")[2] == results[r]['_source']['url'].split('/')[2] %}
               <p class="breadcrumbs">Written by <a href="{{ results[r]['_source']['h_card']['url'][0] }}" class="p-author">{{ results[r]['_source']['h_card']['name'][0] }}</a></p>
               {% endif %}
+              {% if results[r]['_source']['json_ld'] %}
+                  {% if results[r]['_source']['json_ld']['image'] is mapping %}
+                  <img class="serp-item-image" src="{{ results[r]['_source']['json_ld']['image']['url'] }}" alt="{{ results[r]['_source']['json_ld']['name'] }}" width="300" style="margin-top: 10px">
+                  {% elif results[r]['_source']['json_ld']['image'] %}
+                  <img class="serp-item-image" src="{{ results[r]['_source']['json_ld']['image'] }}" alt="{{ results[r]['_source']['json_ld']['name'] }}" width="300" style="margin-top: 10px">
+                  {% endif %}
+
+                  {% if results[r]['_source']['json_ld']['description'] %}
+                  {% for item in results[r]['_source']['json_ld']['description'].split('. ')[:3] %}
+                    <p>{{ item.strip().replace("&nbsp;", "").replace("&amp;", "&") }}.</p>
+                  {% endfor %}
+                  {% endif %}
+                  {% if results[r]['_source']['json_ld']['offers'] %}
+                  <p>
+                    {% if results[r]['_source']['json_ld']['offers']['lowPrice'] %}
+                      Price: <span class="serp-item-price">{{ results[r]['_source']['json_ld']['offers']['lowPrice'] }}</span>
+                      {{ results[r]['_source']['json_ld']['offers']['priceCurrency'] }}
+                    {% elif results[r]['_source']['json_ld']['offers']['price'] %}
+                      Price: <span class="serp-item-price">{{ results[r]['_source']['json_ld']['offers']['price'] }}</span>
+                      {{ results[r]['_source']['json_ld']['offers']['priceCurrency'] }}
+                    {% endif %}
+                  </p>
+                  <p>
+                    {% if results[r]['_source']['json_ld']['offers']['availability'] != "InStock" %}
+                      <span style="background: lightpink; padding: 5px; border-radius: 3px;">Out of stock</span>
+                    {% else %}
+                      <span style="background: lightgreen; padding: 5px; border-radius: 3px;">In stock</span>
+                    {% endif %}
+                  </p>
+                  {% endif %}
+              {% endif %}
               {% if results[r]['_source']["special_snippet"] and results[r]['_source']["special_snippet"]["type"][0] == 'h-review' %}
               {% if results[r]['_source']["special_snippet"]["properties"]["rating"] and results[r]['_source']["special_snippet"]["properties"]["rating"][0] | int <= 5 %}
                 <p>
@@ -58,6 +88,7 @@
                 </p>
               {% endif %}
               {% endif %}
+              {% if results[r]['_source']['json_ld'] == None %}
               <p class="p-summary">
                 {% if results[r]['_source']['meta_description']|length > 0 %}
                   {{ results[r]['_source']['meta_description'] }}
@@ -65,6 +96,7 @@
                   {{ results[r]['_source']['h1'].split(",")[0] }}{% else %}{{ results[r]['_source']['h2'].split(",")[0] }}
                 {% endif %}
               </p>
+              {% endif %}
               {% include "search/special_result_markup.html" %}
               {% if results[r]['_source']['url'].startswith("https://indieweb.org/") or results[r]['_source']['url'].startswith("https://microformats.org/wiki/") %}
               {% set title_count = 0 %}
