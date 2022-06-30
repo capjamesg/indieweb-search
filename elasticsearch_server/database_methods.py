@@ -8,8 +8,6 @@ from flask import Blueprint, abort, jsonify, request
 
 import config
 
-from .authentication import check_password, is_authenticated_check
-
 es = Elasticsearch(["http://localhost:9200"])
 
 database_methods = Blueprint("database_methods", __name__)
@@ -251,7 +249,8 @@ def to_crawl():
     domain = request.args.get("domain")
 
     urls = cursor.execute(
-        "SELECT domain, hash FROM urls_crawled WHERE domain = %s AND next_crawl < NOW()", (domain,)
+        "SELECT domain, hash FROM urls_crawled WHERE domain = %s AND next_crawl < NOW()",
+        (domain,),
     )
 
     if urls.rowcount == 0:
@@ -300,6 +299,7 @@ def finish_crawl():
 
     abort(400)
 
+
 @database_methods.route("/add_to_queue")
 def add_to_queue():
     url = request.args.get("url")
@@ -311,9 +311,7 @@ def add_to_queue():
 
     cursor = database.cursor(buffered=True)
 
-    cursor.execute(
-        "INSERT INTO crawl_queue (url) VALUES (%s)", (url,)
-    )
+    cursor.execute("INSERT INTO crawl_queue (url) VALUES (%s)", (url,))
 
     database.commit()
 
