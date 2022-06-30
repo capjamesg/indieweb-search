@@ -3,11 +3,12 @@ import datetime
 import logging
 import os
 
-import recrawling.constants as constants
-import recrawling.feed_polling as feed_polling
 import requests
 # ignore insecure request warning
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
+
+import recrawling.constants as constants
+import recrawling.feed_polling as feed_polling
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
@@ -65,7 +66,10 @@ def process_feeds(feeds):
     feeds_indexed = 0
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
-        futures = [executor.submit(feed_polling.poll_feeds, item, feeds_parsed) for item in feeds]
+        futures = [
+            executor.submit(feed_polling.poll_feeds, item, feeds_parsed)
+            for item in feeds
+        ]
 
         while len(futures) > 0:
             for future in concurrent.futures.as_completed(futures):

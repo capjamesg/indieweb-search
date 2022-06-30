@@ -2,9 +2,9 @@ import base64
 import hashlib
 import random
 import string
-import requests
 
 import indieweb_utils
+import requests
 from flask import Blueprint, flash, redirect, render_template, request, session
 
 from config import CALLBACK_URL, CLIENT_ID, ME

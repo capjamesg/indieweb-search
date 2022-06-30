@@ -1,7 +1,7 @@
 import logging
 
-import requests
 import indieweb_utils
+import requests
 
 from crawler.verify_and_process import crawl_urls
 

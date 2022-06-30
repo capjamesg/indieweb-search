@@ -2,12 +2,14 @@ import datetime
 import logging
 from time import mktime
 
-from . import constants
 import feedparser
 import indieweb_utils
 import mf2py
 import requests
+
 from recrawling.recrawl_url import schedule_crawl_of_one_url
+
+from . import constants
 
 
 def process_xml_feed(url, feed_etag, site_url, f):
@@ -55,9 +57,7 @@ def process_xml_feed(url, feed_etag, site_url, f):
     )
 
     if modify_feed.status_code != 200:
-        print(
-            f"{modify_feed.status_code} status code returned while modifying {url}"
-        )
+        print(f"{modify_feed.status_code} status code returned while modifying {url}")
     else:
         print(f"updated etag for {url}")
 
