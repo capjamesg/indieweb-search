@@ -36,6 +36,24 @@ def get_featured_image(page_content: BeautifulSoup) -> str:
     return featured_image
 
 
+def get_json_ld(page_content: BeautifulSoup) -> dict:
+    """
+    Get the JSON-LD for a page.
+    """
+    # get JSON-LD
+    json_lds = page_content.find_all("script", type="application/ld+json")
+
+    for item in json_lds:
+        print(item)
+        if "Product" in item.text:
+            print(item.text)
+            return json.loads(item.text)
+
+    json_ld = {}
+
+    return json_ld
+
+
 def remove_scripts_and_comments(page_content: BeautifulSoup) -> BeautifulSoup:
     """
     Remove script and comment tags from the page content.
@@ -151,9 +169,10 @@ def save_to_file(
         )
 
     favicon = get_favicon(page_content)
-    page_content = remove_scripts_and_comments(page_content)
     featured_image = get_featured_image(page_content)
     mf2_property_type, post_type, category = identify_page_type(h_entry_object)
+    json_ld = get_json_ld(page_content)
+    page_content = remove_scripts_and_comments(page_content)
 
     # find out if page is home page
     if (
@@ -195,8 +214,10 @@ def save_to_file(
         "special_snippet": special_snippet,
         "mf2_property_type": mf2_property_type,
         "post_type": post_type,
-        "post_type": "",
+        "json_ld": json.dumps(json_ld),
     }
+
+    print(f"Indexing {full_url}")
 
     with open("results.json", "a+") as f:
         f.write(json.dumps(record))
