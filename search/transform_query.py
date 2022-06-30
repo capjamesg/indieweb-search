@@ -12,9 +12,13 @@ def get_clean_url_and_advanced_search(
         request.args.get("query").replace("--", "").replace("  ", " ").strip()
     )
 
-    cleaned_value_for_query = "".join(
-        e for e in query_with_handled_spaces if e.isalnum() or e in allowed_chars
-    ).strip()
+    cleaned_value_for_query = (
+        "".join(
+            e for e in query_with_handled_spaces if e.isalnum() or e in allowed_chars
+        )
+        .strip()
+        .lower()
+    )
 
     full_query_with_full_stops = "".join(
         e for e in query_with_handled_spaces if e.isalnum() or e == " " or e == "."

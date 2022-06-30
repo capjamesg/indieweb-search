@@ -10,14 +10,10 @@ def process_special_format(
     special_result: dict,
     featured_serp_contents: str,
 ):
-    print('dsdsdsd')
     format = request.args.get("format")
 
-    print(format)
-    print(format)
-    print(format)
-    print(format)
-    print(format)
+    if format == None:
+        return None
 
     if format == "json_feed":
         json_feed = process_json_feed(rows, cleaned_value, page, format)
@@ -35,9 +31,7 @@ def process_special_format(
         return rss_feed
 
     elif format == "direct_serp_json":
-        print(special_result)
         if special_result:
-            print(special_result)
             return jsonify(
                 {"text": featured_serp_contents, "featured_serp": special_result}
             )
