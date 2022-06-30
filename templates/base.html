@@ -26,6 +26,7 @@
           </li>
         </ul>
       </nav>
+      {% if query_type != "coffee" %}
       <script>
         if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
           document.getElementById('darkmode').media = "all";
@@ -72,6 +73,7 @@
             }
         }
       </script>
+      {% endif %}
       <div id="main">
           {% block content %}
           {% endblock %}

@@ -9,10 +9,8 @@ import config
 import crawler.url_handling_helpers as url_handling_helpers
 import crawler.verify_and_process as verify_and_process
 
-def remove_repeated_fragments_from_title(
-    doc_title: str,
-    home_page_title: str
-) -> str:
+
+def remove_repeated_fragments_from_title(doc_title: str, home_page_title: str) -> str:
     """
     Check if the title of a page is a duplicate of another page.
 
@@ -24,28 +22,25 @@ def remove_repeated_fragments_from_title(
     :return: the title of the page if it is a duplicate, the original title if not
     :rtype: str
     """
-    
-    separators = [
-        " | ",
-        " - ",
-        " • "
-    ]
-    
+
+    separators = [" | ", " - ", " • "]
+
     for sep in separators:
         if sep in doc_title and sep in home_page_title:
             home_page_title_components = home_page_title.split(sep)[1:]
 
             for component in home_page_title_components:
                 doc_title = doc_title.replace(component, "")
-            
+
             # replace separator
             doc_title = doc_title.replace(sep, "")
-            
+
             doc_title = doc_title.strip()
 
             break
 
     return doc_title
+
 
 def parse_link_headers(
     page_test: requests.Response,
@@ -254,9 +249,7 @@ def get_main_page_text(page_desc_soup: str) -> BeautifulSoup:
     :rtype: BeautifulSoup
     """
 
-    selectors_to_check = (
-        ".e-content", ".h-entry"
-    )
+    selectors_to_check = (".e-content", ".h-entry")
 
     for s in selectors_to_check:
         if page_desc_soup.select(s):
@@ -270,7 +263,7 @@ def get_main_page_text(page_desc_soup: str) -> BeautifulSoup:
         ("div", {"id": "site-container"}),
         ("div", {"id": "application-main"}),
         ("body", {}),
-        ("html", {})
+        ("html", {}),
     )
 
     for tag in tags_to_find:
@@ -337,7 +330,7 @@ def initial_head_request(
             requests.post(
                 "https://es-indieweb-search.jamesg.blog/add_to_queue",
                 headers=headers,
-                data={"url": full_url}
+                data={"url": full_url},
             )
 
             # raise exception here so URL doesn't continue to be crawled

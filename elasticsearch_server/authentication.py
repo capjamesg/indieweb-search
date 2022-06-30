@@ -1,8 +1,9 @@
 from flask import abort, request
 
+import config
+
 # from __init__ import app
 
-import config
 
 
 def is_authenticated_check(r):

@@ -1,6 +1,8 @@
+import csv
 import datetime
 import logging
 from typing import List
+from urllib.parse import urlparse as url_parse
 
 
 def page_link_discovery(
@@ -21,13 +23,14 @@ def page_link_discovery(
     discovered_urls = {}
 
     for link in links:
+
         if link is None:
             continue
 
         if not link.get("href"):
             continue
 
-        link["href"] = link["href"].lower().strip()
+        link["href"] = link["href"].lower().strip().replace("http://", "https://")
 
         supported_protocols = ["http", "https"]
 
@@ -37,6 +40,12 @@ def page_link_discovery(
 
         if link["href"].startswith("/"):
             full_link = f"https://{site_url}" + link["href"]
+
+        if "//" in link["href"]:
+            if ".tumblr.com" in link["href"].split("//")[1].split("/")[0]:
+                with open("tumblr_domains.csv", "a+") as file:
+                    writer = csv.writer(file)
+                    writer.writerow([link["href"]])
 
         if (
             link["href"]

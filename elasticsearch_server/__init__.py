@@ -1,6 +1,7 @@
 import os
 
-from flask import Flask, send_from_directory, request, abort
+from flask import Flask, abort, request, send_from_directory
+
 import config
 
 
@@ -38,7 +39,7 @@ def create_app():
 
         if request.args.get("pw") == config.ELASTICSEARCH_PASSWORD:
             return
-        
+
         return abort(401)
 
     # from werkzeug.middleware.profiler import ProfilerMiddleware
