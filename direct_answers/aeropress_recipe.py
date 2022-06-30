@@ -21,8 +21,10 @@ def aeropress_recipe() -> dict:
 
     dose = random.randint(12, 16)
 
+    # should dose have a .5 in it?
     dose_is_point_five = random.choice([True, False])
 
+    # should the searcher use the inverted method?
     inverted = random.choice([True, False])
 
     # 1 in 7 chance I get a "really coarse" recipe with a coarse grind and a long brew time
@@ -45,6 +47,7 @@ def aeropress_recipe() -> dict:
     time = last_time_first_three + last_time_rounded
 
     filters = random.randint(1, 2)
+
     water = "250"
 
     stir_times = random.randint(0, 6)
@@ -68,7 +71,7 @@ def aeropress_recipe() -> dict:
         "stir_times": stir_times,
         "dose_is_point_five": dose_is_point_five,
         "inverted": inverted,
-        "breadcrumb": ""
+        "breadcrumb": "",
     }
 
     return special_result

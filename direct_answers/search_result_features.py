@@ -5,8 +5,8 @@ import nltk
 import spacy
 from bs4 import BeautifulSoup
 
-from . import (definition, events, get_answer_to_question, process_entity_type,
-               recipes, reviews, whatis, whois, aeropress_recipe)
+from . import (aeropress_recipe, definition, events, get_answer_to_question,
+               process_entity_type, recipes, reviews, whatis, whois)
 from .code_snippets import get_code_snippet
 from .entity_type_map import entity_types
 from .structures import DirectAnswer
