@@ -319,15 +319,9 @@ def crawl_urls(
 
         canonical = find_base_url_path(canonical_url)
 
-<<<<<<< Updated upstream
-        is_canonical = url_handling_helpers.parse_canonical(
-            canonical, full_url, canonical_url, crawl_queue, discovered_urls
-        )
-=======
         # is_canonical = url_handling_helpers.parse_canonical(
         #     canonical, full_url, canonical_url, crawl_queue, discovered_urls
         # )
->>>>>>> Stashed changes
 
         # if is_canonical:
         #     return (
@@ -520,12 +514,7 @@ def crawl_urls(
     except Exception as e:
         write_log(e)
         print(e)
-<<<<<<< Updated upstream
-        logging.warning(f"error with {full_url}")
-        logging.warning(e)
-=======
         raise Exception
->>>>>>> Stashed changes
 
     return (
         url,
