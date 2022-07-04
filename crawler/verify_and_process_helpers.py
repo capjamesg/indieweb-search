@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 import config
 import crawler.url_handling_helpers as url_handling_helpers
 import crawler.verify_and_process as verify_and_process
+from write_logs import write_log
 
 
 def remove_repeated_fragments_from_title(doc_title: str, home_page_title: str) -> str:
@@ -122,19 +123,21 @@ def check_for_redirect_url(
         if not page_test.history[-1].url.startswith(
             "http://" + site_url
         ) and not page_test.history[-1].url.startswith("https://" + site_url):
-            print(
+            write_log(
                 "{} redirected to {}, which is on a different site, skipping".format(
                     full_url, page_test.history[-1].url
-                )
+                ),
+                site_url
             )
-            print(
+            write_log(
                 "{} redirected to {}, which is on a different site, skipping".format(
                     full_url, page_test.history[-1].url
-                )
+                ),
+                site_url
             )
             raise Exception
 
-        print(f"{full_url} redirected to {page_test.history[-1].url}")
+        write_log(f"{full_url} redirected to {page_test.history[-1].url}", site_url)
 
         full_url = page_test.history[-1].url
 
@@ -152,28 +155,28 @@ def initial_url_checks(full_url: str) -> None:
     :rtype: None
     """
     if len(full_url) > 125:
-        print(f"{full_url} url too long, skipping")
+        write_log(f"{full_url} url too long, skipping")
         raise Exception
 
     if "javascript:" in full_url:
-        print(f"{full_url} marked as noindex because it is a javascript resource")
+        write_log(f"{full_url} marked as noindex because it is a javascript resource")
         raise Exception
 
     if "/wp-json/" in full_url:
-        print(f"{full_url} marked as noindex because it is a wordpress api resource")
+        write_log(f"{full_url} marked as noindex because it is a wordpress api resource")
         raise Exception
 
     if "?s=" in full_url:
-        print(f"{full_url} marked as noindex because it is a search result")
+        write_log(f"{full_url} marked as noindex because it is a search result")
         raise Exception
 
     # there are a few wikis in the crawl and special pages provide very little value to the search index
     if "/Special:" in full_url:
-        print(f"{full_url} is a MediaWiki special page, will not crawl")
+        write_log(f"{full_url} is a MediaWiki special page, will not crawl")
         raise Exception
 
     if "/page/" in full_url and full_url.split("/")[-1].isdigit():
-        print(f"{full_url} marked as follow, noindex because it is a page archive")
+        write_log(f"{full_url} marked as follow, noindex because it is a page archive")
         url_handling_helpers.check_remove_url(full_url)
         raise Exception
 
@@ -185,7 +188,7 @@ def initial_url_checks(full_url: str) -> None:
         or "/category/" in full_url
         or "/categories/" in full_url
     ):
-        print(
+        write_log(
             "{} marked as follow, noindex because it is a tag, label, or search resource".format(
                 full_url
             )
@@ -219,7 +222,7 @@ def check_if_url_is_noindexed(
             or "none" in check_if_no_index.get("content")
         )
     ):
-        print(f"{full_url} marked as noindex, skipping")
+        write_log(f"{full_url} marked as noindex, skipping")
         url_handling_helpers.check_remove_url(full_url)
         raise Exception
 
@@ -228,7 +231,7 @@ def check_if_url_is_noindexed(
         and check_if_no_index.get("content")
         and "nofollow" in check_if_no_index.get("content")
     ):
-        print(
+        write_log(
             "all links on {} marked as nofollow due to <meta> robots nofollow value".format(
                 full_url
             )
@@ -309,13 +312,14 @@ def initial_head_request(
                 if "noindex" in page_test.headers.get(
                     "x-robots-tag"
                 ) or "none" in page_test.headers.get("x-robots-tag"):
-                    print(f"{full_url} marked as noindex")
+                    write_log(f"{full_url} marked as noindex", site_url)
                     raise Exception
                 elif "nofollow" in page_test.headers.get("x-robots-tag"):
-                    print(
+                    write_log(
                         "all links on {} marked as nofollow due to x-robots-tag nofollow value".format(
                             full_url
-                        )
+                        ),
+                        site_url
                     )
                     nofollow_all = True
 
@@ -339,15 +343,15 @@ def initial_head_request(
         return page_test, nofollow_all, redirect_count
 
     except requests.exceptions.Timeout:
-        print(f"{full_url} timed out, skipping")
+        write_log(f"{full_url} timed out, skipping", site_url)
         url_handling_helpers.check_remove_url(full_url)
         raise Exception
     except requests.exceptions.TooManyRedirects:
-        print(f"{full_url} too many redirects, skipping")
+        write_log(f"{full_url} too many redirects, skipping", site_url)
         url_handling_helpers.check_remove_url(full_url)
         raise Exception
     except:
-        print(f"{full_url} failed to connect, skipping")
+        write_log(f"{full_url} failed to connect, skipping", site_url)
         raise Exception
 
 
@@ -361,7 +365,7 @@ def filter_adult_content(page_desc_soup: BeautifulSoup, full_url: str) -> bool:
             or page_desc_soup.find("meta", {"name": "rating"}).get("content")
             == "RTA-5042-1996-1400-1577-RTA"
         ):
-            print(f"{full_url} marked as adult content in a meta tag, skipping")
+            write_log(f"{full_url} marked as adult content in a meta tag, skipping", full_url.split("/")[2])
             raise Exception
 
 
@@ -405,10 +409,11 @@ def check_meta_equiv_refresh(
         if refresh_domain.lower().replace("www.", "") != full_url.split("/")[
             2
         ].lower().replace("www.", ""):
-            print(
+            write_log(
                 "{} has a refresh url of {}, not adding to queue because url points to a different domain".format(
                     full_url, refresh_url
-                )
+                ),
+                full_url.split("/")[2]
             )
 
             return url, {}, False, feeds, hash, crawl_depth, average_crawl_speed
@@ -456,10 +461,11 @@ def handle_redirect(
             split_value = discovered_urls.get(full_url).split(" ")
             redirected_from = split_value[1]
             if redirected_from == redirected_to:
-                print(
+                write_log(
                     "{} has already been redirected from a canonical url, will not redirect a second time, skipping".format(
                         full_url
-                    )
+                    ),
+                    full_url.split("/")[2]
                 )
                 return (
                     url,
@@ -505,14 +511,14 @@ def get_web_page(session: requests.Session, full_url: str) -> requests.Response:
             verify=False,
         )
     except requests.exceptions.Timeout:
-        print(f"{full_url} timed out, skipping")
+        write_log(f"{full_url} timed out, skipping", full_url.split("/")[2])
         raise Exception
     except requests.exceptions.TooManyRedirects:
-        print(f"{full_url} too many redirects, skipping")
+        write_log(f"{full_url} too many redirects, skipping", full_url.split("/")[2])
         url_handling_helpers.check_remove_url(full_url)
         raise Exception
     except:
-        print(f"{full_url} failed to connect, skipping")
+        write_log(f"{full_url} failed to connect, skipping", full_url.split("/")[2])
         raise Exception
 
     # 404 = not found, 410 = gone
@@ -521,7 +527,7 @@ def get_web_page(session: requests.Session, full_url: str) -> requests.Response:
 
     elif page.status_code != 200:
         url_handling_helpers.check_remove_url(full_url)
-        print(f"{full_url} page {page.status_code} status code")
+        write_log(f"{full_url} page {page.status_code} status code", full_url.split("/")[2])
         raise Exception
 
     content_type_is_valid = verify_content_type_is_valid(page, full_url)
@@ -582,7 +588,7 @@ def link_discovery_processing(
 
             feed_urls.append(full_url.strip("/"))
 
-            print(f"{websub_hub} is a websub hub, will save to feeds.json")
+            write_log(f"{websub_hub} is a websub hub, will save to feeds.json")
 
         if 'rel="alternate"' in link_header and len(feeds) < 25:
             original_feed_url = (

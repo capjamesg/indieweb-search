@@ -1,6 +1,5 @@
 import datetime
 import hashlib
-import logging
 from urllib.parse import urlparse as parse_url
 
 import indieweb_utils
@@ -13,6 +12,7 @@ import crawler.save_record as save_record
 import crawler.url_handling_helpers as url_handling_helpers
 import crawler.verify_and_process_helpers as verify_and_process_helpers
 from crawler.constants import LIKELY_404_TITLES
+from write_logs import write_log
 
 yesterday = datetime.datetime.today() - datetime.timedelta(days=1)
 
@@ -173,6 +173,8 @@ def crawl_urls(
 
     budget_used += 1
 
+    print('sdsds')
+
     try:
         (
             page_test,
@@ -180,8 +182,8 @@ def crawl_urls(
             redirect_count,
         ) = verify_and_process_helpers.initial_head_request(full_url, session, site_url)
         budget_used += redirect_count
-    except Exception as e:
-        print(e)
+    except:
+        print("Error: Could not get page info for: " + full_url)
         url_handling_helpers.check_remove_url(full_url)
         return (
             url,
@@ -194,21 +196,23 @@ def crawl_urls(
             budget_used,
         )
 
-    has_canonical = verify_and_process_helpers.parse_link_headers(
-        page_test, full_url, crawl_queue, discovered_urls
-    )
+    print('sdsds')
 
-    if has_canonical == True:
-        return (
-            url,
-            discovered_urls,
-            False,
-            feeds,
-            "",
-            crawl_depth,
-            average_crawl_speed,
-            budget_used,
-        )
+    # has_canonical = verify_and_process_helpers.parse_link_headers(
+    #     page_test, full_url, crawl_queue, discovered_urls
+    # )
+
+    # if has_canonical == True:
+    #     return (
+    #         url,
+    #         discovered_urls,
+    #         False,
+    #         feeds,
+    #         "",
+    #         crawl_depth,
+    #         average_crawl_speed,
+    #         budget_used,
+    #     )
 
     try:
         page = verify_and_process_helpers.get_web_page(session, full_url)
@@ -238,10 +242,11 @@ def crawl_urls(
         )
 
     if len(average_crawl_speed) > 10 and page.elapsed.total_seconds() > 2:
-        print(
+        write_log(
             "WARNING: {} took {} seconds to load, server slow".format(
                 full_url, page.elapsed.total_seconds()
-            )
+            ),
+            site
         )
 
     average_crawl_speed.append(page.elapsed.total_seconds())
@@ -277,10 +282,11 @@ def crawl_urls(
     hash = hashlib.sha256(str(body).encode("utf-8")).hexdigest()
 
     if web_page_hashes.get(hash) and web_page_hashes.get(hash) != full_url:
-        print(
+        write_log(
             "{} has already been indexed (hash the same as {}), skipping".format(
                 full_url, web_page_hashes.get(hash)
-            )
+            ),
+            site
         )
         return (
             url,
@@ -313,9 +319,15 @@ def crawl_urls(
 
         canonical = find_base_url_path(canonical_url)
 
+<<<<<<< Updated upstream
         is_canonical = url_handling_helpers.parse_canonical(
             canonical, full_url, canonical_url, crawl_queue, discovered_urls
         )
+=======
+        # is_canonical = url_handling_helpers.parse_canonical(
+        #     canonical, full_url, canonical_url, crawl_queue, discovered_urls
+        # )
+>>>>>>> Stashed changes
 
         # if is_canonical:
         #     return (
@@ -506,9 +518,14 @@ def crawl_urls(
             thin_content,
         )
     except Exception as e:
+        write_log(e)
         print(e)
+<<<<<<< Updated upstream
         logging.warning(f"error with {full_url}")
         logging.warning(e)
+=======
+        raise Exception
+>>>>>>> Stashed changes
 
     return (
         url,

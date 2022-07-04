@@ -1,11 +1,11 @@
 import datetime
 import json
-import logging
 
 import indieweb_utils
 import mf2py
 import requests
 from bs4 import BeautifulSoup, Comment
+from write_logs import write_log
 
 import crawler.identify_special_snippet as identify_special_snippet
 
@@ -223,7 +223,7 @@ def save_to_file(
         f.write(json.dumps(record))
         f.write("\n")
 
-    logging.info(f"indexed new page {full_url} ({pages_indexed}/{crawl_budget})")
+    write_log(f"indexed new page {full_url} ({pages_indexed}/{crawl_budget})", full_url.split("/")[2])
 
     pages_indexed += 1
 

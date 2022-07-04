@@ -2,7 +2,7 @@ import csv
 import datetime
 import logging
 from typing import List
-from urllib.parse import urlparse as url_parse
+from write_logs import write_log
 
 
 def page_link_discovery(
@@ -66,10 +66,11 @@ def page_link_discovery(
         ):
             # url is wrong protocol, continue
 
-            logging.info(
+            write_log(
                 "Unsupported protocol for discovered url: "
                 + link.get("href")
-                + ", not adding to index queue"
+                + ", not adding to index queue",
+                domain=site_url,
             )
             continue
 
@@ -147,9 +148,8 @@ def page_link_discovery(
                     link.text,
                 ]
             )
-            logging.info("about page found")
 
-            print("indexing queue now contains " + full_link)
+            write_log("indexing queue now contains " + full_link, site_url)
             final_urls[full_link] = ""
 
             crawl_queue.append(full_link)

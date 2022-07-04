@@ -1,4 +1,4 @@
-import logging
+from write_logs import write_log
 
 import requests
 
@@ -16,7 +16,7 @@ def save_feeds_to_database(all_feeds: list, headers: dict, site: str) -> None:
         print(f"feeds updated database for {site}")
     else:
         # print("ERROR: feeds not updated for {} (status code {})".format(site, r.status_code))
-        logging.error(f"feeds not updated for {site} (status code {r.status_code})")
+        write_log(f"feeds not updated for {site} (status code {r.status_code})")
 
 
 def save_indexed_urls_to_database(
@@ -34,7 +34,7 @@ def save_indexed_urls_to_database(
     if r.status_code == 200:
         print(f"index list updated for {site}")
     else:
-        logging.error(
+        write_log(
             f"index list not updates for {site} (status code {r.status_code})"
         )
 
@@ -54,7 +54,7 @@ def record_crawl_of_domain(site: str, headers: dict) -> None:
         print(f"crawl recorded in database for {site}")
     else:
         # print("ERROR: crawl not recorded in database for {} (status code {})".format(site, r.status_code))
-        logging.error(
+        write_log(
             f"crawl not recorded in database for {site} (status code {r.status_code})"
         )
 

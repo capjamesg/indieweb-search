@@ -1,11 +1,11 @@
 import datetime
-import logging
 from typing import List
 from urllib.parse import urlparse as parse_url
 
 import indieweb_utils
 import requests
 from bs4 import BeautifulSoup
+from write_logs import write_log
 
 import config
 
@@ -35,7 +35,7 @@ def parse_canonical(
     if canonical_domain.lower().replace("www.", "") != full_url.split("/")[
         2
     ].lower().replace("www.", ""):
-        logging.info(
+        write_log(
             "{} has a canonical url of {}, not adding to queue because url points to a different domain".format(
                 full_url, canonical
             )
@@ -51,7 +51,7 @@ def parse_canonical(
         if discovered_urls.get(full_url) and discovered_urls.get(full_url).startswith(
             "CANONICAL"
         ):
-            logging.info(
+            write_log(
                 "{} has a canonical url of {}, not adding to index because the page was already identified as canonical".format(
                     full_url, canonical
                 )
@@ -63,7 +63,7 @@ def parse_canonical(
 
             discovered_urls[canonical_url] = f"CANONICAL {full_url}"
 
-            logging.info(
+            write_log(
                 "{} has a canonical url of {}, skipping and added canonical URL to queue".format(
                     full_url, canonical_url
                 )
@@ -97,7 +97,7 @@ def check_remove_url(full_url: str) -> None:
             headers={"Authorization": f"{config.ELASTICSEARCH_API_TOKEN}"},
             json=data,
         )
-        logging.info(f"removed {full_url} from index as it is no longer valid")
+        write_log(f"removed {full_url} from index as it is no longer valid")
 
 
 def save_feed(
@@ -138,7 +138,7 @@ def save_feed(
     ):
         # url is wrong protocol, continue
 
-        logging.info(
+        write_log(
             "Unsupported protocol for discovered feed: "
             + feed_url
             + ", not adding to fef queue"
@@ -157,7 +157,7 @@ def save_feed(
     )
     feed_urls.append(feed_url.strip("/"))
 
-    logging.info(f"found feed {feed_url}, will save")
+    write_log(f"found feed {feed_url}, will save")
 
     return feeds, feed_urls
 
@@ -222,7 +222,7 @@ def find_feeds(page_desc_soup: BeautifulSoup, full_url: str, site: str) -> List[
                         feed_item["href"]
                     )
                 )
-                logging.info(
+                write_log(
                     "found feed {}, but it points to a different domain, not saving".format(
                         feed_item["href"]
                     )
@@ -253,7 +253,7 @@ def find_feeds(page_desc_soup: BeautifulSoup, full_url: str, site: str) -> List[
         )
         feed_urls.append(full_url.strip("/"))
 
-        logging.info(f"{full_url} is a h-feed, will save to feeds.json")
+        write_log(f"{full_url} is a h-feed, will save to feeds.json")
 
     # check for websub hub
 
@@ -275,6 +275,6 @@ def find_feeds(page_desc_soup: BeautifulSoup, full_url: str, site: str) -> List[
 
         feed_urls.append(full_url.strip("/"))
 
-        logging.info(f"{full_url} is a websub hub, will save to feeds.json")
+        write_log(f"{full_url} is a websub hub, will save to feeds.json")
 
     return feeds, feed_urls

@@ -13,6 +13,13 @@ import config
 import search.search_page_feeds as search_page_feeds
 import search.transform_query as transform_query
 from direct_answers import choose_direct_answer, search_result_features
+import string
+
+from google.cloud import logging
+
+"""Lists the most recent entries for a given logger."""
+logging_client = logging.Client()
+logger = logging_client.logger("crawler")
 
 main = Blueprint("main", __name__, static_folder="static", static_url_path="")
 
@@ -90,6 +97,50 @@ def search_autocomplete():
     )
 
     return jsonify(suggest.json()), 200
+
+@main.route("/logs", methods=["GET"])
+def get_logs():
+    domain = request.args.get("domain")
+
+    if not domain:
+        return jsonify({"error": "domain is required"}), 400
+
+    if domain == "":
+        return jsonify({"error": "domain is required"}), 400
+
+    domain = "".join([c for c in domain if c in string.ascii_letters + string.digits + "."]).lower()
+
+    domain = domain.replace("admin", "")
+
+    query = f"[*{domain}*]"
+
+    entries = ""
+
+    for entry in logger.list_entries(filter_=query, max_results=2000, order_by="timestamp desc"):
+        timestamp = entry.timestamp.isoformat().replace("T", " ")
+        if "indexing queue now contains" in entry.payload:
+            class_item = "indexing-queue-now-contains"
+        elif "budget for crawl:" in entry.payload or "CRAWL BEGINNING" in entry.payload:
+            class_item = "success"
+        else:
+            class_item = ""
+
+        entries += f"<span class='{class_item}'><b>{timestamp}:</b> {entry.payload}</span><br>"
+
+    entry_full = """
+        <style>
+            .indexing-queue-now-contains { color: blue; }
+            .budget-for-crawl { color: lightgreen; }
+        </style>
+        <main>
+    """
+    
+    entry_full = entry_full + f"""
+            {entries}
+        </main>
+    """
+
+    return entry_full, 200
 
 
 @main.route("/results", methods=["GET", "POST"])
@@ -200,21 +251,23 @@ def results_page():
         or "generate aeropress" in cleaned_value_for_query
         and request.args.get("type") != "image"
     ):
-        special_result = search_result_features.aeropress_recipe.aeropress_recipe()
-        featured_serp_contents = special_result
-        featured_serp_contents["answer_type"] = "aeropress_recipe"
-    else:
-        special_format = search_page_feeds.process_special_format(
-            request,
-            rows,
-            cleaned_value_for_query,
-            page,
-            special_result,
-            featured_serp_contents,
-        )
+        special_result = search_result_features.aeropress_recipe()
 
-        if special_format != None:
-            return special_format
+    # convert special_result to dict
+    if special_result:
+        special_result = asdict(special_result)
+
+    special_format = search_page_feeds.process_special_format(
+        request,
+        rows,
+        cleaned_value_for_query,
+        page,
+        special_result,
+        featured_serp_contents,
+    )
+
+    if special_format != None:
+        return special_format
 
     # show one result if a featured snippet is available, even if there are no other results to show
 

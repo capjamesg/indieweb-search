@@ -1,7 +1,6 @@
 import concurrent.futures
 import datetime
 import ipaddress
-import logging
 from typing import List
 
 import indieweb_utils
@@ -16,21 +15,11 @@ import config
 import crawler.robots_handling as robots_handling
 import crawler.verify_and_process as verify_and_process
 from config import ROOT_DIRECTORY
+from write_logs import write_log
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 start_time = datetime.datetime.now()
-
-logging.basicConfig(
-    filename=f"logs/search/{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.log",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
-
-print(
-    "Printing logs to {}/logs/{}.log".format(
-        ROOT_DIRECTORY, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    )
-)
 
 broken_urls = []
 
@@ -63,6 +52,8 @@ def process_domain(site: str) -> List[list]:
     if namespaces_to_ignore == "broken":
         return 0, [], site
 
+    write_log("CRAWL BEGINNING", site)
+
     # Parse sitemap indexes
     for u in sitemap_urls:
         r = requests.get(
@@ -80,11 +71,11 @@ def process_domain(site: str) -> List[list]:
                 all_sitemaps = soup.find_all("loc")
                 for sitemap in all_sitemaps:
                     sitemap_urls.append(sitemap.text)
-                    # print("will crawl URLs in {} sitemap".format(sitemap.text))
-                    print(f"will crawl URLs in {sitemap.text} sitemap")
+                    # write_log("will crawl URLs in {} sitemap".format(sitemap.text))
+                    write_log(f"will crawl URLs in {sitemap.text} sitemap", site)
             else:
-                # print("will crawl URLs in {} sitemap".format(u))
-                print(f"will crawl URLs in {u} sitemap")
+                # write_log("will crawl URLs in {} sitemap".format(u))
+                write_log(f"will crawl URLs in {u} sitemap", site)
 
     sitemap_urls = list(set(sitemap_urls))
 
@@ -116,12 +107,12 @@ def process_domain(site: str) -> List[list]:
         )
 
         if r.status_code == 200:
-            # print(r.text)
-            # print("sitemaps added to database for {}".format(site))
-            print(f"sitemaps added to database for {site}")
+            # write_log(r.text)
+            # write_log("sitemaps added to database for {}".format(site))
+            write_log(f"sitemaps added to database for {site}", site)
         else:
-            # print("ERROR: sitemap not added for {} (status code {})".format(site, r.status_code))
-            logging.error(f"sitemap not added for {site} (status code {r.status_code})")
+            # write_log("ERROR: sitemap not added for {} (status code {})".format(site, r.status_code))
+            write_log(f"sitemap not added for {site} (status code {r.status_code})", site)
 
         for u in urls:
             if "/tag/" in u.find("loc").text:
@@ -152,24 +143,24 @@ def get_feeds(site: str) -> list:
     )
 
     if r.status_code == 200 and r.json() and not r.json().get("message"):
-        # print("feeds retrieved for {}".format(site))
-        print(f"feeds retrieved for {site}")
+        write_log(f"feeds retrieved for {site}", site)
         feeds = r.json()
     elif r.status_code == 200 and r.json() and r.json().get("message"):
-        # print("Result from URL request to /feeds endpoint on elasticsearch server: {}".format(r.json()["message"]))
-        print(
+        # write_log("Result from URL request to /feeds endpoint on elasticsearch server: {}".format(r.json()["message"]))
+        write_log(
             "Result from URL request to /feeds endpoint on elasticsearch server: {}".format(
                 r.json()["message"]
-            )
+            ),
+            site
         )
         feeds = []
     elif r.status_code == 200 and not r.json():
-        # print("No feeds retrieved for {} but still 200 response".format(site))
-        print(f"No feeds retrieved for {site} but still 200 response")
+        # write_log("No feeds retrieved for {} but still 200 response".format(site))
+        write_log(f"No feeds retrieved for {site} but still 200 response", site)
         feeds = []
     else:
-        # print("ERROR: feeds not retrieved for {} (status code {})".format(site, r.status_code))
-        logging.error(f"feeds not retrieved for {site} (status code {r.status_code})")
+        # write_log("ERROR: feeds not retrieved for {} (status code {})".format(site, r.status_code))
+        write_log(f"feeds not retrieved for {site} (status code {r.status_code})", site)
         feeds = []
 
     return feeds
@@ -185,7 +176,7 @@ def get_urls_to_crawl(
     )
 
     if r.status_code == 200 and r.json() and not r.json().get("urls"):
-        print(f"{site} has urls that need to be crawled")
+        write_log(f"{site} has urls that need to be crawled", site)
         all_urls = r.json().get("urls")
 
         for url in all_urls:
@@ -194,9 +185,7 @@ def get_urls_to_crawl(
             final_urls[url_object] = ""
             web_page_hashes[hash] = url_object
     else:
-        print(
-            f"{site} has no urls that need to be crawled (status code {r.status_code})"
-        )
+        write_log(f"{site} has no urls that need to be crawled (status code {r.status_code})", site)
 
     if len(final_urls) == 0:
         final_urls[f"{protocol}{site}"] = ""
@@ -236,7 +225,7 @@ def build_index(site: str) -> List[list]:
 
     feeds = get_feeds(site)
 
-    print(f"processing {site}. crawl budget: {crawl_budget}")
+    write_log(f"processing {site}. crawl budget: {crawl_budget}", site)
 
     # initialize variables for crawl
     indexed = 0
@@ -256,7 +245,7 @@ def build_index(site: str) -> List[list]:
         h_card = mf2py.Parser(protocol + site)
     except:
         h_card = []
-        print(f"no h-card could be found on {site} home page")
+        write_log(f"no h-card could be found on {site} home page", site)
 
     # get home page title
     try:
@@ -278,8 +267,8 @@ def build_index(site: str) -> List[list]:
         if crawl_depths.get("url"):
             crawl_depth = crawl_depths.get("url")
             if crawl_depth > 5:
-                # print("crawl depth for {} is {}".format(url, crawl_depth))
-                print(f"crawl depth for {url} is {crawl_depth}")
+                # write_log("crawl depth for {} is {}".format(url, crawl_depth))
+                write_log(f"crawl depth for {url} is {crawl_depth}", site)
 
         if indexed_list.get(url):
             continue
@@ -333,8 +322,9 @@ def build_index(site: str) -> List[list]:
             and len(average_crawl_speed)
             and (len(average_crawl_speed) / len(average_crawl_speed) > 4)
         ):
-            print(
-                f"average crawl speed is {len(average_crawl_speed) / len(average_crawl_speed)}, stopping crawl"
+            write_log(
+                f"average crawl speed is {len(average_crawl_speed) / len(average_crawl_speed)}, stopping crawl",
+                site
             )
             with open("failed.txt", "a") as f:
                 f.write(
@@ -347,8 +337,9 @@ def build_index(site: str) -> List[list]:
 
         budget_spent += budget_used
 
-        print(
-            f"{site} ({url_indexed}) - indexed: {indexed} / budget spent: {budget_spent} / budget for crawl: {crawl_budget}"
+        write_log(
+            f"{site} ({url_indexed}) - indexed: {indexed} / budget spent: {budget_spent} / budget for crawl: {crawl_budget}",
+            site
         )
 
         if budget_spent > crawl_budget:
@@ -364,8 +355,8 @@ def build_index(site: str) -> List[list]:
                 discovered_feeds_dict[f.get("feed_url")] = True
 
         for key, value in discovered.items():
-            if not indexed_list.get(key) and not indexed_list.get(key.strip("/")):
-                # print(f"{key} not indexed, added")
+            if not indexed_list.get(key):
+                write_log(f"{key} not indexed, added", site)
                 crawl_queue.append(key)
 
             crawl_depths[key] = value
@@ -415,8 +406,7 @@ def main():
             for future in concurrent.futures.as_completed(futures):
                 sites_indexed += 1
 
-                print(f"SITES INDEXED: {sites_indexed}")
-                logging.info(f"SITES INDEXED: {sites_indexed}")
+                write_log(f"SITES INDEXED: {sites_indexed}")
 
                 try:
                     url_indexed, _ = future.result()
