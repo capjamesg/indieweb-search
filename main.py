@@ -15,11 +15,10 @@ import search.transform_query as transform_query
 from direct_answers import choose_direct_answer, search_result_features
 import string
 
-from google.cloud import logging
+from influxdb import InfluxDBClient
+import datetime
 
-"""Lists the most recent entries for a given logger."""
-logging_client = logging.Client()
-logger = logging_client.logger("crawler")
+influx_client = InfluxDBClient(host="localhost", port=8086)
 
 main = Blueprint("main", __name__, static_folder="static", static_url_path="")
 
@@ -112,25 +111,29 @@ def get_logs():
 
     domain = domain.replace("admin", "")
 
-    query = f"[*{domain}*]"
-
     entries = ""
 
-    for entry in logger.list_entries(filter_=query, max_results=2000, order_by="timestamp desc"):
-        timestamp = entry.timestamp.isoformat().replace("T", " ")
-        if "indexing queue now contains" in entry.payload:
+    data = influx_client.query(f"SELECT time, text FROM crawl WHERE text =~ /{domain}/", database="search_logs").raw
+    
+    if not data:
+        return jsonify({"error": "no logs found"}), 404
+
+    for entry in data['series'][0]['values']:
+        if "indexing queue now contains" in entry[1]:
             class_item = "indexing-queue-now-contains"
-        elif "budget for crawl:" in entry.payload or "CRAWL BEGINNING" in entry.payload:
+        elif "budget for crawl:" in entry[1] or "CRAWL BEGINNING" in entry[1]:
             class_item = "success"
         else:
             class_item = ""
 
-        entries += f"<span class='{class_item}'><b>{timestamp}:</b> {entry.payload}</span><br>"
+        timestamp = entry[0].replace("T", " ")
+
+        entries += f"<span class='{class_item}'><b>{timestamp}: </b>{entry[1]}</span><br>"
 
     entry_full = """
         <style>
             .indexing-queue-now-contains { color: blue; }
-            .budget-for-crawl { color: lightgreen; }
+            .success { color: darkgreen; }
         </style>
         <main>
     """

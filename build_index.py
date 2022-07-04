@@ -14,7 +14,6 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import config
 import crawler.robots_handling as robots_handling
 import crawler.verify_and_process as verify_and_process
-from config import ROOT_DIRECTORY
 from write_logs import write_log
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
