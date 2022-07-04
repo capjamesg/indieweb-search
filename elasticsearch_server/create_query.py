@@ -62,7 +62,7 @@ def assemble_query(
         ("like", "like"),
         ("video", "video"),
         ("note", "note"),
-        ("article", "article")
+        ("article", "article"),
     ]
 
     last_query_word = query.split(" ")[-1]

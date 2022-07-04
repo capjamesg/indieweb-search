@@ -145,7 +145,11 @@ def crawl_urls(
     url_domain = parsed_url.netloc
     url_path = parsed_url.path
 
-    full_url = indieweb_utils.canonicalize_url(url, url_domain).lower()
+    full_url = (
+        indieweb_utils.canonicalize_url(url, url_domain, protocol="https://")
+        .lower()
+        .replace("http://", "https://")
+    )
 
     # Only get URLs that match namespace exactly
     in_matching_namespace = [
@@ -153,17 +157,17 @@ def crawl_urls(
     ]
 
     # The next line of code skips indexing namespaces excluded in robots.txt
-    if len(in_matching_namespace) > 1:
-        return (
-            url,
-            discovered_urls,
-            False,
-            feeds,
-            "",
-            crawl_depth,
-            average_crawl_speed,
-            budget_used,
-        )
+    # if len(in_matching_namespace) > 1:
+    #     return (
+    #         url,
+    #         discovered_urls,
+    #         False,
+    #         feeds,
+    #         "",
+    #         crawl_depth,
+    #         average_crawl_speed,
+    #         budget_used,
+    #     )
 
     session.max_redirects = 5
 
@@ -176,7 +180,8 @@ def crawl_urls(
             redirect_count,
         ) = verify_and_process_helpers.initial_head_request(full_url, session, site_url)
         budget_used += redirect_count
-    except:
+    except Exception as e:
+        print(e)
         url_handling_helpers.check_remove_url(full_url)
         return (
             url,
@@ -207,7 +212,8 @@ def crawl_urls(
 
     try:
         page = verify_and_process_helpers.get_web_page(session, full_url)
-    except:
+    except Exception as e:
+        print(e)
         return (
             url,
             discovered_urls,
@@ -245,7 +251,8 @@ def crawl_urls(
 
     try:
         page_desc_soup = BeautifulSoup(page.content, "html.parser")
-    except:
+    except Exception as e:
+        print(e)
         page_desc_soup = BeautifulSoup(page.content, "html5lib")
 
     # don't index pages that are likely to be 404s
@@ -288,16 +295,16 @@ def crawl_urls(
 
     # if http-equiv refresh redirect present
     # not recommended by W3C but still worth checking for just in case
-    # verify_and_process_helpers.check_meta_equiv_refresh(
-    #     url,
-    #     feeds,
-    #     hash,
-    #     crawl_depth,
-    #     average_crawl_speed,
-    #     page_desc_soup,
-    #     discovered_urls,
-    #     full_url,
-    # )
+    verify_and_process_helpers.check_meta_equiv_refresh(
+        url,
+        feeds,
+        hash,
+        crawl_depth,
+        average_crawl_speed,
+        page_desc_soup,
+        discovered_urls,
+        full_url,
+    )
 
     # check for canonical url
 
@@ -310,23 +317,24 @@ def crawl_urls(
             canonical, full_url, canonical_url, crawl_queue, discovered_urls
         )
 
-        if is_canonical:
-            return (
-                url,
-                discovered_urls,
-                False,
-                feeds,
-                hash,
-                crawl_depth,
-                average_crawl_speed,
-                budget_used,
-            )
+        # if is_canonical:
+        #     return (
+        #         url,
+        #         discovered_urls,
+        #         False,
+        #         feeds,
+        #         hash,
+        #         crawl_depth,
+        #         average_crawl_speed,
+        #         budget_used,
+        #     )
 
     try:
         noindex, nofollow_all = verify_and_process_helpers.check_if_url_is_noindexed(
             page_desc_soup, full_url
         )
-    except:
+    except Exception as e:
+        print(e)
         return (
             url,
             discovered_urls,
@@ -343,7 +351,8 @@ def crawl_urls(
     # filter out pages marked as adult content
     try:
         verify_and_process_helpers.filter_adult_content(page_desc_soup, full_url)
-    except:
+    except Exception as e:
+        print(e)
         return (
             url,
             discovered_urls,
@@ -382,7 +391,8 @@ def crawl_urls(
 
     try:
         verify_and_process_helpers.initial_url_checks(full_url)
-    except:
+    except Exception as e:
+        print(e)
         url_handling_helpers.check_remove_url(full_url)
         return (
             url,
@@ -432,7 +442,9 @@ def crawl_urls(
         page_desc_soup, full_url, homepage_meta_description
     )
 
-    doc_title = verify_and_process_helpers.remove_repeated_fragments_from_title(doc_title, home_page_title)
+    doc_title = verify_and_process_helpers.remove_repeated_fragments_from_title(
+        doc_title, home_page_title
+    )
 
     if noindex:
         url_handling_helpers.check_remove_url(full_url)
@@ -497,7 +509,6 @@ def crawl_urls(
         print(e)
         logging.warning(f"error with {full_url}")
         logging.warning(e)
-        raise Exception
 
     return (
         url,

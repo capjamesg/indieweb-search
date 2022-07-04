@@ -32,11 +32,7 @@ for hits in scroll(es, "pages", body, "2m", 20):
     for h in hits:
         # replacing www. for consistency
         print(count)
-        if (
-            links.get(h["_source"]["url"].replace("www.", "").lower().strip("/"))
-            is None
-        ):
-            links[h["_source"]["url"].replace("www.", "").lower().strip("/")] = h["_id"]
-        else:
+        if h["_source"].get("json_ld") == None and "fortitude" in h["_source"]["url"]:
+            print(h["_source"]["url"])
             es.delete(index="pages", id=h["_id"])
             count += 1

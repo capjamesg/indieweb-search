@@ -12,6 +12,9 @@ def process_special_format(
 ):
     format = request.args.get("format")
 
+    if format == None:
+        return None
+
     if format == "json_feed":
         json_feed = process_json_feed(rows, cleaned_value, page, format)
 
@@ -38,7 +41,7 @@ def process_special_format(
     elif format == "results_page_json":
         return jsonify({"results": [r["_source"] for r in rows]})
 
-    return None
+    return jsonify({})
 
 
 def process_h_card(row: list) -> dict:

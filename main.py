@@ -6,7 +6,8 @@ import indieweb_utils
 import mf2py
 import requests
 import spacy
-from flask import (Blueprint, jsonify, redirect, render_template, request, session)
+from flask import (Blueprint, jsonify, redirect, render_template, request,
+                   session)
 
 import config
 import search.search_page_feeds as search_page_feeds
@@ -19,7 +20,10 @@ nlp = spacy.load("en_core_web_sm")
 
 allowed_chars = [" ", '"', ":", "-", "/", ".", "=", ","]
 
-def save_search_result_evaluation(evaluate: str, is_logged_in: bool, rows: list, cleaned_value_for_query: str) -> None:
+
+def save_search_result_evaluation(
+    evaluate: str, is_logged_in: bool, rows: list, cleaned_value_for_query: str
+) -> None:
     if evaluate == "save" and is_logged_in is True:
         get_ids_of_results = [r["_id"] for r in rows]
 
@@ -36,23 +40,29 @@ def save_search_result_evaluation(evaluate: str, is_logged_in: bool, rows: list,
             rank_object = {
                 "_index": "pages",
                 "_id": id,
-                "rating": int(relevance_list[count])
+                "rating": int(relevance_list[count]),
             }
 
             count += 1
 
             results.append(rank_object)
-        
+
         relevance_object = {
             "id": cleaned_value_for_query,
             "request": {
-                "query": { "simple_query_string": { "query": cleaned_value_for_query, "minimum_should_match": "75%" } }
+                "query": {
+                    "simple_query_string": {
+                        "query": cleaned_value_for_query,
+                        "minimum_should_match": "75%",
+                    }
+                }
             },
-            "ratings": results
+            "ratings": results,
         }
 
         with open("data/relevance.json", "a+") as f:
             f.write(json.dumps(relevance_object) + "\n")
+
 
 def handle_random_query(session):
     random_site = session.get(
@@ -81,6 +91,7 @@ def search_autocomplete():
 
     return jsonify(suggest.json()), 200
 
+
 @main.route("/results", methods=["GET", "POST"])
 def results_page():
     page = request.args.get("page")
@@ -98,6 +109,8 @@ def results_page():
 
     if int(page) > 1:
         pagination = (int(page) - 1) * 10
+    else:
+        pagination = 0
 
     (
         cleaned_value_for_query,
@@ -129,8 +142,6 @@ def results_page():
 
     featured_serp_contents = ""
 
-    pagination = "0"
-
     order, minimal, query_params = transform_query.parse_query_parameters(
         cleaned_value_for_query, query_values_in_list, request
     )
@@ -158,6 +169,11 @@ def results_page():
         else:
             r["_source"]["h_card"] = None
 
+        if r["_source"].get("json_ld"):
+            r["_source"]["json_ld"] = json.loads(r["_source"]["json_ld"])
+        else:
+            r["_source"]["json_ld"] = None
+
     # only page 1 is eligible to show a featured snippet
     if page == 1:
         featured_serp_contents = choose_direct_answer.choose_featured_snippet(
@@ -175,30 +191,30 @@ def results_page():
         out_of_bounds_page = False
         final_query = ""
 
+    # convert special_result to dict
+    if special_result:
+        special_result = asdict(special_result)
+
     if (
         "random aeropress" in cleaned_value_for_query
         or "generate aeropress" in cleaned_value_for_query
         and request.args.get("type") != "image"
     ):
-        special_result = search_result_features.aeropress_recipe()
+        special_result = search_result_features.aeropress_recipe.aeropress_recipe()
+        featured_serp_contents = special_result
+        featured_serp_contents["answer_type"] = "aeropress_recipe"
+    else:
+        special_format = search_page_feeds.process_special_format(
+            request,
+            rows,
+            cleaned_value_for_query,
+            page,
+            special_result,
+            featured_serp_contents,
+        )
 
-    # convert special_result to dict
-    if special_result:
-        special_result = asdict(special_result)
-
-    special_format = search_page_feeds.process_special_format(
-        request,
-        rows,
-        cleaned_value_for_query,
-        page,
-        special_result,
-        featured_serp_contents,
-    )
-
-    print(featured_serp_contents)
-
-    if special_format != None:
-        return special_format
+        if special_format != None:
+            return special_format
 
     # show one result if a featured snippet is available, even if there are no other results to show
 
@@ -208,7 +224,9 @@ def results_page():
     else:
         out_of_bounds_page = False
 
-    save_search_result_evaluation(request.args.get("evaluate"), is_logged_in, rows, cleaned_value_for_query)
+    save_search_result_evaluation(
+        request.args.get("evaluate"), is_logged_in, rows, cleaned_value_for_query
+    )
 
     return render_template(
         "search/results.html",
@@ -226,7 +244,39 @@ def results_page():
         special_result=special_result,
         featured_serp_contents=featured_serp_contents,
         title=f"Search results for '{cleaned_value_for_query}' query",
-        is_logged_in=is_logged_in
+        is_logged_in=is_logged_in,
+        query_type="coffee",
+    )
+
+
+@main.route("/api/last-crawled")
+def get_last_crawled_dates():
+    site_to_check = request.args.get("site")
+
+    if not site_to_check:
+        return (
+            jsonify(
+                {
+                    "status": "failed",
+                    "result": "",
+                    "description": "site= parameter required.",
+                }
+            ),
+            400,
+        )
+
+    req = requests.get(
+        "https://es-indieweb-search.jamesg.blog/last-crawled?site={}".format(
+            site_to_check
+        )
+    )
+
+    if req.status_code == 200:
+        return jsonify({"status": "success", "result": req.json()})
+
+    return (
+        jsonify({"status": "failed", "result": "", "description": "server error"}),
+        500,
     )
 
 

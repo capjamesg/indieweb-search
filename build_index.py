@@ -13,7 +13,6 @@ from bs4 import BeautifulSoup
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 import config
-import crawler.post_crawl_processing as post_crawl_processing
 import crawler.robots_handling as robots_handling
 import crawler.verify_and_process as verify_and_process
 from config import ROOT_DIRECTORY
@@ -67,7 +66,11 @@ def process_domain(site: str) -> List[list]:
     # Parse sitemap indexes
     for u in sitemap_urls:
         r = requests.get(
-            u, verify=False, headers=config.SEARCH_HEADERS, timeout=5, allow_redirects=True
+            u,
+            verify=False,
+            headers=config.SEARCH_HEADERS,
+            timeout=5,
+            allow_redirects=True,
         )
         if r.status_code == 200:
             # parse with bs4
@@ -93,7 +96,11 @@ def process_domain(site: str) -> List[list]:
         # Only URLs not already discovered will be added by this code
         # Lastmod dates will be added to the final_url value related to the URL if a lastmod date is available
         feed = requests.get(
-            s, headers=config.SEARCH_HEADERS, timeout=5, verify=False, allow_redirects=True
+            s,
+            headers=config.SEARCH_HEADERS,
+            timeout=5,
+            verify=False,
+            allow_redirects=True,
         )
 
         soup = BeautifulSoup(feed.content, "lxml")
@@ -168,7 +175,9 @@ def get_feeds(site: str) -> list:
     return feeds
 
 
-def get_urls_to_crawl(protocol: str, site: str, final_urls: dict, web_page_hashes: dict) -> tuple:
+def get_urls_to_crawl(
+    protocol: str, site: str, final_urls: dict, web_page_hashes: dict
+) -> tuple:
     r = requests.get(
         "https://es-indieweb-search.jamesg.blog/to_crawl",
         headers=headers,
@@ -185,7 +194,9 @@ def get_urls_to_crawl(protocol: str, site: str, final_urls: dict, web_page_hashe
             final_urls[url_object] = ""
             web_page_hashes[hash] = url_object
     else:
-        print(f"{site} has no urls that need to be crawled (status code {r.status_code})")
+        print(
+            f"{site} has no urls that need to be crawled (status code {r.status_code})"
+        )
 
     if len(final_urls) == 0:
         final_urls[f"{protocol}{site}"] = ""
@@ -255,7 +266,11 @@ def build_index(site: str) -> List[list]:
     except:
         home_page_title = ""
 
-    final_urls, crawl_queue, web_page_hashes = get_urls_to_crawl(protocol, site, final_urls, web_page_hashes)
+    final_urls, crawl_queue, web_page_hashes = get_urls_to_crawl(
+        protocol, site, final_urls, web_page_hashes
+    )
+
+    print(final_urls)
 
     for url in crawl_queue:
         crawl_depth = 0
@@ -299,7 +314,7 @@ def build_index(site: str) -> List[list]:
             True,
             h_card,
             crawl_depth,
-            home_page_title
+            home_page_title,
         )
 
         if valid:
@@ -349,8 +364,8 @@ def build_index(site: str) -> List[list]:
                 discovered_feeds_dict[f.get("feed_url")] = True
 
         for key, value in discovered.items():
-            if not indexed_list.get(key):
-                print(f"{key} not indexed, added")
+            if not indexed_list.get(key) and not indexed_list.get(key.strip("/")):
+                # print(f"{key} not indexed, added")
                 crawl_queue.append(key)
 
             crawl_depths[key] = value
@@ -367,9 +382,11 @@ def build_index(site: str) -> List[list]:
     indexed_list = [[url, current_date] for url in list(indexed_list.keys())]
 
     # update database to include new data
-    post_crawl_processing.save_feeds_to_database(all_feeds, headers, site)
-    post_crawl_processing.save_indexed_urls_to_database(web_page_hashes, headers, site)
-    post_crawl_processing.record_crawl_of_domain(site, headers)
+    # post_crawl_processing.save_feeds_to_database(all_feeds, headers, site)
+    # post_crawl_processing.save_indexed_urls_to_database(web_page_hashes, headers, site)
+    # post_crawl_processing.record_crawl_of_domain(site, headers)
+
+    print(discovered)
 
     return url_indexed, discovered
 
@@ -408,8 +425,8 @@ def main():
                         futures = []
                         break
                 except Exception as e:
-                    raise e
                     print(e)
+                    raise e
 
                 futures.remove(future)
 

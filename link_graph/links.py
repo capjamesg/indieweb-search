@@ -2,11 +2,11 @@ import csv
 import datetime
 import json
 import logging
+from urllib.parse import urlparse as parse_url
 
 import indieweb_utils
 from bs4 import BeautifulSoup
 from elasticsearch import Elasticsearch
-from urllib.parse import urlparse as parse_url
 
 from elasticsearch_helpers.scroll import scroll
 
@@ -84,7 +84,9 @@ def get_all_links(h: dict, f: csv.DictWriter) -> None:
         if l.get("rel") and "nofollow" in l["rel"]:
             continue
 
-        link = indieweb_utils.canonicalize_url(l["href"], h["_source"]["domain"], l["href"])
+        link = indieweb_utils.canonicalize_url(
+            l["href"], h["_source"]["domain"], l["href"]
+        )
 
         link = link.strip("/").split("?")[0].replace("#", "")
 

@@ -2,7 +2,7 @@ import random
 
 import mysql.connector
 from elasticsearch import Elasticsearch
-from flask import Blueprint, jsonify, request, abort
+from flask import Blueprint, abort, jsonify, request
 
 import config
 
@@ -14,6 +14,7 @@ from .queries import (get_auto_suggest_query, get_date_ordered_query,
 es = Elasticsearch(["http://localhost:9200"])
 
 main = Blueprint("main", __name__)
+
 
 @main.route("/suggest")
 def autosuggest():
@@ -73,13 +74,12 @@ def home():
 
     response = es.search(index="pages", body=search_param)
 
-    if request.args.get("minimal") and request.args.get("minimal") == "true":
-        # delete some attributes that are not necessary for a query to take place
-        # this will reduce the amount of data that needs to go over the network
-        for hit in response["hits"]["hits"]:
-            for key in to_delete:
-                if key in hit["_source"]:
-                    del hit["_source"][key]
+    # delete some attributes that are not necessary for a query to take place
+    # this will reduce the amount of data that needs to go over the network
+    for hit in response["hits"]["hits"]:
+        for key in to_delete:
+            if key in hit["_source"]:
+                del hit["_source"][key]
 
     return response
 
@@ -104,6 +104,7 @@ def create():
 
     return jsonify({"status": "ok"})
 
+
 @main.route("/evaluate")
 def evaluate():
     term = request.args.get("term")
@@ -120,12 +121,13 @@ def evaluate():
                 "relevant_rating_threshold": 1,
                 "ignore_unlabeled": True,
             }
-        }
+        },
     }
 
     rank_eval = es.rank_eval(term, body=request_body, index="pages")
 
     return jsonify({"result": rank_eval})
+
 
 @main.route("/update", methods=["POST"])
 def update():

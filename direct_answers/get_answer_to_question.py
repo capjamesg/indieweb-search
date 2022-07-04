@@ -47,7 +47,7 @@ def retrieve_answer(
         and "what is" in original_cleaned_value.lower()
     ):
         return None
-    
+
     special_result = {}
 
     try:

@@ -2,11 +2,11 @@ import csv
 import datetime
 import json
 import logging
+from urllib.parse import urlparse as parse_url
 
 import indieweb_utils
 from bs4 import BeautifulSoup
 from elasticsearch import Elasticsearch
-from urllib.parse import urlparse as parse_url
 
 from elasticsearch_helpers.scroll import scroll
 
@@ -22,7 +22,7 @@ body = {"query": {"match_all": {}}}
 domain_links = {}
 links = {}
 internal_links = {}
-            
+
 with open("internal_links.json", "r") as f:
     internal_links = json.load(f)
 
@@ -164,7 +164,7 @@ def write_links_to_file() -> None:
     with open("all_domains.txt", "w+") as f:
         for domain in domain_links.keys():
             f.write(domain.lower() + "\n")
-            
+
     with open("internal_links.json", "w+") as f:
         json.dump(internal_links, f)
 
@@ -212,7 +212,7 @@ def get_domain_internal_link_count() -> list:
 
 def update_link_record(link: str, domains: list, link_count: int) -> None:
     found = "no"
-    
+
     link_domain = parse_url(link).netloc.lower()
 
     if not link_domain:
@@ -226,9 +226,7 @@ def update_link_record(link: str, domains: list, link_count: int) -> None:
     while found == "no":
         search_param = {
             "query": {
-                "term": {
-                    "url.keyword": {"value": link.replace("http://", "https://")}
-                }
+                "term": {"url.keyword": {"value": link.replace("http://", "https://")}}
             }
         }
 
@@ -286,6 +284,7 @@ def update_link_record(link: str, domains: list, link_count: int) -> None:
             }
         },
     )
+
 
 def update_incoming_links_attribute_for_url(domains: list) -> None:
     count = 0

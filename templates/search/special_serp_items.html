@@ -20,7 +20,7 @@
 {% if featured_serp_contents and featured_serp_contents.answer_type == "direct_answer" %}
     <div class="serp search_box featured">
         {% if featured_serp_contents.featured_image %}<img src="{{ featured_serp_contents.featured_image }}" alt="{{ featured_serp_contents.title }} featured image">{% endif %}
-        {% if featured_serp_contents.answer_html %}<p>{{ featured_serp_contents.answer_html.replace("\n", "") | safe }}</p>{% endif %}
+        {% if featured_serp_contents.answer_html %}<p>{{ featured_serp_contents.answer_html[0].replace("\n", "") | safe }}</p>{% endif %}
         <p><a href="{{ featured_serp_contents.breadcrumb }}">{{ featured_serp_contents.title }}</a></p>
         {% if featured_serp_contents.breadcrumb %}<p class="breadcrumbs"><a href="{{ featured_serp_contents.breadcrumb }}" style="border-bottom: none;">{% for item in featured_serp_contents.breadcrumb.replace("https://", "").rstrip("/").split("/") %} {{ item }} {% if not loop.last %}>{% endif %}{% endfor %}</a></p>{% endif %}
     </div>

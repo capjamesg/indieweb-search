@@ -10,7 +10,7 @@ def get_default_search_param(query: str, fields: str) -> dict:
                     },
                 },
                 "script": {
-                    "source": "return _score + Math.log((1 + (doc['incoming_links'].value)) * 5) + Math.log((1 + (doc['internal_incoming_links'].value)) * 2)"
+                    "source": "return _score + Math.log((1 + (doc['incoming_links'].value)) * 5)"
                 },
             },
         },
