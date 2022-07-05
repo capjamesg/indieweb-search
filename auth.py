@@ -4,7 +4,6 @@ import random
 import string
 
 import indieweb_utils
-import requests
 from flask import Blueprint, flash, redirect, render_template, request, session
 
 from config import CALLBACK_URL, CLIENT_ID, ME
@@ -18,15 +17,15 @@ def indieauth_callback_handler_view():
     state = request.args.get("state")
 
     # these are the scopes necessary for the application to run
-    required_scopes = ["read", "channels"]
+    required_scopes = []
 
     message, response = indieweb_utils.indieauth_callback_handler(
         code,
         state,
         session.get("token_endpoint"),
-        session["code_verifier"],
+        session.get("code_verifier"),
         session.get("state"),
-        ME,
+        session.get("me_value"),
         CALLBACK_URL,
         CLIENT_ID,
         required_scopes,
@@ -101,6 +100,7 @@ def discover_auth_endpoint():
     )
 
     session["state"] = state
+    session["me_value"] = domain
 
     return redirect(
         authorization_endpoint
@@ -112,4 +112,6 @@ def discover_auth_endpoint():
         + code_challenge
         + "&code_challenge_method=S256&state="
         + state
+        + "&me="
+        + domain
     )

@@ -1,5 +1,7 @@
+import datetime
 import json
 import math
+import string
 from dataclasses import asdict
 
 import indieweb_utils
@@ -8,15 +10,13 @@ import requests
 import spacy
 from flask import (Blueprint, jsonify, redirect, render_template, request,
                    session)
+from influxdb import InfluxDBClient
 
 import config
 import search.search_page_feeds as search_page_feeds
 import search.transform_query as transform_query
 from direct_answers import choose_direct_answer, search_result_features
-import string
-
-from influxdb import InfluxDBClient
-import datetime
+from verify import verify
 
 influx_client = InfluxDBClient(host="localhost", port=8086)
 
@@ -97,51 +97,85 @@ def search_autocomplete():
 
     return jsonify(suggest.json()), 200
 
+
 @main.route("/logs", methods=["GET"])
 def get_logs():
+    is_authenticated = verify(dict(request.headers), dict(session))
+
+    if is_authenticated is False:
+        return redirect("/")
+
     domain = request.args.get("domain")
 
     if not domain:
-        return jsonify({"error": "domain is required"}), 400
+        return render_template("search/logs.html", title="About IndieWeb Search Logs")
+
+    domain = domain.replace("https://", "").replace("http://", "")
 
     if domain == "":
         return jsonify({"error": "domain is required"}), 400
 
-    domain = "".join([c for c in domain if c in string.ascii_letters + string.digits + "."]).lower()
+    domain = "".join(
+        [c for c in domain if c in string.ascii_letters + string.digits + "."]
+    ).lower()
 
     domain = domain.replace("admin", "")
 
     entries = ""
 
-    data = influx_client.query(f"SELECT time, text FROM crawl WHERE text =~ /{domain}/", database="search_logs").raw
-    
+    data = influx_client.query(
+        f"SELECT time, text FROM crawl WHERE text =~ /{domain}/", database="search_logs"
+    ).raw
+
     if not data:
         return jsonify({"error": "no logs found"}), 404
 
-    for entry in data['series'][0]['values']:
+    format = request.args.get("format")
+
+    if format == "csv":
+        for entry in ["series"][0]["values"]:
+            entries += "{},{}\n".format(entry["time"], entry["text"])
+        return entries, 200, {"Content-Type": "text/csv"}
+    elif format == "json":
+        return jsonify({"values": ["series"][0]["values"]}), 200
+    elif format != None and format != "text":
+        return jsonify({"error": "format not supported"}), 400
+
+    for entry in data["series"][0]["values"]:
         if "indexing queue now contains" in entry[1]:
             class_item = "indexing-queue-now-contains"
-        elif "budget for crawl:" in entry[1] or "CRAWL BEGINNING" in entry[1]:
+        elif (
+            "budget for crawl:" in entry[1]
+            or "CRAWL BEGINNING" in entry[1]
+            or "indexed new page " in entry[1]
+        ):
             class_item = "success"
+        elif "INDEXER" in entry[1]:
+            class_item = "indexer"
         else:
             class_item = ""
 
         timestamp = entry[0].replace("T", " ")
 
-        entries += f"<span class='{class_item}'><b>{timestamp}: </b>{entry[1]}</span><br>"
+        entries += f"<span class='{class_item}'><b class='dt-published'>{timestamp}: </b><span class='p-name p-description'>{entry[1]}</span></span><br>"
 
     entry_full = """
         <style>
             .indexing-queue-now-contains { color: blue; }
             .success { color: darkgreen; }
+            .indexer { color: darkorchid; }
+            span { font-family: sans-serif; line-height: 1.5em; }
         </style>
-        <main>
+        <main class="h-feed">
     """
-    
-    entry_full = entry_full + f"""
+
+    entry_full = (
+        entry_full
+        + f"""
             {entries}
         </main>
     """
+    )
 
     return entry_full, 200
 
