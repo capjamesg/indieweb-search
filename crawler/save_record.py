@@ -5,9 +5,9 @@ import indieweb_utils
 import mf2py
 import requests
 from bs4 import BeautifulSoup, Comment
-from write_logs import write_log
 
 import crawler.identify_special_snippet as identify_special_snippet
+from write_logs import write_log
 
 
 def get_featured_image(page_content: BeautifulSoup) -> str:
@@ -98,7 +98,10 @@ def identify_page_type(h_entry_object: dict) -> list:
             break
 
     if page_as_h_entry is not None and type(page_as_h_entry) == dict:
-        post_type = indieweb_utils.get_post_type(page_as_h_entry)
+        try:
+            post_type = indieweb_utils.get_post_type(page_as_h_entry)
+        except:
+            post_type = ""
 
     return mf2_property_type, post_type, category
 
@@ -217,13 +220,14 @@ def save_to_file(
         "json_ld": json.dumps(json_ld),
     }
 
-    print(f"Indexing {full_url}")
-
     with open("results.json", "a+") as f:
         f.write(json.dumps(record))
         f.write("\n")
 
-    write_log(f"indexed new page {full_url} ({pages_indexed}/{crawl_budget})", full_url.split("/")[2])
+    write_log(
+        f"crawled new page {full_url} ({pages_indexed}/{crawl_budget})",
+        full_url.split("/")[2],
+    )
 
     pages_indexed += 1
 
