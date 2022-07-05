@@ -8,13 +8,17 @@ def verify(headers, session):
     else:
         return False
 
-    request = requests.get(
-        session.get("token_endpoint"), headers={"Authorization": "Bearer " + access_token}
+    request_info = requests.get(
+        session.get("token_endpoint"), headers={"Authorization": "Bearer " + access_token, "Accept": "application/json"}
     )
 
-    if request.status_code != 200 or (
-        request.json().get("me") and request.json()["me"].strip("/") != ME.strip("/")
-    ):
+    if request_info.status_code != 200:
+        return False
+
+    if request_info.json().get("me") == None:
+        return False
+
+    if request_info.json()["me"].strip("/") != session.get("me").strip("/"):
         return False
 
     return True

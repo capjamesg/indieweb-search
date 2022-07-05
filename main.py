@@ -121,6 +121,9 @@ def get_logs():
 
     domain = domain.replace("admin", "")
 
+    if domain != session.get("me").strip("/").replace("https://", "").replace("http://", ""):
+        return jsonify({"error": "authentication required"}), 401
+
     entries = ""
 
     data = influx_client.query(
