@@ -23,7 +23,7 @@ joblib==1.1.0
 jsl==0.2.4
 jsonschema==4.4.0
 langcodes==3.3.0
-lxml==4.7.1
+lxml==4.9.1
 MarkupSafe==2.0.1
 mf2py==1.1.2
 microformats2==0.1.0
