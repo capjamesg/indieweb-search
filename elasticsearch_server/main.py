@@ -41,6 +41,12 @@ def home():
     mf2_property = request.args.get("mf2_property")
     sort = request.args.get("sort")
 
+    index = request.args.get("index")
+
+    if index is None:
+        # default index is pages, but server might provide another one to use
+        index = "pages"
+
     if not from_num:
         from_num = 1
 
@@ -72,7 +78,7 @@ def home():
     search_param["from"] = int(from_num)
     search_param["size"] = 10
 
-    response = es.search(index="pages", body=search_param)
+    response = es.search(index=index, body=search_param)
 
     # delete some attributes that are not necessary for a query to take place
     # this will reduce the amount of data that needs to go over the network

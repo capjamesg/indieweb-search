@@ -237,6 +237,11 @@ def results_page():
         cleaned_value_for_query, query_values_in_list, request
     )
 
+    index = ""
+
+    if request.args.get("index"):
+        index = "&index=" + request.args.get("index")
+
     rows = app_session.get(
         "https://es-indieweb-search.jamesg.blog/?pw={}&q={}&sort={}&from={}&minimal={}{}".format(
             config.ELASTICSEARCH_PASSWORD,
@@ -248,6 +253,7 @@ def results_page():
             str(pagination),
             minimal,
             query_params,
+            index
         )
     ).json()
 

@@ -7,11 +7,18 @@ import config
 
 es = Elasticsearch("http://localhost:9200")
 
+import datetime
+
+from influxdb import InfluxDBClient
+
+client = InfluxDBClient(host="localhost", port=8086)
+
 objects = []
 
 valid = 0
 
 print("starting")
+
 
 def get_first_crawled_date(new_record: dict, index_item: dict):
     index_item = index_item[0]
@@ -22,23 +29,38 @@ def get_first_crawled_date(new_record: dict, index_item: dict):
         return index_item.get("last_crawled")
     else:
         return new_record["last_crawled"]
-    
+
 
 # open results.json
 with open("results.json") as f:
-    for l in range(0, 1):
+    for l in range(0, 1000):
         line = f.readline()
+        print(json.loads(line))
         try:
             obj = json.loads(line)
 
-            check_if_indexed = requests.post(
+            check_if_indexed = requests.get(
                 f"https://es-indieweb-search.jamesg.blog/check?url={obj['url']}",
                 headers={"Authorization": f"Bearer {config.ELASTICSEARCH_API_TOKEN}"},
                 timeout=5,
-            ).json()
+            )
 
-            if len(check_if_indexed) == 0:
+            if check_if_indexed.status_code != 200 or len(check_if_indexed.json()) == 0:
                 es.index(index="pages", body=obj)
+
+                domain = obj["url"].split("/")[2]
+
+                data = [
+                    {
+                        "measurement": "crawl",
+                        "time": datetime.datetime.utcnow().isoformat(),
+                        "fields": {
+                            "text": f"[*{domain}*] [INDEXER] {obj['url']} has been saved in the index for the first time"
+                        },
+                    }
+                ]
+
+                client.write_points(data, database="search_logs")
             else:
                 # incoming_links is set to 0 by default
                 # delete incoming_links value so the calculated incoming links value is not overwritten
@@ -50,8 +72,19 @@ with open("results.json") as f:
                 es.update(
                     index="pages", id=check_if_indexed[0]["_id"], body={"doc": obj}
                 )
+                data = [
+                    {
+                        "measurement": "crawl",
+                        "time": datetime.datetime.utcnow().isoformat(),
+                        "fields": {
+                            "text": f"[*{domain}*] [INDEXER] {obj['url']} has been updated in the index"
+                        },
+                    }
+                ]
+
+                client.write_points(data, database="search_logs")
 
             valid += 1
             print(valid)
-        except:
-            continue
+        except Exception as e:
+            print(e)

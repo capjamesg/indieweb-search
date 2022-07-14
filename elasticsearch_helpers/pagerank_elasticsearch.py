@@ -46,13 +46,13 @@ print("processing links")
 total_all_links = []
 
 for page in pages:
-    page_desc_soup = BeautifulSoup(page["_source"]["page_content"], "lxml")
+    page_html_contents = BeautifulSoup(page["_source"]["page_content"], "lxml")
 
     # G.add_node(page["_source"]["url"])
 
     page_id[page["_source"]["url"]] = page["_id"]
 
-    all_links = page_desc_soup.find_all("a")
+    all_links = page_html_contents.find_all("a")
 
     domain = page["_source"]["url"].split("//")[-1].split("/")[0]
 

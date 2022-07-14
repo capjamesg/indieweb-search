@@ -5,7 +5,6 @@ import config
 # from __init__ import app
 
 
-
 def is_authenticated_check(r):
     pass
     # with app.app_context():

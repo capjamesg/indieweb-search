@@ -33,11 +33,11 @@ with connection:
         ).fetchall()
 
         for page in all_pages_in_domain:
-            page_desc_soup = BeautifulSoup(page[1], "lxml")
+            page_html_contents = BeautifulSoup(page[1], "lxml")
 
             G.add_node(page[0])
 
-            all_links = page_desc_soup.find_all("a")
+            all_links = page_html_contents.find_all("a")
 
             for link in all_links:
                 try:
