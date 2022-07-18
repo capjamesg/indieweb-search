@@ -5,20 +5,20 @@ from bs4 import BeautifulSoup
 
 
 def get_page_info(
-    page_desc_soup: BeautifulSoup, page_url: str, homepage_meta_description: str
+    page_html_contents: BeautifulSoup, page_url: str, homepage_meta_description: str
 ) -> Tuple[str, str, str, bool]:
     """
     Scrapes page information for index and returns it to be added to the index later.
 
-    :param page_desc_soup: The BeautifulSoup object of the HTML page
-    :type page_desc_soup: BeautifulSoup
+    :param page_html_contents: The BeautifulSoup object of the HTML page
+    :type page_html_contents: BeautifulSoup
     :param page_url: The full URL of the page on which the feed was found
     :type page_url: str
     :param homepage_meta_description: The meta description of the homepage
     :type homepage_meta_description: str
     """
 
-    contains_hfeed = page_desc_soup.find(class_="h-feed")
+    contains_hfeed = page_html_contents.find(class_="h-feed")
 
     if contains_hfeed:
         # get all h-entry elements
@@ -47,7 +47,7 @@ def get_page_info(
                         True,
                     )
 
-    published_on = page_desc_soup.find("time", attrs={"class": "dt-published"})
+    published_on = page_html_contents.find("time", attrs={"class": "dt-published"})
 
     if published_on and published_on.get("datetime") is not None:
         published_on = published_on["datetime"].split("T")[0]
@@ -65,18 +65,18 @@ def get_page_info(
 
     for key, value in properties_to_check:
         if (
-            page_desc_soup.find("meta", {key: value}) is not None
-            and page_desc_soup.find("meta", {key: value}).get("content")
-            and page_desc_soup.find("meta", {key: value})["content"] != ""
+            page_html_contents.find("meta", {key: value}) is not None
+            and page_html_contents.find("meta", {key: value}).get("content")
+            and page_html_contents.find("meta", {key: value})["content"] != ""
         ):
-            meta_description = page_desc_soup.find("meta", {key: value})["content"]
+            meta_description = page_html_contents.find("meta", {key: value})["content"]
             break
 
     if meta_description == "" or (
         homepage_meta_description != ""
         and meta_description == homepage_meta_description
     ):
-        summary = page_desc_soup.select("p-summary")
+        summary = page_html_contents.select("p-summary")
 
         if summary:
             meta_description = summary[0].text
@@ -93,7 +93,7 @@ def get_page_info(
         # Use first paragraph as meta description if one can be found
         # get paragraph after h1
 
-        e_content = page_desc_soup.find(class_="e-content")
+        e_content = page_html_contents.find(class_="e-content")
 
         if e_content and len(e_content) > 0:
             potential_meta_description = e_content.find_all("p")
@@ -111,7 +111,7 @@ def get_page_info(
             and meta_description == homepage_meta_description
         )
     ):
-        h1 = page_desc_soup.find("h1")
+        h1 = page_html_contents.find("h1")
 
         if h1:
             paragraph_to_use_for_meta_desc = h1.find_next("p")
@@ -134,7 +134,7 @@ def get_page_info(
             and meta_description == homepage_meta_description
         )
     ):
-        h2 = page_desc_soup.find_all("h2")
+        h2 = page_html_contents.find_all("h2")
 
         if h2 and len(h2) > 0:
             paragraph_to_use_for_meta_desc = h2[0].find_next("p")
@@ -150,7 +150,7 @@ def get_page_info(
         homepage_meta_description != ""
         and meta_description == homepage_meta_description
     ):
-        stub = [p for p in page_desc_soup.find_all("p") if "stub" in p.text]
+        stub = [p for p in page_html_contents.find_all("p") if "stub" in p.text]
 
         if stub:
             stub = [0]
@@ -171,16 +171,16 @@ def get_page_info(
 
     final_meta_description = BeautifulSoup(final_meta_description, "lxml").text
 
-    if page_desc_soup.find("title") is not None:
-        doc_title = page_desc_soup.find("title").text
-    elif page_desc_soup.find("h1") is not None:
-        doc_title = page_desc_soup.find("h1").text
+    if page_html_contents.find("title") is not None:
+        doc_title = page_html_contents.find("title").text
+    elif page_html_contents.find("h1") is not None:
+        doc_title = page_html_contents.find("h1").text
     else:
         doc_title = page_url
 
     # use p-name in place of title tag if one is available
-    if page_desc_soup.select(".p-name"):
-        doc_title = page_desc_soup.select(".p-name")[0].text
+    if page_html_contents.select(".p-name"):
+        doc_title = page_html_contents.select(".p-name")[0].text
 
     if doc_title == "":
         doc_title = page_url

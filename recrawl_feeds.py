@@ -76,16 +76,13 @@ def process_feeds(feeds):
                 feeds_indexed += 1
 
                 print(f"FEEDS INDEXED: {feeds_indexed}")
-                print(f"FEEDS INDEXED: {feeds_indexed}")
 
                 try:
                     url_crawled_count = future.result()
                     urls_crawled += url_crawled_count
 
                     print(f"URLS CRAWLED: {urls_crawled}")
-                    print(f"URLS CRAWLED: {urls_crawled}")
                 except Exception as e:
-                    print(e)
                     print(e)
                     raise e
 

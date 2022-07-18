@@ -7,6 +7,7 @@ import requests
 from bs4 import BeautifulSoup, Comment
 
 import crawler.identify_special_snippet as identify_special_snippet
+from config import ELASTICSEARCH_API_TOKEN
 from write_logs import write_log
 
 
@@ -44,9 +45,7 @@ def get_json_ld(page_content: BeautifulSoup) -> dict:
     json_lds = page_content.find_all("script", type="application/ld+json")
 
     for item in json_lds:
-        print(item)
         if "Product" in item.text:
-            print(item.text)
             return json.loads(item.text)
 
     json_ld = {}
@@ -128,6 +127,17 @@ def get_favicon(page_content: BeautifulSoup) -> str:
     return favicon
 
 
+def get_first_crawled_date(new_record: dict, index_item: dict):
+    index_item = index_item[0]
+
+    if index_item.get("first_crawled"):
+        return index_item["first_crawled"]
+    elif index_item.get("last_crawled"):
+        return index_item.get("last_crawled")
+    else:
+        return new_record["last_crawled"]
+
+
 def save_to_file(
     full_url: str,
     published_on: str,
@@ -144,6 +154,7 @@ def save_to_file(
     original_h_card: dict,
     hash: str,
     thin_content: bool = False,
+    elasticsearch_client: object = None,
 ) -> int:
     """
     Finish processing a page and save it to a results.json file.
@@ -220,9 +231,34 @@ def save_to_file(
         "json_ld": json.dumps(json_ld),
     }
 
-    with open("results.json", "a+") as f:
-        f.write(json.dumps(record))
-        f.write("\n")
+    check_if_indexed = requests.get(
+        f"https://es-indieweb-search.jamesg.blog/check?url={record['url']}",
+        headers={"Authorization": f"Bearer {ELASTICSEARCH_API_TOKEN}"},
+        timeout=5,
+    )
+
+    if check_if_indexed.status_code != 200 or len(check_if_indexed.json()) == 0:
+        elasticsearch_client.index(index="pages", body=record)
+
+        write_log(
+            f"{record['url']} has been saved in the index for the first time",
+            full_url.split("/")[2],
+        )
+    else:
+        # incoming_links is set to 0 by default
+        # delete incoming_links value so the calculated incoming links value is not overwritten
+        del record["incoming_links"]
+        # get item from es
+
+        record["first_crawled"] = get_first_crawled_date(record, check_if_indexed)
+
+        elasticsearch_client.update(
+            index="pages", id=check_if_indexed[0]["_id"], body={"doc": record}
+        )
+
+        write_log(
+            f"{record['url']} has been updated in the index", full_url.split("/")[2]
+        )
 
     write_log(
         f"crawled new page {full_url} ({pages_indexed}/{crawl_budget})",

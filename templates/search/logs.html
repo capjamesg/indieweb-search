@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="text-box main_content_box">
+  <img src="/static/indieweb.png" alt="IndieWeb logo" class="logo_image" />
+  <h1 style="text-align: center;">IndieWeb Search Logs</h1>
+  <p>
+    IndieWeb Search provides open crawl logs for webmasters.
+    These crawl logs assist webmasters in understanding how their site is crawled
+    and indexed by the IndieWeb search engine.
+  </p>
+  <p>
+    Using the information provided by search logs, you can potentially improve
+    how your site is indexed. Crawl logs include information on pages crawled,
+    what happened to a page when it was crawled (was it skipped due to a noindex flag,
+    did the page contain a canonical pointing to another page, etc.), and when
+    pages are indexed.
+  </p>
+  <p>
+    IndieWeb Search crawls and indexes at different times. Thus, it may take a while
+    before a page that has been crawled shows up in the search index.
+  </p>
+  <p>
+    To view crawl logs for your site, use the following endpoint:
+  </p>
+  <p>
+    <pre>
+        <code>
+            https://indieweb-search.jamesg.blog/logs?domain=yourdomain.com
+        </code>
+    </pre>
+  </p>
+  <p>
+    IndieWeb Search retains logs for five days. If you want to analyse crawl patterns
+    over time, consider retrieving logs from IndieWeb Search on a regular basis and
+    storing the contents yourself.
+  </p>
+  <p>
+    Optionally, you can specify a <code>?format=</code> query string parameter.
+
+    This parameter lets you specify the format of the logs you receive.
+  </p>
+  <p>
+    You can specify any of the following values:
+  </p>
+  <ul>
+    <li><code>json</code> - Returns logs in a JSON object.</li>
+    <li><code>csv</code> - Returns logs in CSV format.</li>
+    <li><code>text</code> - Returns logs in a text format (default).</li>
+  </ul>
+  <p>
+    The text version of the logs page is marked up as a <a href="https://microformats.org/wiki/h-feed">h-feed</a>.
+    This means the page can be parsed using a microformats parser.
+  </p>
+</section>
+{% endblock content %}

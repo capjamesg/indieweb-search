@@ -5,4 +5,7 @@ LIKELY_404_TITLES = [
     "page was not found",
     "error 404",
     "404 error",
+    "404",
+    "page does not exist",
+    "not found",
 ]

@@ -1,5 +1,6 @@
 import requests
 
+
 def verify(headers, session):
     if headers.get("Authorization") is not None:
         access_token = headers.get("Authorization").split(" ")[-1]
@@ -8,9 +9,16 @@ def verify(headers, session):
     else:
         return False
 
-    request_info = requests.get(
-        session.get("token_endpoint"), headers={"Authorization": "Bearer " + access_token, "Accept": "application/json"}
-    )
+    try:
+        request_info = requests.get(
+            session.get("token_endpoint"),
+            headers={
+                "Authorization": "Bearer " + access_token,
+                "Accept": "application/json",
+            },
+        )
+    except:
+        return False
 
     if request_info.status_code != 200:
         return False

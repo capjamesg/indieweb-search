@@ -5,9 +5,9 @@ from urllib.parse import urlparse as parse_url
 import indieweb_utils
 import requests
 from bs4 import BeautifulSoup
-from write_logs import write_log
 
 import config
+from write_logs import write_log
 
 
 def parse_canonical(
@@ -162,12 +162,14 @@ def save_feed(
     return feeds, feed_urls
 
 
-def find_feeds(page_desc_soup: BeautifulSoup, full_url: str, site: str) -> List[list]:
+def find_feeds(
+    page_html_contents: BeautifulSoup, full_url: str, site: str
+) -> List[list]:
     """
     Find the feeds provided in HTTP headers and on a HTML web page.
 
-    :param page_desc_soup: The BeautifulSoup object of the HTML page
-    :type page_desc_soup: BeautifulSoup
+    :param page_html_contents: The BeautifulSoup object of the HTML page
+    :type page_html_contents: BeautifulSoup
     :param full_url: The full URL of the page on which the feed was found
     :type full_url: str
     :param site: The site being crawled
@@ -175,10 +177,10 @@ def find_feeds(page_desc_soup: BeautifulSoup, full_url: str, site: str) -> List[
     :return: The list of feeds found on the site and the list of feed URLs found on the site
     :rtype: list, list
     """
-    if not page_desc_soup.find_all("link", {"rel": "alternate"}):
+    if not page_html_contents.find_all("link", {"rel": "alternate"}):
         return
 
-    for feed_item in page_desc_soup.find_all("link", {"rel": "alternate"}):
+    for feed_item in page_html_contents.find_all("link", {"rel": "alternate"}):
         if not feed_item:
             continue
 
@@ -240,7 +242,7 @@ def find_feeds(page_desc_soup: BeautifulSoup, full_url: str, site: str) -> List[
     # check if page has h-feed class on it
     # if a h-feed class is present, mark page as feed
 
-    if page_desc_soup.select(".h-feed") and len(feeds) < 25:
+    if page_html_contents.select(".h-feed") and len(feeds) < 25:
         feeds.append(
             {
                 "website_url": site,
@@ -257,8 +259,8 @@ def find_feeds(page_desc_soup: BeautifulSoup, full_url: str, site: str) -> List[
 
     # check for websub hub
 
-    if page_desc_soup.find("link", {"rel": "hub"}) and len(feeds) < 25:
-        websub_hub = page_desc_soup.find("link", {"rel": "hub"})["href"]
+    if page_html_contents.find("link", {"rel": "hub"}) and len(feeds) < 25:
+        websub_hub = page_html_contents.find("link", {"rel": "hub"})["href"]
 
         websub_hub = websub_hub.strip().strip("<").strip(">")
 

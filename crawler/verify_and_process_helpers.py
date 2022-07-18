@@ -31,10 +31,10 @@ def remove_repeated_fragments_from_title(doc_title: str, home_page_title: str) -
             home_page_title_components = home_page_title.split(sep)[1:]
 
             for component in home_page_title_components:
-                doc_title = doc_title.replace(component, "")
+                doc_title = doc_title.split(sep)[0]
 
             # replace separator
-            doc_title = doc_title.replace(sep, "")
+            doc_title = doc_title.replace(sep, " ")
 
             doc_title = doc_title.strip()
 
@@ -127,13 +127,13 @@ def check_for_redirect_url(
                 "{} redirected to {}, which is on a different site, skipping".format(
                     full_url, page_test.history[-1].url
                 ),
-                site_url
+                site_url,
             )
             write_log(
                 "{} redirected to {}, which is on a different site, skipping".format(
                     full_url, page_test.history[-1].url
                 ),
-                site_url
+                site_url,
             )
             raise Exception
 
@@ -163,7 +163,9 @@ def initial_url_checks(full_url: str) -> None:
         raise Exception
 
     if "/wp-json/" in full_url:
-        write_log(f"{full_url} marked as noindex because it is a wordpress api resource")
+        write_log(
+            f"{full_url} marked as noindex because it is a wordpress api resource"
+        )
         raise Exception
 
     if "?s=" in full_url:
@@ -197,13 +199,13 @@ def initial_url_checks(full_url: str) -> None:
 
 
 def check_if_url_is_noindexed(
-    page_desc_soup: BeautifulSoup, full_url: str
+    page_html_contents: BeautifulSoup, full_url: str
 ) -> List[bool]:
     """
     Check if a URL has been marked as noindex.
 
-    :param page_desc_soup: the page contents
-    :type page_desc_soup: BeautifulSoup
+    :param page_html_contents: the page contents
+    :type page_html_contents: BeautifulSoup
     :param full_url: the full url of the page
     :type full_url: str
 
@@ -212,7 +214,7 @@ def check_if_url_is_noindexed(
     """
     nofollow_all = False
 
-    check_if_no_index = page_desc_soup.find("meta", {"name": "robots"})
+    check_if_no_index = page_html_contents.find("meta", {"name": "robots"})
 
     if (
         check_if_no_index
@@ -241,12 +243,12 @@ def check_if_url_is_noindexed(
     return check_if_no_index, nofollow_all
 
 
-def get_main_page_text(page_desc_soup: str) -> BeautifulSoup:
+def get_main_page_text(page_html_contents: str) -> BeautifulSoup:
     """
     Get the main body of a page from its BeautifulSoup object.
 
-    :param page_desc_soup: the page contents
-    :type page_desc_soup: BeautifulSoup
+    :param page_html_contents: the page contents
+    :type page_html_contents: BeautifulSoup
 
     :return: the main body of the page
     :rtype: BeautifulSoup
@@ -255,8 +257,8 @@ def get_main_page_text(page_desc_soup: str) -> BeautifulSoup:
     selectors_to_check = (".e-content", ".h-entry")
 
     for s in selectors_to_check:
-        if page_desc_soup.select(s):
-            page_text = page_desc_soup.select(s)[0]
+        if page_html_contents.select(s):
+            page_text = page_html_contents.select(s)[0]
 
     tags_to_find = (
         ("main", {}),
@@ -273,10 +275,10 @@ def get_main_page_text(page_desc_soup: str) -> BeautifulSoup:
         tag_name = tag[0]
         tag_selector = tag[1]
 
-        if page_desc_soup.find(tag) and tag_selector != {}:
-            page_text = page_desc_soup.find(tag_name, tag_selector)
-        elif page_desc_soup.find(tag):
-            page_text = page_desc_soup.find(tag)
+        if page_html_contents.find(tag) and tag_selector != {}:
+            page_text = page_html_contents.find(tag_name, tag_selector)
+        elif page_html_contents.find(tag):
+            page_text = page_html_contents.find(tag)
 
     return page_text
 
@@ -319,7 +321,7 @@ def initial_head_request(
                         "all links on {} marked as nofollow due to x-robots-tag nofollow value".format(
                             full_url
                         ),
-                        site_url
+                        site_url,
                     )
                     nofollow_all = True
 
@@ -355,17 +357,21 @@ def initial_head_request(
         raise Exception
 
 
-def filter_adult_content(page_desc_soup: BeautifulSoup, full_url: str) -> bool:
+def filter_adult_content(page_html_contents: BeautifulSoup, full_url: str) -> bool:
     """
     Check if a page is marked as adult content per the rating meta tag.
     """
-    if page_desc_soup.find("meta", {"name": "rating"}):
+    if page_html_contents.find("meta", {"name": "rating"}):
         if (
-            page_desc_soup.find("meta", {"name": "rating"}).get("content") == "adult"
-            or page_desc_soup.find("meta", {"name": "rating"}).get("content")
+            page_html_contents.find("meta", {"name": "rating"}).get("content")
+            == "adult"
+            or page_html_contents.find("meta", {"name": "rating"}).get("content")
             == "RTA-5042-1996-1400-1577-RTA"
         ):
-            write_log(f"{full_url} marked as adult content in a meta tag, skipping", full_url.split("/")[2])
+            write_log(
+                f"{full_url} marked as adult content in a meta tag, skipping",
+                full_url.split("/")[2],
+            )
             raise Exception
 
 
@@ -390,16 +396,16 @@ def check_meta_equiv_refresh(
     hash: str,
     crawl_depth: int,
     average_crawl_speed: list,
-    page_desc_soup: BeautifulSoup,
+    page_html_contents: BeautifulSoup,
     discovered_urls: dict,
     full_url: str,
 ) -> Tuple[str, list, bool, list, str, int, list]:
     """
     Check if a page has a meta equiv refresh tag.
     """
-    if page_desc_soup.find("meta", attrs={"http-equiv": "refresh"}):
+    if page_html_contents.find("meta", attrs={"http-equiv": "refresh"}):
         refresh_url = (
-            page_desc_soup.find("meta", attrs={"http-equiv": "refresh"})["content"]
+            page_html_contents.find("meta", attrs={"http-equiv": "refresh"})["content"]
             .split(";")[1]
             .split("=")[1]
         )
@@ -413,7 +419,7 @@ def check_meta_equiv_refresh(
                 "{} has a refresh url of {}, not adding to queue because url points to a different domain".format(
                     full_url, refresh_url
                 ),
-                full_url.split("/")[2]
+                full_url.split("/")[2],
             )
 
             return url, {}, False, feeds, hash, crawl_depth, average_crawl_speed
@@ -465,7 +471,7 @@ def handle_redirect(
                     "{} has already been redirected from a canonical url, will not redirect a second time, skipping".format(
                         full_url
                     ),
-                    full_url.split("/")[2]
+                    full_url.split("/")[2],
                 )
                 return (
                     url,
@@ -527,7 +533,9 @@ def get_web_page(session: requests.Session, full_url: str) -> requests.Response:
 
     elif page.status_code != 200:
         url_handling_helpers.check_remove_url(full_url)
-        write_log(f"{full_url} page {page.status_code} status code", full_url.split("/")[2])
+        write_log(
+            f"{full_url} page {page.status_code} status code", full_url.split("/")[2]
+        )
         raise Exception
 
     content_type_is_valid = verify_content_type_is_valid(page, full_url)
@@ -561,7 +569,7 @@ def link_discovery_processing(
     # check for feed with rel alternate
     # only support rss and atom right now
 
-    # feeds, feed_urls = url_handling_helpers.find_feeds(page_desc_soup, full_url, site)
+    # feeds, feed_urls = url_handling_helpers.find_feeds(page_html_contents, full_url, site)
 
     # parse link headers
     link_headers = page.headers.get("Link")

@@ -48,7 +48,7 @@
                 and results[r]['_source']['h_card']['url'][0].split("/")[2] == results[r]['_source']['url'].split('/')[2] %}
               <p class="breadcrumbs">Written by <a href="{{ results[r]['_source']['h_card']['url'][0] }}" class="p-author">{{ results[r]['_source']['h_card']['name'][0] }}</a></p>
               {% endif %}
-              {% if results[r]['_source']['json_ld'] %}
+              {% if results[r]['_source'].get('json_ld', "{}") != "{}" %}
                   {% if results[r]['_source']['json_ld']['image'] is mapping %}
                   <img class="serp-item-image" src="{{ results[r]['_source']['json_ld']['image']['url'] }}" alt="{{ results[r]['_source']['json_ld']['name'] }}" width="300" style="margin-top: 10px">
                   {% elif results[r]['_source']['json_ld']['image'] %}
@@ -87,8 +87,7 @@
                 {% endfor %}
                 </p>
               {% endif %}
-              {% endif %}
-              {% if results[r]['_source']['json_ld'] == None %}
+              {% else %}
               <p class="p-summary">
                 {% if results[r]['_source']['meta_description']|length > 0 %}
                   {{ results[r]['_source']['meta_description'] }}

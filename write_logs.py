@@ -1,8 +1,10 @@
 # Imports the Cloud Logging client library
-from influxdb import InfluxDBClient
 import datetime
 
+from influxdb import InfluxDBClient
+
 client = InfluxDBClient(host="localhost", port=8086)
+
 
 def write_log(text: str, domain: str = "ADMIN") -> None:
     split_domain = domain.split("/")[0]
@@ -11,9 +13,7 @@ def write_log(text: str, domain: str = "ADMIN") -> None:
         {
             "measurement": "crawl",
             "time": datetime.datetime.utcnow().isoformat(),
-            "fields": {
-                "text": f"[*{split_domain}*]   " + text
-            }
+            "fields": {"text": f"[*{split_domain}*]   " + text},
         }
     ]
 
@@ -22,5 +22,5 @@ def write_log(text: str, domain: str = "ADMIN") -> None:
 
         print(text + " (wrote to Google Cloud Logging)")
     except:
-        print("error")
+        print(text)
         pass

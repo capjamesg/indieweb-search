@@ -1,20 +1,24 @@
 import concurrent.futures
 import datetime
 import ipaddress
+import urllib.robotparser
 from typing import List
 
 import indieweb_utils
 # import cProfile
 import mf2py
+import pika
 import requests
 from bs4 import BeautifulSoup
+from elasticsearch import Elasticsearch
 # ignore warning about http:// connections
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 import config
-import crawler.robots_handling as robots_handling
 import crawler.verify_and_process as verify_and_process
 from write_logs import write_log
+
+es = Elasticsearch(config.ELASTICSEARCH_HOST)
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
@@ -42,14 +46,13 @@ def process_domain(site: str) -> List[list]:
     """
     final_urls = {}
 
-    (
-        namespaces_to_ignore,
-        sitemap_urls,
-        protocol,
-    ) = robots_handling.find_robots_directives(site)
+    rp = urllib.robotparser.RobotFileParser()
 
-    if namespaces_to_ignore == "broken":
-        return 0, [], site
+    protocol = "https://"
+
+    rp.set_url(f"{protocol}{site}/robots.txt")
+
+    sitemap_urls = rp.site_maps() or []
 
     write_log("CRAWL BEGINNING", site)
 
@@ -111,7 +114,9 @@ def process_domain(site: str) -> List[list]:
             write_log(f"sitemaps added to database for {site}", site)
         else:
             # write_log("ERROR: sitemap not added for {} (status code {})".format(site, r.status_code))
-            write_log(f"sitemap not added for {site} (status code {r.status_code})", site)
+            write_log(
+                f"sitemap not added for {site} (status code {r.status_code})", site
+            )
 
         for u in urls:
             if "/tag/" in u.find("loc").text:
@@ -127,7 +132,7 @@ def process_domain(site: str) -> List[list]:
                 final_urls[canonicalized_url] = ""
 
     # crawl budget is 15,000 URLs
-    return 15000, final_urls, namespaces_to_ignore, protocol
+    return 15000, final_urls, protocol, rp
 
 
 def get_feeds(site: str) -> list:
@@ -150,7 +155,7 @@ def get_feeds(site: str) -> list:
             "Result from URL request to /feeds endpoint on elasticsearch server: {}".format(
                 r.json()["message"]
             ),
-            site
+            site,
         )
         feeds = []
     elif r.status_code == 200 and not r.json():
@@ -184,7 +189,10 @@ def get_urls_to_crawl(
             final_urls[url_object] = ""
             web_page_hashes[hash] = url_object
     else:
-        write_log(f"{site} has no urls that need to be crawled (status code {r.status_code})", site)
+        write_log(
+            f"{site} has no urls that need to be crawled (status code {r.status_code})",
+            site,
+        )
 
     if len(final_urls) == 0:
         final_urls[f"{protocol}{site}"] = ""
@@ -220,7 +228,7 @@ def build_index(site: str) -> List[list]:
         pass
 
     # read crawl_queue.txt
-    crawl_budget, final_urls, namespaces_to_ignore, protocol = process_domain(site)
+    crawl_budget, final_urls, protocol, rp = process_domain(site)
 
     feeds = get_feeds(site)
 
@@ -258,8 +266,6 @@ def build_index(site: str) -> List[list]:
         protocol, site, final_urls, web_page_hashes
     )
 
-    print(final_urls)
-
     for url in crawl_queue:
         crawl_depth = 0
 
@@ -283,7 +289,6 @@ def build_index(site: str) -> List[list]:
             budget_used,
         ) = verify_and_process.crawl_urls(
             final_urls,
-            namespaces_to_ignore,
             indexed,
             links,
             external_links,
@@ -303,6 +308,8 @@ def build_index(site: str) -> List[list]:
             h_card,
             crawl_depth,
             home_page_title,
+            es,
+            rp,
         )
 
         if valid:
@@ -323,7 +330,7 @@ def build_index(site: str) -> List[list]:
         ):
             write_log(
                 f"average crawl speed is {len(average_crawl_speed) / len(average_crawl_speed)}, stopping crawl",
-                site
+                site,
             )
             with open("failed.txt", "a") as f:
                 f.write(
@@ -338,7 +345,7 @@ def build_index(site: str) -> List[list]:
 
         write_log(
             f"{site} ({url_indexed}) - indexed: {indexed} / budget spent: {budget_spent} / budget for crawl: {crawl_budget}",
-            site
+            site,
         )
 
         if budget_spent > crawl_budget:
@@ -371,14 +378,32 @@ def build_index(site: str) -> List[list]:
 
     indexed_list = [[url, current_date] for url in list(indexed_list.keys())]
 
-    # update database to include new data
-    # post_crawl_processing.save_feeds_to_database(all_feeds, headers, site)
-    # post_crawl_processing.save_indexed_urls_to_database(web_page_hashes, headers, site)
-    # post_crawl_processing.record_crawl_of_domain(site, headers)
-
-    print(discovered)
-
     return url_indexed, discovered
+
+
+def callback(ch, method, properties, body):
+    ch.basic_ack(delivery_tag=method.delivery_tag)
+
+    print("[x] Received %r" % body)
+    build_index(body.decode("utf-8"))
+
+
+def consumer():
+    # credentials = pika.PlainCredentials(
+    #     config.RABBITMQ_USERNAME, config.RABBITMQ_PASSWORD
+    # )
+
+    connection = pika.BlockingConnection(
+        pika.ConnectionParameters(host="localhost") #, credentials=credentials)
+    )
+
+    channel = connection.channel()
+
+    channel.basic_consume(
+        queue="domains_to_crawl", auto_ack=True, on_message_callback=callback
+    )
+
+    channel.start_consuming()
 
 
 def main():
@@ -386,20 +411,8 @@ def main():
 
     sites_indexed = 0
 
-    with open("crawl_queue.txt", "r") as f:
-        to_crawl = f.readlines()
-
-    # don't include items on block list in a crawl
-    # used to avoid accidentally crawling sites that have already been flagged as spam
-    with open("blocklist.txt", "r") as block_file:
-        block_list = block_file.readlines()
-
-    to_crawl = [item.lower() for item in to_crawl if item not in block_list]
-
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        futures = [
-            executor.submit(build_index, url.replace("\n", "")) for url in to_crawl
-        ]
+        futures = [executor.submit(consumer) for _ in range(0, 5)]
 
         while len(futures) > 0:
             for future in concurrent.futures.as_completed(futures):
@@ -418,6 +431,7 @@ def main():
                     raise e
 
                 futures.remove(future)
+                futures.append(executor.submit(consumer))
 
 
 if __name__ == "__main__":

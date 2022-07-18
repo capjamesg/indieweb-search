@@ -32,7 +32,6 @@ def indieauth_callback_handler_view():
     )
 
     if message is not None:
-        flash(message)
         return redirect("/login")
 
     session.pop("code_verifier")

@@ -6,6 +6,7 @@ import indieweb_utils
 import requests
 from bs4 import BeautifulSoup
 
+import crawler.calculate_links as calculate_links
 import crawler.discovery as page_link_discovery
 import crawler.page_info
 import crawler.save_record as save_record
@@ -32,12 +33,14 @@ def find_base_url_path(url: str) -> str:
     return url
 
 
-def filter_nofollow_links(page_desc_soup: BeautifulSoup, nofollow_all: bool) -> list:
+def filter_nofollow_links(
+    page_html_contents: BeautifulSoup, nofollow_all: bool
+) -> list:
     """
     Filter out nofollow links on a page.
 
-    :param page_desc_soup: The BeautifulSoup object of the page description
-    :type page_desc_soup: BeautifulSoup
+    :param page_html_contents: The BeautifulSoup object of the page description
+    :type page_html_contents: BeautifulSoup
     :param nofollow_all: Whether the page has been classified as "nofollow all links"
     :type nofollow_all: bool
 
@@ -47,7 +50,7 @@ def filter_nofollow_links(page_desc_soup: BeautifulSoup, nofollow_all: bool) -> 
     if nofollow_all is False:
         links = [
             l
-            for l in page_desc_soup.find_all("a")
+            for l in page_html_contents.find_all("a")
             if (l.get("rel") and "nofollow" not in l["rel"])
             or (not l.get("rel") and l.get("href") not in ["#", "javascript:void(0);"])
         ]
@@ -89,7 +92,7 @@ def check_if_content_is_thin(word_count: int, number_of_links: int) -> bool:
     return thin_content
 
 
-def detect_soft_404(page_desc_soup: BeautifulSoup) -> bool:
+def detect_soft_404(page_html_contents: BeautifulSoup) -> bool:
     """
     Detects if a page is a soft 404.
 
@@ -98,7 +101,7 @@ def detect_soft_404(page_desc_soup: BeautifulSoup) -> bool:
     """
 
     # get page title
-    title = page_desc_soup.find("title")
+    title = page_html_contents.find("title")
 
     if title and title == "404":
         return True
@@ -110,7 +113,6 @@ def detect_soft_404(page_desc_soup: BeautifulSoup) -> bool:
 
 def crawl_urls(
     final_urls: list,
-    namespaces_to_ignore: list,
     pages_indexed: int,
     all_links: list,
     external_links: list,
@@ -130,6 +132,8 @@ def crawl_urls(
     h_card: list = [],
     crawl_depth: int = 0,
     home_page_title: str = "",
+    elasticsearch_client: object = None,
+    robots_parser: object = None,
 ) -> tuple:
     """
     Crawls URLs in list, adds URLs to index, and returns updated list.
@@ -145,19 +149,13 @@ def crawl_urls(
     url_domain = parsed_url.netloc
     url_path = parsed_url.path
 
-    full_url = (
-        indieweb_utils.canonicalize_url(url, url_domain, protocol="https://")
-        .lower()
-        .replace("http://", "https://")
-    )
+    full_url = "https://" + url_domain + url_path
 
-    # Only get URLs that match namespace exactly
-    in_matching_namespace = [
-        s for s in namespaces_to_ignore if s.startswith(url_path) or s == url_path
-    ]
-
-    # The next line of code skips indexing namespaces excluded in robots.txt
-    # if len(in_matching_namespace) > 1:
+    # Do not index URLs blocked in the robots.txt file
+    # if (
+    #     robots_parser.can_fetch("*", full_url) is False
+    # ):
+    #     url_handling_helpers.check_remove_url(full_url)
     #     return (
     #         url,
     #         discovered_urls,
@@ -172,8 +170,6 @@ def crawl_urls(
     session.max_redirects = 5
 
     budget_used += 1
-
-    print('sdsds')
 
     try:
         (
@@ -195,8 +191,6 @@ def crawl_urls(
             average_crawl_speed,
             budget_used,
         )
-
-    print('sdsds')
 
     # has_canonical = verify_and_process_helpers.parse_link_headers(
     #     page_test, full_url, crawl_queue, discovered_urls
@@ -246,7 +240,7 @@ def crawl_urls(
             "WARNING: {} took {} seconds to load, server slow".format(
                 full_url, page.elapsed.total_seconds()
             ),
-            site
+            site,
         )
 
     average_crawl_speed.append(page.elapsed.total_seconds())
@@ -255,13 +249,13 @@ def crawl_urls(
     average_crawl_speed = average_crawl_speed[:100]
 
     try:
-        page_desc_soup = BeautifulSoup(page.content, "html.parser")
+        page_html_contents = BeautifulSoup(page.content, "html.parser")
     except Exception as e:
         print(e)
-        page_desc_soup = BeautifulSoup(page.content, "html5lib")
+        page_html_contents = BeautifulSoup(page.content, "html5lib")
 
     # don't index pages that are likely to be 404s
-    is_soft_404 = detect_soft_404(page_desc_soup)
+    is_soft_404 = detect_soft_404(page_html_contents)
 
     if is_soft_404:
         return (
@@ -276,7 +270,7 @@ def crawl_urls(
         )
 
     # get body of page
-    body = page_desc_soup.find("body")
+    body = page_html_contents.find("body")
 
     # get hash of web page
     hash = hashlib.sha256(str(body).encode("utf-8")).hexdigest()
@@ -286,7 +280,7 @@ def crawl_urls(
             "{} has already been indexed (hash the same as {}), skipping".format(
                 full_url, web_page_hashes.get(hash)
             ),
-            site
+            site,
         )
         return (
             url,
@@ -307,15 +301,17 @@ def crawl_urls(
         hash,
         crawl_depth,
         average_crawl_speed,
-        page_desc_soup,
+        page_html_contents,
         discovered_urls,
         full_url,
     )
 
     # check for canonical url
 
-    if page_desc_soup.find("link", {"rel": "canonical"}):
-        canonical_url = page_desc_soup.find("link", {"rel": "canonical"}).get("href")
+    if page_html_contents.find("link", {"rel": "canonical"}):
+        canonical_url = page_html_contents.find("link", {"rel": "canonical"}).get(
+            "href"
+        )
 
         canonical = find_base_url_path(canonical_url)
 
@@ -337,7 +333,7 @@ def crawl_urls(
 
     try:
         noindex, nofollow_all = verify_and_process_helpers.check_if_url_is_noindexed(
-            page_desc_soup, full_url
+            page_html_contents, full_url
         )
     except Exception as e:
         print(e)
@@ -352,11 +348,11 @@ def crawl_urls(
             budget_used,
         )
 
-    links = filter_nofollow_links(page_desc_soup, nofollow_all)
+    links = filter_nofollow_links(page_html_contents, nofollow_all)
 
     # filter out pages marked as adult content
     try:
-        verify_and_process_helpers.filter_adult_content(page_desc_soup, full_url)
+        verify_and_process_helpers.filter_adult_content(page_html_contents, full_url)
     except Exception as e:
         print(e)
         return (
@@ -411,7 +407,7 @@ def crawl_urls(
             budget_used,
         )
 
-    page_text = verify_and_process_helpers.get_main_page_text(page_desc_soup)
+    page_text = verify_and_process_helpers.get_main_page_text(page_html_contents)
 
     if page_text is None:
         return (
@@ -445,7 +441,7 @@ def crawl_urls(
         doc_title,
         noindex,
     ) = crawler.page_info.get_page_info(
-        page_desc_soup, full_url, homepage_meta_description
+        page_html_contents, full_url, homepage_meta_description
     )
 
     doc_title = verify_and_process_helpers.remove_repeated_fragments_from_title(
@@ -467,10 +463,10 @@ def crawl_urls(
 
     # get number of links
 
-    links = page_desc_soup.find_all("a")
+    links = page_html_contents.find_all("a")
 
     number_of_links = len(links)
-    word_count = len(page_desc_soup.get_text().split())
+    word_count = len(page_html_contents.get_text().split())
 
     thin_content = check_if_content_is_thin(word_count, number_of_links)
 
@@ -493,6 +489,8 @@ def crawl_urls(
         for match in body.find_all(tag):
             match.decompose()
 
+    calculate_links.get_all_links(url, nofollow_all, page_html_contents)
+
     try:
         pages_indexed = save_record.save_to_file(
             full_url,
@@ -502,17 +500,18 @@ def crawl_urls(
             heading_info,
             page,
             pages_indexed,
-            page_desc_soup,
+            page_html_contents,
             len(links),
             crawl_budget,
             nofollow_all,
-            page_desc_soup.find("body"),
+            page_html_contents.find("body"),
             h_card,
             hash,
             thin_content,
+            elasticsearch_client,
         )
     except Exception as e:
-        write_log(e)
+        # write_log(e)
         print(e)
         raise Exception
 

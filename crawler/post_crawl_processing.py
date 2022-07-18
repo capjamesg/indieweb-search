@@ -1,6 +1,6 @@
-from write_logs import write_log
-
 import requests
+
+from write_logs import write_log
 
 
 def save_feeds_to_database(all_feeds: list, headers: dict, site: str) -> None:
@@ -34,9 +34,7 @@ def save_indexed_urls_to_database(
     if r.status_code == 200:
         print(f"index list updated for {site}")
     else:
-        write_log(
-            f"index list not updates for {site} (status code {r.status_code})"
-        )
+        write_log(f"index list not updates for {site} (status code {r.status_code})")
 
 
 def record_crawl_of_domain(site: str, headers: dict) -> None:

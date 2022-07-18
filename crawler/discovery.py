@@ -2,6 +2,7 @@ import csv
 import datetime
 import logging
 from typing import List
+
 from write_logs import write_log
 
 

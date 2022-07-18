@@ -1,4 +1,3 @@
-import datetime
 import json
 import math
 import string
@@ -121,7 +120,9 @@ def get_logs():
 
     domain = domain.replace("admin", "")
 
-    if domain != session.get("me").strip("/").replace("https://", "").replace("http://", ""):
+    if domain != session.get("me").strip("/").replace("https://", "").replace(
+        "http://", ""
+    ):
         return jsonify({"error": "authentication required"}), 401
 
     entries = ""
@@ -237,13 +238,13 @@ def results_page():
         cleaned_value_for_query, query_values_in_list, request
     )
 
-    index = ""
+    index = "&index=pages"
 
     if request.args.get("index"):
         index = "&index=" + request.args.get("index")
 
     rows = app_session.get(
-        "https://es-indieweb-search.jamesg.blog/?pw={}&q={}&sort={}&from={}&minimal={}{}".format(
+        "https://es-indieweb-search.jamesg.blog/?pw={}&q={}&sort={}&from={}&minimal={}{}{}".format(
             config.ELASTICSEARCH_PASSWORD,
             cleaned_value_for_query.replace("who is", "")
             .replace("code", "")
@@ -253,14 +254,13 @@ def results_page():
             str(pagination),
             minimal,
             query_params,
-            index
+            index,
         )
     ).json()
 
-    num_of_results = rows["hits"]["total"]["value"]
-    rows = rows["hits"]["hits"]
+    num_of_results = 10
 
-    for r in rows:
+    for r in rows["results"]:
         if r["_source"].get("h_card"):
             r["_source"]["h_card"] = json.loads(r["_source"]["h_card"])
         else:
@@ -329,7 +329,7 @@ def results_page():
 
     return render_template(
         "search/results.html",
-        results=rows,
+        results=rows["results"],
         number_of_results=int(num_of_results),
         page=int(page),
         page_count=int(math.ceil(num_of_results / 10)),

@@ -80,14 +80,7 @@ def home():
 
     response = es.search(index=index, body=search_param)
 
-    # delete some attributes that are not necessary for a query to take place
-    # this will reduce the amount of data that needs to go over the network
-    for hit in response["hits"]["hits"]:
-        for key in to_delete:
-            if key in hit["_source"]:
-                del hit["_source"][key]
-
-    return response
+    return jsonify({"results": response["hits"]["hits"]}), 200
 
 
 @main.route("/remove-from-index", methods=["POST"])
