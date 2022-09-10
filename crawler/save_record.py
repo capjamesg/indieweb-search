@@ -161,9 +161,9 @@ def save_to_file(
     """
 
     # the program will try to populate all of these values before indexing a document
-    category = None
+    category = ""
     special_snippet = {}
-    h_card = None
+    h_card = ""
     favicon = ""
     length = len(page_content)
     is_homepage = False
@@ -176,6 +176,8 @@ def save_to_file(
     special_snippet, h_card = identify_special_snippet.find_snippet(
         page_content, h_card
     )
+
+    special_snippet = {}
 
     if h_card == []:
         h_card = indieweb_utils.discover_author(

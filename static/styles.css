@@ -45,7 +45,11 @@ html {
   border: 1px solid lightgrey;
 }
 
-main {
+nav form {
+  flex: 1 50%;
+}
+
+#main {
     max-width: 75%;
     width: 60em;
     margin: auto;
@@ -180,10 +184,10 @@ select {
 
 nav {
     display: flex;
-    margin: 10px 0;
+    padding: 10px;
     justify-content: space-between;
-    border-top: 5px #FFA500 dashed;
-    border-bottom: 5px #FFA500 dashed;
+    background-color: white;
+    border-bottom: 5px #FFA500 solid;
 }
 
 nav ul, .tab ul {

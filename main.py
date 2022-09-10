@@ -258,7 +258,7 @@ def results_page():
         )
     ).json()
 
-    num_of_results = 10
+    num_of_results = rows["count"]
 
     for r in rows["results"]:
         if r["_source"].get("h_card"):

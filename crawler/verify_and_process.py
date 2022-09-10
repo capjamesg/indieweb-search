@@ -2,11 +2,9 @@ import datetime
 import hashlib
 from urllib.parse import urlparse as parse_url
 
-import indieweb_utils
 import requests
 from bs4 import BeautifulSoup
 
-import crawler.calculate_links as calculate_links
 import crawler.discovery as page_link_discovery
 import crawler.page_info
 import crawler.save_record as save_record
@@ -152,20 +150,20 @@ def crawl_urls(
     full_url = "https://" + url_domain + url_path
 
     # Do not index URLs blocked in the robots.txt file
-    # if (
-    #     robots_parser.can_fetch("*", full_url) is False
-    # ):
-    #     url_handling_helpers.check_remove_url(full_url)
-    #     return (
-    #         url,
-    #         discovered_urls,
-    #         False,
-    #         feeds,
-    #         "",
-    #         crawl_depth,
-    #         average_crawl_speed,
-    #         budget_used,
-    #     )
+    if (
+        robots_parser.can_fetch("*", full_url) is False
+    ):
+        url_handling_helpers.check_remove_url(full_url)
+        return (
+            url,
+            discovered_urls,
+            False,
+            feeds,
+            "",
+            crawl_depth,
+            average_crawl_speed,
+            budget_used,
+        )
 
     session.max_redirects = 5
 
@@ -212,6 +210,7 @@ def crawl_urls(
         page = verify_and_process_helpers.get_web_page(session, full_url)
     except Exception as e:
         print(e)
+        print("Error: Could not get page for: " + full_url)
         return (
             url,
             discovered_urls,
@@ -313,7 +312,7 @@ def crawl_urls(
             "href"
         )
 
-        canonical = find_base_url_path(canonical_url)
+        # canonical = find_base_url_path(canonical_url)
 
         # is_canonical = url_handling_helpers.parse_canonical(
         #     canonical, full_url, canonical_url, crawl_queue, discovered_urls
@@ -489,8 +488,6 @@ def crawl_urls(
         for match in body.find_all(tag):
             match.decompose()
 
-    calculate_links.get_all_links(url, nofollow_all, page_html_contents)
-
     try:
         pages_indexed = save_record.save_to_file(
             full_url,
@@ -513,6 +510,7 @@ def crawl_urls(
     except Exception as e:
         # write_log(e)
         print(e)
+        exit()
         raise Exception
 
     return (

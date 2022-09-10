@@ -7,8 +7,12 @@
     <main>
       <a href="#main" class="accessibility_label_top">Skip to main content</a>
       <nav id="top_navigation">
-        <p><a href="/">IndieWeb Search</a></p>
-        <ul id="desktop_menu">
+        <p style="margin: 10px"><a href="/">IndieWeb Search</a></p>
+        <form action="/results" method="GET" role="search">
+          <input type="search" id="query" name="query" placeholder="Enter your query" aria-label="Search the IndieWeb" value="{{ query }}" autocomplete="off">
+          <input class="search_button" type="submit" value="Search">
+        </form>
+        <ul id="desktop_menu" style="margin: 10px">
             <li><a href="/about">About</a></li>
             <li><a href="/stats">Statistics</a></li>
             <li><a href="/changelog">Changelog</a></li>
@@ -26,57 +30,11 @@
           </li>
         </ul>
       </nav>
-      {% if query_type != "coffee" %}
-      <script>
-        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-          document.getElementById('darkmode').media = "all";
-        }
-
-        if (localStorage.getItem('darkmode') == "true") {
-          document.getElementById('darkmode').media = "all";
-        } else if (localStorage.getItem('darkmode') == "false") {
-          document.getElementById('darkmode').media = "none";
-        }
-
-        var navigation = document.getElementById("top_navigation");
-        var ul = navigation.getElementsByTagName("ul")[0];
-        
-        var li = document.createElement("li");
-        var dark_style = document.getElementById("darkmode");
-  
-        if (dark_style.media === "all") {
-          li.innerHTML = "<a onclick='toggleTheme();'>Light Mode</a>";
-        } else {
-          li.innerHTML = "<a onclick='toggleTheme();'>Dark Mode</a>";
-        }
-
-        ul.appendChild(li);
-  
-        function toggleTheme() {
-          if (dark_style.media === "all") {
-            dark_style.media = "none";
-            li.innerHTML = "<a onclick='toggleTheme();'>Dark Mode</a>";
-            localStorage.setItem('darkmode', 'false');
-          } else {
-            dark_style.media = "all";
-            li.innerHTML = "<a onclick='toggleTheme();'>Light Mode</a>";
-            localStorage.setItem('darkmode', 'true');
-          }
-        }
-
-        function trigger_modal(id) {
-            var modal = document.getElementById(id);
-            if (modal.style.display == "none") {
-                modal.style.display = "block";
-            } else {
-                modal.style.display = "none";
-            }
-        }
-      </script>
-      {% endif %}
       <div id="main">
           {% block content %}
           {% endblock %}
+          <p>Have some feedback? <a href="https://github.com/capjamesg/indieweb-search">File an issue on the project GitHub page.</a></p>
+          <p class="accessibility_label"><a href="#main">Go Back to the Top</a></p>
       </div>
       <section class="mobile_modal" style="display: none;" id="settings">
         <span class="close" onclick="trigger_modal('settings');">&times;</span>
@@ -96,8 +54,6 @@
           </li>
         </ul>
       </section>
-      <p>Have some feedback? <a href="https://github.com/capjamesg/indieweb-search">File an issue on the project GitHub page.</a></p>
-      <p class="accessibility_label"><a href="#main">Go Back to the Top</a></p>
     </main>
   </body>
 </html>

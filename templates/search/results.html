@@ -1,12 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <section class="h-feed">
-  <h1 class="p-name p-summary hide-on-mobile">Your Search Results</h1>
-    <form action="/results" method="GET" role="search">
-      <input type="search" id="query" name="query" placeholder="Enter your query" aria-label="Search the IndieWeb" value="{{ query }}" autocomplete="off">
-      <input class="search_button" type="submit" value="Search">
-    </form>
-    <p class="hide-on-mobile">Returned {{ '{0:,}'.format(number_of_results) }} search result{% if number_of_results != 1 %}s{% endif %} for your "{{ query }}" query.</p>
+    <p class="hide-on-mobile">Returned <b>{{ '{0:,}'.format(number_of_results) }} search result{% if number_of_results != 1 %}s{% endif %}</b> for your "{{ query }}" query.</p>
     {% if out_of_bounds_page == False %}
       <p>
         {% if query.startswith("discover ") %}

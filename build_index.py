@@ -1,5 +1,6 @@
 import concurrent.futures
 import datetime
+from distutils.command.build import build
 import ipaddress
 import urllib.robotparser
 from typing import List
@@ -381,29 +382,29 @@ def build_index(site: str) -> List[list]:
     return url_indexed, discovered
 
 
-def callback(ch, method, properties, body):
-    ch.basic_ack(delivery_tag=method.delivery_tag)
+# def callback(ch, method, properties, body):
+#     # ch.basic_ack(delivery_tag=method.delivery_tag)
 
-    print("[x] Received %r" % body)
-    build_index(body.decode("utf-8"))
+#     print("[x] Received %r" % body)
+#     build_index(body.decode("utf-8"))
 
 
-def consumer():
-    # credentials = pika.PlainCredentials(
-    #     config.RABBITMQ_USERNAME, config.RABBITMQ_PASSWORD
-    # )
+# def consumer():
+#     # credentials = pika.PlainCredentials(
+#     #     config.RABBITMQ_USERNAME, config.RABBITMQ_PASSWORD
+#     # )
 
-    connection = pika.BlockingConnection(
-        pika.ConnectionParameters(host="localhost") #, credentials=credentials)
-    )
+#     connection = pika.BlockingConnection(
+#         pika.ConnectionParameters(host=config.RABBITMQ_HOST) #, credentials=credentials)
+#     )
 
-    channel = connection.channel()
+#     channel = connection.channel()
 
-    channel.basic_consume(
-        queue="domains_to_crawl", auto_ack=True, on_message_callback=callback
-    )
+#     channel.basic_consume(
+#         queue="domains_to_crawl", on_message_callback=callback
+#     )
 
-    channel.start_consuming()
+#     channel.start_consuming()
 
 
 def main():
@@ -411,9 +412,11 @@ def main():
 
     sites_indexed = 0
 
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        futures = [executor.submit(consumer) for _ in range(0, 5)]
+    domains = open("queue.txt", "r")
 
+    with concurrent.futures.ThreadPoolExecutor(max_workers=30) as executor:
+        futures = [executor.submit(build_index, d.replace("\n", "")) for d in domains.readlines()]
+        # futures = [executor.submit(build_index, "aaronparecki.com")]
         while len(futures) > 0:
             for future in concurrent.futures.as_completed(futures):
                 sites_indexed += 1
@@ -431,7 +434,6 @@ def main():
                     raise e
 
                 futures.remove(future)
-                futures.append(executor.submit(consumer))
 
 
 if __name__ == "__main__":

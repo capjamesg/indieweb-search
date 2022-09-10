@@ -19,8 +19,5 @@ def write_log(text: str, domain: str = "ADMIN") -> None:
 
     try:
         client.write_points(data, database="search_logs")
-
-        print(text + " (wrote to Google Cloud Logging)")
     except:
-        print(text)
         pass
