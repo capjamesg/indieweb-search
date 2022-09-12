@@ -14,6 +14,7 @@ from crawler.constants import LIKELY_404_TITLES
 from write_logs import write_log
 
 yesterday = datetime.datetime.today() - datetime.timedelta(days=1)
+redirect_codes = (301, 302, 303, 307, 308)
 
 
 def find_base_url_path(url: str) -> str:
@@ -147,39 +148,74 @@ def crawl_urls(
     url_domain = parsed_url.netloc
     url_path = parsed_url.path
 
+    is_indexed = elasticsearch_client.search(
+        index="pages", query={"match": {"url": url}}
+    )
+
+    etag = None
+    date_crawled = None
+
+    if is_indexed:
+        etag = is_indexed["hits"]["hits"][0]["_source"]["etag"]
+        date_crawled = is_indexed["hits"]["hits"][0]["_source"]["date_crawled"]
+
     full_url = "https://" + url_domain + url_path
 
+    return_object = [
+        url,
+        discovered_urls,
+        False,
+        feeds,
+        "",
+        crawl_depth,
+        average_crawl_speed,
+        budget_used,
+    ]
+
     # Do not index URLs blocked in the robots.txt file
-    
-    if (
-        robots_parser.can_fetch("*", full_url) is False
-    ):
+
+    if robots_parser.can_fetch("*", full_url) is False:
         url_handling_helpers.check_remove_url(full_url)
-        return (
-            url,
-            discovered_urls,
-            False,
-            feeds,
-            "",
-            crawl_depth,
-            average_crawl_speed,
-            budget_used,
-        )
+        return return_object
 
     session.max_redirects = 5
-
-    budget_used += 1
 
     try:
         (
             page_test,
             nofollow_all,
             redirect_count,
-        ) = verify_and_process_helpers.initial_head_request(full_url, session, site_url)
+        ) = verify_and_process_helpers.initial_head_request(
+            full_url, session, site_url, etag, date_crawled
+        )
         budget_used += redirect_count
     except:
-        print("Error: Could not get page info for: " + full_url)
+        write_log("Error: Could not get page info for: " + full_url)
         url_handling_helpers.check_remove_url(full_url)
+        return return_object
+
+    budget_used += 1
+
+    return_object = [
+        url,
+        discovered_urls,
+        False,
+        feeds,
+        "",
+        crawl_depth,
+        average_crawl_speed,
+        budget_used,
+    ]
+
+    if page_test.status_code == 304:
+        write_log("Page not modified: " + full_url)
+        return return_object
+
+    has_canonical = verify_and_process_helpers.parse_link_headers(
+        page_test, full_url, crawl_queue, discovered_urls
+    )
+
+    if has_canonical == True:
         return (
             url,
             discovered_urls,
@@ -190,40 +226,14 @@ def crawl_urls(
             average_crawl_speed,
             budget_used,
         )
-
-    # has_canonical = verify_and_process_helpers.parse_link_headers(
-    #     page_test, full_url, crawl_queue, discovered_urls
-    # )
-
-    # if has_canonical == True:
-    #     return (
-    #         url,
-    #         discovered_urls,
-    #         False,
-    #         feeds,
-    #         "",
-    #         crawl_depth,
-    #         average_crawl_speed,
-    #         budget_used,
-    #     )
 
     try:
         page = verify_and_process_helpers.get_web_page(session, full_url)
     except Exception as e:
-        print(e)
-        print("Error: Could not get page for: " + full_url)
-        return (
-            url,
-            discovered_urls,
-            False,
-            feeds,
-            "",
-            crawl_depth,
-            average_crawl_speed,
-            budget_used,
-        )
+        write_log("Error: Could not get page for: " + full_url)
+        return return_object
 
-    if page.status_code == 301 or page.status_code == 302 or page.status_code == 308:
+    if page.status_code in redirect_codes:
         return verify_and_process_helpers.handle_redirect(
             url,
             discovered_urls,
@@ -313,23 +323,23 @@ def crawl_urls(
             "href"
         )
 
-        # canonical = find_base_url_path(canonical_url)
+        canonical = find_base_url_path(canonical_url)
 
-        # is_canonical = url_handling_helpers.parse_canonical(
-        #     canonical, full_url, canonical_url, crawl_queue, discovered_urls
-        # )
+        is_canonical = url_handling_helpers.parse_canonical(
+            canonical, full_url, canonical_url, crawl_queue, discovered_urls
+        )
 
-        # if is_canonical:
-        #     return (
-        #         url,
-        #         discovered_urls,
-        #         False,
-        #         feeds,
-        #         hash,
-        #         crawl_depth,
-        #         average_crawl_speed,
-        #         budget_used,
-        #     )
+        if is_canonical:
+            return (
+                url,
+                discovered_urls,
+                False,
+                feeds,
+                hash,
+                crawl_depth,
+                average_crawl_speed,
+                budget_used,
+            )
 
     try:
         noindex, nofollow_all = verify_and_process_helpers.check_if_url_is_noindexed(

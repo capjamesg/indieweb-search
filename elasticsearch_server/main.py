@@ -80,7 +80,15 @@ def home():
 
     response = es.search(index=index, body=search_param)
 
-    return jsonify({"results": response["hits"]["hits"], "count": response["hits"]["total"]["value"]}), 200
+    return (
+        jsonify(
+            {
+                "results": response["hits"]["hits"],
+                "count": response["hits"]["total"]["value"],
+            }
+        ),
+        200,
+    )
 
 
 @main.route("/remove-from-index", methods=["POST"])

@@ -1,14 +1,13 @@
 import concurrent.futures
 import datetime
-from distutils.command.build import build
 import ipaddress
+import time
 import urllib.robotparser
 from typing import List
 
 import indieweb_utils
 # import cProfile
 import mf2py
-import pika
 import requests
 from bs4 import BeautifulSoup
 from elasticsearch import Elasticsearch
@@ -153,7 +152,6 @@ def get_feeds(site: str) -> list:
         write_log(f"feeds retrieved for {site}", site)
         feeds = r.json()
     elif r.status_code == 200 and r.json() and r.json().get("message"):
-        # write_log("Result from URL request to /feeds endpoint on elasticsearch server: {}".format(r.json()["message"]))
         write_log(
             "Result from URL request to /feeds endpoint on elasticsearch server: {}".format(
                 r.json()["message"]
@@ -162,11 +160,9 @@ def get_feeds(site: str) -> list:
         )
         feeds = []
     elif r.status_code == 200 and not r.json():
-        # write_log("No feeds retrieved for {} but still 200 response".format(site))
         write_log(f"No feeds retrieved for {site} but still 200 response", site)
         feeds = []
     else:
-        # write_log("ERROR: feeds not retrieved for {} (status code {})".format(site, r.status_code))
         write_log(f"feeds not retrieved for {site} (status code {r.status_code})", site)
         feeds = []
 
@@ -269,14 +265,37 @@ def build_index(site: str) -> List[list]:
         protocol, site, final_urls, web_page_hashes
     )
 
-    for url in crawl_queue:
-        crawl_depth = 0
+    # limit crawls to the specified request-rate directive in robots.txt
+    last_crawls = {}
+    crawl_rate = rp.request_rate("indieweb-search")
 
-        if crawl_depths.get("url"):
-            crawl_depth = crawl_depths.get("url")
-            if crawl_depth > 5:
-                # write_log("crawl depth for {} is {}".format(url, crawl_depth))
-                write_log(f"crawl depth for {url} is {crawl_depth}", site)
+    if crawl_rate:
+        crawl_rate_requests = crawl_rate.requests
+        crawl_rate_seconds = crawl_rate.seconds
+
+    for url in crawl_queue:
+        current_time = datetime.datetime.now().strftime("%d-%m-%Y:%H:%M:%S")
+        if crawl_rate and len(last_crawls[current_time]) == crawl_rate_requests:
+            time.sleep(
+                last_crawls[current_time][0]
+                + datetime.timedelta(seconds=crawl_rate_seconds)
+                - datetime.datetime.now()
+            )
+            last_crawls.pop(0)
+
+        # if minute = 0 in hour, clear dictionary to prevent memory leak
+        if datetime.datetime.now().minute == 0:
+            new_last_crawls = last_crawls[current_time].copy()
+
+            del last_crawls[current_time]
+
+            last_crawls[current_time] = new_last_crawls
+
+        crawl_depth = crawl_depths.get("url", 0)
+
+        if crawl_depth > 5:
+            # write_log("crawl depth for {} is {}".format(url, crawl_depth))
+            write_log(f"crawl depth for {url} is {crawl_depth}", site)
 
         if indexed_list.get(url):
             continue
@@ -314,6 +333,15 @@ def build_index(site: str) -> List[list]:
             es,
             rp,
         )
+
+        if crawl_rate:
+            last_crawls[
+                datetime.datetime.now().strftime("%d-%m-%Y:%H:%M:%S")
+            ] = last_crawls.get(
+                datetime.datetime.now().strftime("%d-%m-%Y:%H:%M:%S")
+            ) + [
+                datetime.datetime.now()
+            ]
 
         if valid:
             valid_count += 1
@@ -370,8 +398,6 @@ def build_index(site: str) -> List[list]:
 
             crawl_depths[key] = value
 
-    headers["Content-Type"] = "application/json"
-
     # exclude wordpress json feeds for now
     # only save first 25 feeds
     feeds = [f for f in all_feeds[:25] if "wp-json" not in f]
@@ -384,31 +410,6 @@ def build_index(site: str) -> List[list]:
     return url_indexed, discovered
 
 
-# def callback(ch, method, properties, body):
-#     # ch.basic_ack(delivery_tag=method.delivery_tag)
-
-#     print("[x] Received %r" % body)
-#     build_index(body.decode("utf-8"))
-
-
-# def consumer():
-#     # credentials = pika.PlainCredentials(
-#     #     config.RABBITMQ_USERNAME, config.RABBITMQ_PASSWORD
-#     # )
-
-#     connection = pika.BlockingConnection(
-#         pika.ConnectionParameters(host=config.RABBITMQ_HOST) #, credentials=credentials)
-#     )
-
-#     channel = connection.channel()
-
-#     channel.basic_consume(
-#         queue="domains_to_crawl", on_message_callback=callback
-#     )
-
-#     channel.start_consuming()
-
-
 def main():
     futures = []
 
@@ -417,7 +418,10 @@ def main():
     domains = open("queue.txt", "r")
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=30) as executor:
-        futures = [executor.submit(build_index, d.replace("\n", "")) for d in domains.readlines()]
+        futures = [
+            executor.submit(build_index, d.replace("\n", ""))
+            for d in domains.readlines()
+        ]
         # futures = [executor.submit(build_index, "aaronparecki.com")]
         while len(futures) > 0:
             for future in concurrent.futures.as_completed(futures):

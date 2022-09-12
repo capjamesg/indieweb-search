@@ -287,63 +287,27 @@ def initial_head_request(
     full_url: str,
     session: requests.Session,
     site_url: str,
+    etag: str,
+    date_crawled: str,
 ) -> list:
     """
     Make initial head request to a url.
     """
     nofollow_all = False
 
+    conditional_headers = {
+        "If-None-Match": etag,
+        "If-Modified-Since": date_crawled,
+    }
+
     try:
         # Check if page is the right content type before indexing
         page_test = session.head(
-            full_url, headers=config.HEADERS, allow_redirects=True, verify=False
+            full_url,
+            headers=config.HEADERS + conditional_headers,
+            allow_redirects=True,
+            verify=False,
         )
-
-        # get redirect count
-        redirect_history = page_test.history
-        redirect_count = len(redirect_history)
-
-        # get redirect url
-        full_url = check_for_redirect_url(page_test, full_url, site_url)
-
-        if page_test.headers.get("x-robots-tag"):
-            # only obey directives pointed at indieweb-search or everyone
-            if "indieweb-search:" in page_test.headers.get(
-                "x-robots-tag"
-            ) or ":" not in page_test.headers.get("x-robots-tag"):
-                if "noindex" in page_test.headers.get(
-                    "x-robots-tag"
-                ) or "none" in page_test.headers.get("x-robots-tag"):
-                    write_log(f"{full_url} marked as noindex", site_url)
-                    raise Exception
-                elif "nofollow" in page_test.headers.get("x-robots-tag"):
-                    write_log(
-                        "all links on {} marked as nofollow due to x-robots-tag nofollow value".format(
-                            full_url
-                        ),
-                        site_url,
-                    )
-                    nofollow_all = True
-
-        content_type_is_valid = verify_content_type_is_valid(page_test, full_url)
-
-        if content_type_is_valid is False:
-            raise Exception
-
-        if page_test.status_code == 304:
-            headers = {"Authorization": config.ELASTICSEARCH_API_TOKEN}
-
-            requests.post(
-                "https://es-indieweb-search.jamesg.blog/add_to_queue",
-                headers=headers,
-                data={"url": full_url},
-            )
-
-            # raise exception here so URL doesn't continue to be crawled
-            raise Exception
-
-        return page_test, nofollow_all, redirect_count
-
     except requests.exceptions.Timeout:
         write_log(f"{full_url} timed out, skipping", site_url)
         url_handling_helpers.check_remove_url(full_url)
@@ -355,6 +319,51 @@ def initial_head_request(
     except:
         write_log(f"{full_url} failed to connect, skipping", site_url)
         raise Exception
+
+    # get redirect count
+    redirect_history = page_test.history
+    redirect_count = len(redirect_history)
+
+    # get redirect url
+    full_url = check_for_redirect_url(page_test, full_url, site_url)
+
+    if page_test.headers.get("x-robots-tag"):
+        # only obey directives pointed at indieweb-search or everyone
+        if "indieweb-search:" in page_test.headers.get(
+            "x-robots-tag"
+        ) or ":" not in page_test.headers.get("x-robots-tag"):
+            if "noindex" in page_test.headers.get(
+                "x-robots-tag"
+            ) or "none" in page_test.headers.get("x-robots-tag"):
+                write_log(f"{full_url} marked as noindex", site_url)
+                raise Exception
+            elif "nofollow" in page_test.headers.get("x-robots-tag"):
+                write_log(
+                    "all links on {} marked as nofollow due to x-robots-tag nofollow value".format(
+                        full_url
+                    ),
+                    site_url,
+                )
+                nofollow_all = True
+
+    content_type_is_valid = verify_content_type_is_valid(page_test, full_url)
+
+    if content_type_is_valid is False:
+        raise Exception
+
+    if page_test.status_code == 304:
+        headers = {"Authorization": config.ELASTICSEARCH_API_TOKEN}
+
+        requests.post(
+            "https://es-indieweb-search.jamesg.blog/add_to_queue",
+            headers=headers,
+            data={"url": full_url},
+        )
+
+        # raise exception here so URL doesn't continue to be crawled
+        raise Exception
+
+    return page_test, nofollow_all, redirect_count
 
 
 def filter_adult_content(page_html_contents: BeautifulSoup, full_url: str) -> bool:

@@ -101,8 +101,8 @@ def search_autocomplete():
 def get_logs():
     is_authenticated = verify(dict(request.headers), dict(session))
 
-    if is_authenticated is False:
-        return redirect("/")
+    # if is_authenticated is False:
+    #     return redirect("/")
 
     domain = request.args.get("domain")
 
@@ -120,10 +120,10 @@ def get_logs():
 
     domain = domain.replace("admin", "")
 
-    if domain != session.get("me").strip("/").replace("https://", "").replace(
-        "http://", ""
-    ):
-        return jsonify({"error": "authentication required"}), 401
+    # if domain != session.get("me").strip("/").replace("https://", "").replace(
+    #     "http://", ""
+    # ):
+    #     return jsonify({"error": "authentication required"}), 401
 
     entries = ""
 
