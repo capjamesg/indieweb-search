@@ -53,6 +53,8 @@ def process_domain(site: str) -> List[list]:
 
     rp.set_url(f"{protocol}{site}/robots.txt")
 
+    rp.read()
+
     sitemap_urls = rp.site_maps() or []
 
     write_log("CRAWL BEGINNING", site)

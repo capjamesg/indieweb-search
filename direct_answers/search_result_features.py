@@ -70,7 +70,7 @@ def generate_featured_snippet(
 
     # read post with bs4
     if post.get("page_content"):
-        soup = BeautifulSoup(post["page_content"], "lxml")
+        soup = BeautifulSoup(post["page_content"], "htmlp.arser")
     else:
         return "", special_result
 

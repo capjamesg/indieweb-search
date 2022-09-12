@@ -196,7 +196,7 @@ def retrieve_answer(
         else:
             featured_serp_contents = ""
 
-        if len(BeautifulSoup(featured_serp_contents, "lxml").get_text()) < 60:
+        if len(BeautifulSoup(featured_serp_contents, "html.parser").get_text()) < 60:
             return None
 
         special_result = {

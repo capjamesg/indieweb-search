@@ -150,6 +150,7 @@ def crawl_urls(
     full_url = "https://" + url_domain + url_path
 
     # Do not index URLs blocked in the robots.txt file
+    
     if (
         robots_parser.can_fetch("*", full_url) is False
     ):

@@ -16,6 +16,8 @@ def write_log(text: str, domain: str = "ADMIN") -> None:
             "fields": {"text": f"[*{split_domain}*]   " + text},
         }
     ]
+    
+    print(text)
 
     try:
         client.write_points(data, database="search_logs")
