@@ -171,13 +171,11 @@ def save_to_file(
     if page != "" and page.headers:
         length = page.headers.get("content-length", "")
 
-    h_entry_object = mf2py.parse(page_content)
+    h_entry_object = mf2py.parse(doc=page_content)
 
     special_snippet, h_card = identify_special_snippet.find_snippet(
         page_content, h_card
     )
-
-    special_snippet = {}
 
     if h_card == []:
         h_card = indieweb_utils.discover_author(

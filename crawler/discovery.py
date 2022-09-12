@@ -138,7 +138,7 @@ def page_link_discovery(
                 or full_link.startswith(f"http://{site_url}")
             )
             and not full_link.startswith("//")
-            and len(final_urls) < 15000
+            and len(final_urls) < 30000
         ):
             all_links.append(
                 [

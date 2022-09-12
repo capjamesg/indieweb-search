@@ -133,7 +133,7 @@ def process_domain(site: str) -> List[list]:
                 final_urls[canonicalized_url] = ""
 
     # crawl budget is 15,000 URLs
-    return 15000, final_urls, protocol, rp
+    return 30000, final_urls, protocol, rp
 
 
 def get_feeds(site: str) -> list:
