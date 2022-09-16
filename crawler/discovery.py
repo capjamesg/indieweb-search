@@ -42,12 +42,6 @@ def page_link_discovery(
         if link["href"].startswith("/"):
             full_link = f"https://{site_url}" + link["href"]
 
-        if "//" in link["href"]:
-            if ".tumblr.com" in link["href"].split("//")[1].split("/")[0]:
-                with open("tumblr_domains.csv", "a+") as file:
-                    writer = csv.writer(file)
-                    writer.writerow([link["href"]])
-
         if (
             link["href"]
             and not link["href"].startswith("/")
