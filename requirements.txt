@@ -48,7 +48,7 @@ thinc==8.1.1
 tqdm==4.64.1
 typer==0.4.2
 typing_extensions==4.3.0
-urllib3==1.26.12
+urllib3==1.26.17
 wasabi==0.10.1
 webencodings==0.5.1
 Werkzeug==2.2.3
