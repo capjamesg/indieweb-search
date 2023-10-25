@@ -51,4 +51,4 @@ typing_extensions==4.3.0
 urllib3==1.26.18
 wasabi==0.10.1
 webencodings==0.5.1
-Werkzeug==2.2.3
+Werkzeug==3.0.1
